@@ -1,0 +1,333 @@
+2025-05-19 12:06:47,287 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:06:47,548 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:06:47,563 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:06:47,565 - root - ERROR - Erro na autenticação: ('Error while preparing SQL statement:\n- SQLCODE: -206\n- Dynamic SQL Error\n- SQL error code = -206\n- Column unknown\n- NOME\n- At line 2, column 31', -206, 335544569)
+2025-05-19 12:07:34,690 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:07:34,713 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:07:34,722 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:07:34,724 - root - ERROR - Erro na autenticação: ('Error while preparing SQL statement:\n- SQLCODE: -206\n- Dynamic SQL Error\n- SQL error code = -206\n- Column unknown\n- NOME\n- At line 2, column 31', -206, 335544569)
+2025-05-19 12:07:41,813 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:07:41,831 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:07:41,842 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:07:41,844 - root - ERROR - Erro na autenticação: ('Error while preparing SQL statement:\n- SQLCODE: -206\n- Dynamic SQL Error\n- SQL error code = -206\n- Column unknown\n- NOME\n- At line 2, column 31', -206, 335544569)
+2025-05-19 12:08:25,304 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:08:25,335 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:08:25,350 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:08:25,353 - root - ERROR - Erro na autenticação: ('Error while preparing SQL statement:\n- SQLCODE: -206\n- Dynamic SQL Error\n- SQL error code = -206\n- Column unknown\n- NOME\n- At line 2, column 31', -206, 335544569)
+2025-05-19 12:09:22,297 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:09:22,325 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:09:22,339 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:09:22,342 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:09:22,343 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:09:22,344 - root - WARNING - Senha incorreta para: felipe
+2025-05-19 12:09:29,174 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:09:29,195 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:09:29,204 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:09:29,207 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:09:29,208 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:09:29,209 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 12:10:15,454 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:10:15,477 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:10:15,487 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:10:15,490 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:10:15,491 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:10:15,492 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 12:10:15,496 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:10:15,519 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:10:15,529 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:13:34,738 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:13:34,797 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:13:34,817 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:13:34,820 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:13:34,821 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:13:34,822 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 12:13:34,824 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:13:34,846 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:13:34,857 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:14:24,235 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:14:24,263 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:14:24,277 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:14:24,279 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:14:24,280 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:14:24,281 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 12:14:24,283 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:14:24,301 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:14:24,311 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:17:48,083 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:17:48,123 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:17:48,139 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:17:48,141 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:17:48,142 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:17:48,143 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 12:17:48,145 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:17:48,163 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:17:48,173 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:19:29,885 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:19:29,931 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:19:29,947 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:19:29,950 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:19:29,951 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:19:29,952 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 12:19:29,983 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:19:30,003 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:19:30,013 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:19:37,532 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:19:37,551 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:19:37,561 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:19:37,563 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:19:37,564 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:19:37,565 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 12:19:37,567 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:19:37,584 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:19:37,594 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:24:20,543 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:24:20,584 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:24:20,599 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:24:20,600 - root - INFO - Tentando autenticar usuário com email: master
+2025-05-19 12:24:20,602 - root - ERROR - Erro na autenticação: ('Error while preparing SQL statement:\n- SQLCODE: -206\n- Dynamic SQL Error\n- SQL error code = -206\n- Column unknown\n- NOME\n- At line 2, column 24', -206, 335544569)
+2025-05-19 12:24:28,301 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:24:28,320 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:24:28,332 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:24:28,332 - root - INFO - Tentando autenticar usuário com email: master
+2025-05-19 12:24:28,334 - root - ERROR - Erro na autenticação: ('Error while preparing SQL statement:\n- SQLCODE: -206\n- Dynamic SQL Error\n- SQL error code = -206\n- Column unknown\n- NOME\n- At line 2, column 24', -206, 335544569)
+2025-05-19 12:26:41,090 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:26:41,148 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:26:41,168 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:26:41,171 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:26:41,172 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:26:41,173 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 12:26:49,679 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:26:49,698 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:26:49,711 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:26:49,713 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:26:49,714 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:26:49,715 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 12:26:49,717 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:26:49,736 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:26:49,745 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:28:15,693 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 12:28:15,744 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 12:28:15,762 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 12:28:15,764 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 12:28:15,766 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 12:28:15,767 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 13:31:18,973 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:31:19,023 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:31:19,038 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:31:19,041 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 13:31:19,042 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 13:31:19,042 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 13:31:19,056 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:31:19,076 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:31:19,089 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:31:19,224 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:31:19,243 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:31:19,253 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:34:34,549 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:34:34,590 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:34:34,603 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:34:36,287 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:34:36,309 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:34:36,320 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:34:48,715 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:34:48,738 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:34:48,747 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:34:48,750 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 13:34:48,751 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 13:34:48,752 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 13:34:48,772 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:34:48,792 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:34:48,802 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:34:48,965 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:34:48,986 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:34:48,996 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:37:28,987 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:37:29,023 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:37:29,035 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:37:29,037 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 13:37:29,038 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 13:37:29,039 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 13:37:29,056 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:37:29,074 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:37:29,084 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:37:29,235 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:37:29,253 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:37:29,263 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:42:41,747 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:42:41,787 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:42:41,800 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:42:41,803 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 13:42:41,804 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 13:42:41,804 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 13:42:41,824 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:42:41,842 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:42:41,852 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:42:41,997 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:42:42,015 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:42:42,025 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:44:38,348 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:44:38,393 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:44:38,410 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:44:38,413 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 13:44:38,414 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 13:44:38,416 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 13:44:38,437 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:44:38,458 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:44:38,470 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:44:38,599 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:44:38,621 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:44:38,634 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:53:53,081 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:53:53,130 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:53:53,144 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:53:53,146 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 13:53:53,147 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 13:53:53,148 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 13:53:53,162 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:53:53,179 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:53:53,189 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 13:53:53,331 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 13:53:53,348 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 13:53:53,358 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:00:40,680 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:00:40,722 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:00:40,737 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:00:40,739 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 14:00:40,740 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 14:00:40,741 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 14:00:40,764 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:00:40,784 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:00:40,794 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:00:40,929 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:00:40,947 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:00:40,956 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:04:19,932 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:04:19,973 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:04:19,989 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:04:19,992 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 14:04:19,993 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 14:04:19,994 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 14:04:20,012 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:04:20,029 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:04:20,038 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:04:20,191 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:04:20,215 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:04:20,229 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:04:55,528 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:04:55,548 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:04:55,559 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:04:55,560 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 14:04:55,561 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 14:04:55,562 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 14:04:55,583 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:04:55,603 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:04:55,613 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:04:55,777 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:04:55,793 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:04:55,803 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:09:59,401 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:09:59,443 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:09:59,456 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:09:59,458 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 14:09:59,459 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 14:09:59,460 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 14:09:59,480 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:09:59,499 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:09:59,509 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:09:59,647 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:09:59,665 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:09:59,674 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:15:43,975 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:15:44,014 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:15:44,024 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:15:44,027 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 14:15:44,028 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 14:15:44,028 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 14:15:44,052 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:15:44,073 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:15:44,085 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:15:44,228 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:15:44,248 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:15:44,258 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:18:52,205 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:18:52,240 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:18:52,250 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:18:52,252 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 14:18:52,254 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 14:18:52,254 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 14:19:25,632 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-19 14:19:25,656 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-19 14:19:25,666 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-19 14:19:25,668 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-19 14:19:25,669 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-19 14:19:25,669 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-19 14:22:56,165 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:56,520 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:56,928 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:57,287 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:57,644 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:58,001 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:58,359 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:58,718 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:59,128 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:59,536 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:22:59,942 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:00,346 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:00,706 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:01,117 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:01,529 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:01,933 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:02,291 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:02,646 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:03,006 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:03,364 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:03,722 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:04,084 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:04,439 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:04,797 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:05,154 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:05,512 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:05,870 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:06,231 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:06,595 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:06,955 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:07,364 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:07,767 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:08,173 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:08,581 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:08,986 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:09,391 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:09,796 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:10,202 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:10,604 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:11,010 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:11,366 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:11,775 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:12,180 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:12,590 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:12,996 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:13,401 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:13,811 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:14,214 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:14,619 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:15,027 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:15,432 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:15,836 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:16,245 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:16,649 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:17,055 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:17,466 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:17,822 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:18,234 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:18,643 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:19,047 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:19,453 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:19,860 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:20,266 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:20,620 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:21,028 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:21,436 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:21,839 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:22,244 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:22,650 - watchfiles.main - INFO - 1 change detected
+2025-05-19 14:23:23,108 - watchfiles.main - INFO - 1 change detected

@@ -116,51 +116,44 @@ async def obter_empresas_usuario(email: str) -> List[Dict[str, Any]]:
                 ua.id AS usuario_app_id
             FROM usuarios_clientes uc
             JOIN CLIENTES c ON c.CLI_CODIGO = uc.CLI_CODIGO
-            JOIN usuarios_app ua ON ua.id = uc.USUARIO_ID
-            WHERE ua.email = ?
-            ORDER BY c.CLI_NOME
+            JOIN USUARIOS_APP ua ON ua.ID = uc.USUARIO_ID
+            WHERE ua.EMAIL = ?
+            AND ua.ATIVO = 'S'
+            AND (c.CLI_BLOQUEADOAPP IS NULL OR c.CLI_BLOQUEADOAPP <> 'S')
         """, (email,))
         
-        rows = cursor.fetchall()
-        logging.info(f"[EMPRESAS] Dados brutos do banco: {rows}")
+        result = cursor.fetchall()
         
+        # Formatar os resultados
         empresas = []
-        for row in rows:
-            try:
-                logging.info(f"[EMPRESAS] Processando linha: {row}")
-                empresa = {
-                    "cli_codigo": int(row[0]),
-                    "cli_nome": str(row[1]),
-                    "cli_bloqueadoapp": str(row[2]),
-                    "cli_mensagem": str(row[3]),
-                    "cli_caminho_base": str(row[4]),
-                    "cli_ip_servidor": str(row[5]),
-                    "cli_nome_base": str(row[6]),
-                    "cli_porta": str(row[7]),
-                    "id": int(row[8]),  # VINCULO_ID
-                    "usuario_id": int(row[9]),
-                    "nivel_acesso": str(row[10]),
-                    "email": str(row[11]),
-                    "usuario_app_id": int(row[12])
-                }
-                logging.info(f"[EMPRESAS] Empresa processada: {empresa}")
-                empresas.append(empresa)
-            except Exception as e:
-                logging.error(f"[EMPRESAS] Erro ao processar empresa: {str(e)}")
-                logging.error(f"[EMPRESAS] Linha com erro: {row}")
-                continue
-        
-        conn.close()
-        logging.info(f"[EMPRESAS] {len(empresas)} empresas encontradas para o email {email}")
+        for row in result:
+            empresa = {
+                "cli_codigo": row[0],
+                "cli_nome": row[1],
+                "cli_bloqueadoapp": row[2],
+                "cli_mensagem": row[3],
+                "cli_caminho_base": row[4],
+                "cli_ip_servidor": row[5],
+                "cli_nome_base": row[6],
+                "cli_porta": row[7],
+                "vinculo_id": row[8],
+                "usuario_id": row[9],
+                "nivel_acesso": row[10],
+                "email": row[11],
+                "usuario_app_id": row[12]
+            }
+            empresas.append(empresa)
+            
+        if not empresas:
+            logging.warning(f"[EMPRESAS] Nenhuma empresa encontrada para o usuário {email}")
+            
         return empresas
+            
     except Exception as e:
         logging.error(f"[EMPRESAS] Erro ao obter empresas: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erro ao buscar empresas: {str(e)}"
-        )
+        return []
 
-async def obter_empresa_controladora(usuario_id: int):
+async def obter_empresa_controladora(usuario_id: int) -> Dict[str, Any]:
     """
     Obtém os dados da empresa controladora para um usuário.
     """
@@ -168,85 +161,92 @@ async def obter_empresa_controladora(usuario_id: int):
         conn = obter_conexao_controladora()
         cursor = conn.cursor()
         
-        # Consulta a empresa controladora do usuário
+        # Busca informações da empresa controladora
         cursor.execute("""
             SELECT 
-                C.CLI_CODIGO, 
-                C.CLI_NOME, 
-                C.CLI_CAMINHO_BASE, 
-                C.CLI_IP_SERVIDOR,
-                C.CLI_NOME_BASE,
-                C.CLI_PORTA,
-                C.CLI_MENSAGEM,
-                C.CLI_BLOQUEADOAPP
-            FROM CONFIG_APP
-            WHERE CHAVE_CONFIG = 'EMPRESA_CONTROLADORA'
+                CLI_CODIGO, 
+                CLI_NOME,
+                CLI_BLOQUEADOAPP,
+                CLI_MENSAGEM,
+                CLI_CAMINHO_BASE,
+                cli_ip_servidor,
+                CLI_NOME_BASE,
+                CLI_PORTA
+            FROM CLIENTES 
+            WHERE CLI_CODIGO = 1
         """)
         
         row = cursor.fetchone()
-        conn.close()
-        
         if not row:
             return None
             
-        return {
+        empresa = {
             "cli_codigo": row[0],
             "cli_nome": row[1],
-            "cli_caminho_base": row[2],
-            "cli_ip_servidor": row[3],
-            "cli_nome_base": row[4],
-            "cli_porta": row[5],
-            "cli_mensagem": row[6],
-            "cli_bloqueadoapp": row[7]
+            "cli_bloqueadoapp": row[2] if row[2] else 'N',
+            "cli_mensagem": row[3] if row[3] else '',
+            "cli_caminho_base": row[4] if row[4] else '',
+            "cli_ip_servidor": row[5] if row[5] else '127.0.0.1',
+            "cli_nome_base": row[6] if row[6] else '',
+            "cli_porta": str(row[7]) if row[7] else '3050'
         }
+        
+        return empresa
+            
     except Exception as e:
         logging.error(f"Erro ao obter empresa controladora: {str(e)}")
         return None
 
-async def obter_empresa_por_codigo(cli_codigo: int):
+async def obter_empresa_por_codigo(cli_codigo: int) -> Dict[str, Any]:
     """
     Obtém os dados de uma empresa pelo código.
     """
     try:
+        if not cli_codigo:
+            logging.error("Código da empresa não fornecido")
+            return None
+            
         conn = obter_conexao_controladora()
         cursor = conn.cursor()
         
-        # Consulta a empresa pelo código
+        # Busca informações da empresa pelo código
         cursor.execute("""
             SELECT 
                 CLI_CODIGO, 
-                CLI_NOME, 
-                CLI_CAMINHO_BASE, 
-                CLI_IP_SERVIDOR,
-                CLI_NOME_BASE,
-                CLI_PORTA,
+                CLI_NOME,
+                CLI_BLOQUEADOAPP,
                 CLI_MENSAGEM,
-                CLI_BLOQUEADOAPP
-            FROM CLIENTES
+                CLI_CAMINHO_BASE,
+                cli_ip_servidor,
+                CLI_NOME_BASE,
+                CLI_PORTA
+            FROM CLIENTES 
             WHERE CLI_CODIGO = ?
         """, (cli_codigo,))
         
         row = cursor.fetchone()
-        conn.close()
-        
         if not row:
+            logging.error(f"Empresa com código {cli_codigo} não encontrada")
             return None
             
-        return {
+        empresa = {
             "cli_codigo": row[0],
             "cli_nome": row[1],
-            "cli_caminho_base": row[2],
-            "cli_ip_servidor": row[3],
-            "cli_nome_base": row[4],
-            "cli_porta": row[5],
-            "cli_mensagem": row[6],
-            "cli_bloqueadoapp": row[7]
+            "cli_bloqueadoapp": row[2] if row[2] else 'N',
+            "cli_mensagem": row[3] if row[3] else '',
+            "cli_caminho_base": row[4] if row[4] else '',
+            "cli_ip_servidor": row[5] if row[5] else '127.0.0.1',
+            "cli_nome_base": row[6] if row[6] else '',
+            "cli_porta": str(row[7]) if row[7] else '3050'
         }
+        
+        return empresa
+            
     except Exception as e:
         logging.error(f"Erro ao obter empresa por código: {str(e)}")
         return None
 
-async def verificar_acesso_empresa(usuario_id: int, cli_codigo: int):
+async def verificar_acesso_empresa(usuario_id: int, cli_codigo: int) -> bool:
     """
     Verifica se o usuário tem acesso à empresa.
     """
@@ -257,144 +257,107 @@ async def verificar_acesso_empresa(usuario_id: int, cli_codigo: int):
         # Verifica se o usuário tem acesso à empresa
         cursor.execute("""
             SELECT 1
-            FROM USUARIOS_CLIENTES
-            WHERE USUARIO_ID = ? AND CLI_CODIGO = ?
+            FROM usuarios_clientes uc
+            JOIN USUARIOS_APP ua ON ua.ID = uc.USUARIO_ID
+            WHERE uc.USUARIO_ID = ?
+            AND uc.CLI_CODIGO = ?
+            AND ua.ATIVO = 'S'
         """, (usuario_id, cli_codigo))
         
-        result = cursor.fetchone()
-        conn.close()
-        
-        return result is not None
+        return cursor.fetchone() is not None
+            
     except Exception as e:
         logging.error(f"Erro ao verificar acesso à empresa: {str(e)}")
         return False
 
-async def selecionar_empresa(usuario_id: int, cli_codigo: int):
-    log.info(f"Iniciando seleção de empresa. Usuario ID: {usuario_id}, Codigo Empresa: {cli_codigo}")
-    
-    # Verifica se o usuário tem acesso à empresa
-    tem_acesso = await verificar_acesso_empresa(usuario_id, cli_codigo)
-    if not tem_acesso:
-        log.warning(f"Usuário {usuario_id} não tem acesso à empresa {cli_codigo}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário não tem acesso a esta empresa"
-        )
-
-    # Obtém os dados da empresa
+async def selecionar_empresa(usuario_id: int, cli_codigo: int) -> Dict[str, Any]:
     try:
+        # Verificar se a empresa existe
         empresa = await obter_empresa_por_codigo(cli_codigo)
+        if not empresa:
+            logging.error(f"Empresa {cli_codigo} não encontrada")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Empresa com código {cli_codigo} não encontrada",
+            )
+            
+        # Verificar se o usuário tem acesso à empresa
+        tem_acesso = await verificar_acesso_empresa(usuario_id, cli_codigo)
+        if not tem_acesso:
+            logging.error(f"Usuário {usuario_id} não tem acesso à empresa {cli_codigo}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Usuário não tem acesso à empresa {cli_codigo}",
+            )
+            
+        # Verificar se a empresa está bloqueada
+        if empresa.get("cli_bloqueadoapp") == 'S':
+            logging.error(f"Empresa {cli_codigo} está bloqueada para o app")
+            
+            # Se tiver mensagem personalizada, usar
+            mensagem = empresa.get("cli_mensagem", "")
+            if not mensagem:
+                mensagem = "Esta empresa está temporariamente indisponível no aplicativo."
+                
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=mensagem,
+            )
+            
+        # Verificar se a empresa tem conexão válida
+        try:
+            conn = obter_conexao_cliente(empresa)
+            # Faz um teste básico para ver se a conexão funciona
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM RDB$DATABASE")
+            cursor.fetchone()
+            conn.close()
+        except Exception as e:
+            logging.error(f"Erro ao testar conexão com a empresa {cli_codigo}: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Não foi possível conectar ao banco de dados da empresa: {str(e)}",
+            )
+            
+        # Salvar empresa na sessão
+        empresa_sessions[usuario_id] = empresa
+        logging.info(f"Empresa {cli_codigo} selecionada com sucesso para o usuário {usuario_id}")
+        
+        return empresa
+            
+    except HTTPException:
+        raise
     except Exception as e:
-        log.error(f"Erro ao obter dados da empresa {cli_codigo}: {str(e)}")
+        logging.error(f"Erro ao selecionar empresa: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao obter dados da empresa: {str(e)}"
+            detail=f"Erro ao selecionar empresa: {str(e)}",
         )
-    
-    if not empresa:
-        log.warning(f"Empresa {cli_codigo} não encontrada")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa não encontrada"
-        )
-    
-    # Verificar conexão com o banco de dados da empresa selecionada
-    connection_info = None
-    connection_success = False
-    error_message = None
-    
-    try:
-        # Tenta obter conexão com a base do cliente
-        from conexao_firebird import obter_conexao_cliente, testar_conexao
-        connection = obter_conexao_cliente(empresa)
-        
-        # Testa a conexão fazendo uma consulta simples
-        conexao_ok, info = await testar_conexao(connection)
-        connection_success = conexao_ok
-        connection_info = info
-        
-        # Fecha a conexão após o teste
-        connection.close()
-        
-        # Armazena a empresa selecionada na sessão apenas se a conexão for bem-sucedida
-        if connection_success:
-            empresa_sessions[usuario_id] = empresa
-    except Exception as e:
-        log.error(f"Erro ao conectar com a base do cliente {cli_codigo}: {str(e)}")
-        error_message = str(e)
-        connection_success = False
-        # Remove a empresa da sessão em caso de erro
-        if usuario_id in empresa_sessions:
-            del empresa_sessions[usuario_id]
-    
-    # Converter empresa para dicionário e adicionar informações de conexão
-    if isinstance(empresa, dict):
-        empresa_dict = empresa
-    else:
-        empresa_dict = dict(empresa)
-    
-    # Adicionar informações de conexão à resposta
-    empresa_dict["conexao_estabelecida"] = connection_success
-    empresa_dict["conexao_info"] = connection_info
-    empresa_dict["dsn"] = f"{empresa_dict['cli_ip_servidor']}:{empresa_dict['cli_caminho_base']}/{empresa_dict['cli_nome_base']}"
-    
-    if not connection_success:
-        empresa_dict["conexao_erro"] = error_message
-        log.warning(f"Conexão com a base do cliente {cli_codigo} falhou: {error_message}")
-        # Não retorna erro, apenas informa que houve falha na conexão
-    else:
-        log.info(f"Conexão com a base do cliente {cli_codigo} estabelecida com sucesso")
-    
-    log.info(f"Empresa {cli_codigo} selecionada com sucesso para o usuário {usuario_id}")
-    return empresa_dict
 
-def get_empresa_atual(request: Request):
+def get_empresa_atual(request: Request) -> Dict[str, Any]:
     """
     Obtém a empresa atual do usuário a partir do token JWT e/ou cabeçalhos.
     Prioridade:
     1. Cabeçalho x-empresa-codigo (para componentes como TopClientes)
     2. Sessão do usuário (para aplicação completa)
     """
-    log.info("=== INICIANDO GET_EMPRESA_ATUAL ===")
-    log.info(f"Headers disponíveis: {list(request.headers.keys())}")
     try:
-        # Obtém o token da requisição
+        # Primeiro, verificar pelo token
         authorization = request.headers.get("Authorization")
-        if not authorization or not authorization.startswith("Bearer "):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Não autorizado",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        usuario_id = None
         
-        token = authorization.replace("Bearer ", "")
+        if authorization and authorization.startswith("Bearer "):
+            try:
+                token = authorization.replace("Bearer ", "")
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                usuario_id = payload.get("id")
+                log.info(f"Usuário ID do token: {usuario_id}")
+            except Exception as e:
+                log.error(f"Erro ao decodificar token: {str(e)}")
+                # Continue sem usuário_id, vamos tentar pelo cabeçalho x-empresa-codigo
         
-        # Decodifica o token
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            usuario_id = payload.get("id")
-            if not usuario_id:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Token inválido",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-        except JWTError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token inválido",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Verificar primeiro se o cabeçalho x-empresa-codigo está presente
+        # Em seguida, verificar pelo cabeçalho x-empresa-codigo
         empresa_codigo_header = request.headers.get("x-empresa-codigo")
-        log.info(f"Cabeçalho x-empresa-codigo: {empresa_codigo_header}")
-        
-        # Imprimir todos os cabeçalhos para diagnóstico
-        log.info("Todos os cabeçalhos:")
-        for key, value in request.headers.items():
-            log.info(f"  {key}: {value}")
-        
         if empresa_codigo_header:
             try:
                 # Converter para inteiro

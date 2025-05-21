@@ -3,6 +3,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 # Importar o router de mock para teste sem CORS
 from mock_response import mock_router
+# Importar o router de informações da empresa
+from empresa_info import router as empresa_info_router
+# Importar o router de relatórios
+from relatorios import router as relatorios_router
+# Importar o router de teste de empresa
+from teste_empresa import router as teste_empresa_router
+# Importar o router de teste de seleção
+from teste_selecionar import router as teste_selecionar_router
+# Importar o router de teste de cabeçalhos
+from teste_cabecalhos import router as teste_cabecalhos_router
+# Importar o router de teste de conexão
+from teste_conexao import router as teste_conexao_router
+# Importar o router de teste empresa CRUD
+from teste_empresa_crud import router as teste_empresa_crud_router
+# Importar o router de teste de seleção com session
+from teste_selecao_session import router as teste_selecao_session_router
+# Importar o router de teste session simples
+from teste_session_simples import router as teste_session_simples_router
 from typing import List, Optional, Dict, Any
 import models
 import database
@@ -40,17 +58,33 @@ logging.basicConfig(
 
 app = FastAPI(title="API Força de Vendas", description="API para aplicativo de força de vendas")
 
-# Configuração CORS com origens específicas
+# Configurar CORS - permitir origens específicas para credenciais
 origins = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000",
     "http://localhost:3001",
-    "http://127.0.0.1:3001"
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+    "http://localhost:5500",  # Live Server do VSCode
+    "http://127.0.0.1:5500",
+    "file://"  # Para testes locais com arquivo HTML
 ]
 
+class CustomCORSMiddleware(CORSMiddleware):
+    async def process_response(self, response, request):
+        response = await super().process_response(response, request)
+        
+        # Verificar se a origem é null (arquivo local) e permitir credenciais
+        origin = request.headers.get("origin", "").lower()
+        if origin == "null" or not origin:
+            # Para arquivos locais
+            response.headers["Access-Control-Allow-Origin"] = "*"
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        
+        return response
+
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,  # Permitir apenas origens específicas quando usando credentials
+    CustomCORSMiddleware,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,24 +93,21 @@ app.add_middleware(
 # Middleware personalizado para garantir que CORS funcione em todas as respostas
 class CustomCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        # Determinar a origem da requisição
-        origin = request.headers.get("Origin", "")
-        allow_origin = "*"
-        
-        # Se temos uma origem específica na requisição, verificar se é permitida
-        if origin:
-            if origin in origins:
-                allow_origin = origin
-                
+        # Obter a origem da requisição
+        origin = request.headers.get("origin", "*")
+        # Tratar a origem "null" (arquivo HTML local)
+        if origin.lower() == "null":
+            origin = "*"
+            
         # Para requisições OPTIONS (preflight), responder imediatamente
         if request.method == "OPTIONS":
             response = Response(
                 status_code=200,
                 content="",
                 headers={
-                    "Access-Control-Allow-Origin": allow_origin,
+                    "Access-Control-Allow-Origin": origin,
                     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-empresa-codigo",
                     "Access-Control-Allow-Credentials": "true"
                 }
             )
@@ -86,11 +117,10 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         
         # Garantir que os cabeçalhos CORS estejam presentes
-        response.headers["Access-Control-Allow-Origin"] = allow_origin
+        response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-        if allow_origin != "*":
-            response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, x-empresa-codigo, x-empresa-codigo"
+        response.headers["Access-Control-Allow-Credentials"] = "true"
         
         return response
 
@@ -100,8 +130,35 @@ app.add_middleware(CustomCORSMiddleware)
 # Inclui as rotas de autenticação
 app.include_router(auth_router)
 
-# Inclui as rotas de mock para testes
+# Inclui as rotas de mock
 app.include_router(mock_router)
+
+# Inclui as rotas de informações da empresa
+app.include_router(empresa_info_router)
+
+# Inclui as rotas de relatórios
+app.include_router(relatorios_router)
+
+# Inclui as rotas de teste de empresa
+app.include_router(teste_empresa_router)
+
+# Inclui as rotas de teste de seleção
+app.include_router(teste_selecionar_router)
+
+# Inclui as rotas de teste de cabeçalhos
+app.include_router(teste_cabecalhos_router)
+
+# Inclui as rotas de teste de conexão
+app.include_router(teste_conexao_router)
+
+# Inclui as rotas de teste empresa CRUD
+app.include_router(teste_empresa_crud_router)
+
+# Inclui as rotas de teste de seleção com session
+app.include_router(teste_selecao_session_router)
+
+# Inclui as rotas de teste session simples
+app.include_router(teste_session_simples_router)
 
 # Rotas básicas para teste
 @app.get("/")

@@ -4,22 +4,9 @@ import os
 import sys
 from config import get_settings
 
-# Configura o caminho para a DLL do Firebird
-raiz_projeto = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-print(f"\nConfigurando path para DLL do Firebird. Raiz do projeto: {raiz_projeto}")
-
-# Adiciona a raiz do projeto ao PATH do sistema para encontrar a DLL
-if raiz_projeto not in sys.path:
-    sys.path.insert(0, raiz_projeto)
-    os.environ['PATH'] = raiz_projeto + os.pathsep + os.environ['PATH']
-    print(f"Adicionado {raiz_projeto} ao PATH do sistema")
-
-# Verifica se a DLL existe no diretório
-dll_path = os.path.join(raiz_projeto, 'fbclient.dll')
-if os.path.exists(dll_path):
-    print(f"DLL do Firebird encontrada em: {dll_path}")
-else:
-    print(f"ATENÇÃO: DLL do Firebird não encontrada em {dll_path}")
+# Configura o logger
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("conexao_firebird")
 
 # Obtém as configurações
 settings = get_settings()

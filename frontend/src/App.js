@@ -84,12 +84,12 @@ function AppContent() {
     try {
         console.log('Tentando login na API:', `${API_URL}${ROUTES.login}`);
         
-        // Usar axios para o login - melhor suporte para CORS com credentials
+        // Usar axios para o login - simplificando para resolver problemas de conexão
         const response = await axios.post(`${API_URL}${ROUTES.login}`, {
             email: username,
             senha: password
         }, {
-            withCredentials: true,
+            // Remover withCredentials para simplificar o processo
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -156,10 +156,17 @@ function AppContent() {
     console.log('Empresa selecionada no App:', empresa);
     setEmpresaSelecionada(empresa);
     
+    // Log para debug - mostrar o valor de AUTH_CONFIG.empresaKey
+    console.log('Chaves de armazenamento:', {
+      'AUTH_CONFIG.empresaKey': AUTH_CONFIG.empresaKey,
+      'Todas as chaves de AUTH_CONFIG': AUTH_CONFIG
+    });
+    
     // Armazenar a empresa em todos os formatos esperados para garantir compatibilidade
     localStorage.setItem(AUTH_CONFIG.empresaKey, JSON.stringify(empresa));
     localStorage.setItem('empresa', JSON.stringify(empresa));
     localStorage.setItem('empresa_atual', JSON.stringify(empresa));
+    localStorage.setItem('empresa_selecionada', JSON.stringify(empresa)); // Adicionando esta chave também
     
     // Armazenar o contexto da empresa para uso em chamadas de API
     const empresaContexto = {

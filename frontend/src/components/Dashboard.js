@@ -4,6 +4,10 @@ import { Link } from 'react-router-dom';
 // Ícones
 import { FiUsers, FiPackage, FiShoppingCart, FiDollarSign, FiCalendar, FiAlertCircle, FiAward, FiTrendingUp } from 'react-icons/fi';
 
+// Componentes
+import EmpresaInfo from './EmpresaInfo';
+import TopClientes from './TopClientes';
+
 const Dashboard = ({ user, darkMode }) => {
   const [stats, setStats] = useState({
     totalClientes: 0,
@@ -126,7 +130,10 @@ const Dashboard = ({ user, darkMode }) => {
   return (
     <div>
       <div className="mb-6">
-        <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Dashboard</h1>
+        <div className="flex items-center justify-between">
+          <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Dashboard</h1>
+          <EmpresaInfo darkMode={darkMode} />
+        </div>
         <p className={darkMode ? "text-gray-300" : "text-gray-600"}>Bem-vindo, {user?.name || 'master'}!</p>
       </div>
 
@@ -318,6 +325,11 @@ const Dashboard = ({ user, darkMode }) => {
       </div>
 
       {/* Gráficos e Tabelas */}
+      <div className="grid grid-cols-1 gap-8 mb-8">
+        {/* Top Clientes com seletores de datas */}
+        <TopClientes darkMode={darkMode} />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Top 10 Produtos */}
         <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6`}>

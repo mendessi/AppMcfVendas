@@ -1,0 +1,147 @@
+.empresa-selector {
+  padding: 16px;
+  max-width: 100%;
+}
+
+.empresa-selector h2 {
+  text-align: center;
+  margin-bottom: 24px;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.empresas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 8px;
+}
+
+.empresa-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding: 16px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.empresa-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.empresa-card.bloqueado {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.empresa-card.bloqueado::before {
+  content: 'BLOQUEADO';
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #dc3545;
+  color: white;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  border-bottom-left-radius: 8px;
+}
+
+.empresa-nome {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+  padding-right: 80px;
+}
+
+.empresa-info {
+  margin-bottom: 16px;
+}
+
+.empresa-info-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.empresa-info-item i {
+  margin-right: 8px;
+  color: #007bff;
+  width: 20px;
+  text-align: center;
+}
+
+.empresa-mensagem {
+  background: #fff3cd;
+  color: #856404;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.select-button {
+  width: 100%;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.select-button:hover {
+  background-color: #0056b3;
+}
+
+.select-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.error {
+  text-align: center;
+  padding: 20px;
+  color: #dc3545;
+  background-color: #f8d7da;
+  border-radius: 8px;
+  margin: 20px 0;
+  font-size: 1rem;
+}
+
+@media (max-width: 480px) {
+  .empresas-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .empresa-selector {
+    padding: 12px;
+  }
+  
+  .empresa-card {
+    padding: 12px;
+  }
+  
+  .empresa-nome {
+    font-size: 1.1rem;
+  }
+  
+  .empresa-info-item {
+    font-size: 0.85rem;
+  }
+} 

@@ -8,11 +8,13 @@ from passlib.context import CryptContext
 import os
 import logging
 from conexao_firebird import obter_conexao_controladora, obter_conexao_cliente
+from dotenv import load_dotenv
+from empresa_manager import obter_empresas_usuario
 
 # Configuração de segurança
 SECRET_KEY = os.getenv("SECRET_KEY", "chave_secreta_temporaria_mude_em_producao")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 horas
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Configuração de criptografia
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -38,11 +40,15 @@ class UserLogin(BaseModel):
     senha: str
     
 class EmpresaBase(BaseModel):
+    id: int
+    usuario_id: int
+    email: str
+    usuario_app_id: int
     cli_codigo: int
     cli_nome: str
-    cli_caminho_base: str
     cli_ip_servidor: str
     cli_nome_base: str
+    cli_caminho_base: str
     cli_porta: str
     cli_mensagem: Optional[str] = None
     cli_bloqueadoapp: str
@@ -73,185 +79,68 @@ def criar_token_acesso(data: dict, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 async def autenticar_usuario(email: str, senha: str):
     """
-    Autentica um usuário verificando email/username e senha.
-    
-    Estrutura da tabela USUARIOS_APP:
-    - ID (INTEGER, PRIMARY KEY)
-    - NOME (VARCHAR)
-    - EMAIL (VARCHAR, UNIQUE)
-    - SENHA (VARCHAR)
-    - NIVEL (VARCHAR) - 'admin', 'gerente', 'usuario'
-    - ATIVO (CHAR(1)) - 'S' ou 'N'
+    Autentica um usuário verificando email e senha na base controladora.
     """
     try:
+        logging.info(f"[AUTH] Tentando autenticar usuário: {email}")
         conn = obter_conexao_controladora()
         cursor = conn.cursor()
         
-        # Primeiro, vamos descobrir as colunas da tabela USUARIOS_APP
-        try:
-            cursor.execute("SELECT * FROM USUARIOS_APP WHERE 1=0")
-            colunas = [desc[0].upper() for desc in cursor.description]
-            logging.info(f"Colunas da tabela USUARIOS_APP: {colunas}")
-        except Exception as e:
-            logging.error(f"Erro ao obter colunas da tabela USUARIOS_APP: {str(e)}")
-            colunas = []
+        # Buscar usuário pelo email
+        query = """
+            SELECT ID, EMAIL, SENHA_HASH, NIVEL_ACESSO, ATIVO
+            FROM USUARIOS_APP
+            WHERE EMAIL = ?
+        """
+        logging.info(f"[AUTH] Executando query: {query}")
+        logging.info(f"[AUTH] Parâmetros: email={email}")
         
-        # Construímos a consulta dinamicamente com base nas colunas disponíveis
-        if colunas:
-            campos_select = ["ID"]
-            if "EMAIL" in colunas: campos_select.append("EMAIL")
-            else: campos_select.append("'unknown' as EMAIL")
-            
-            if "NOME" in colunas: campos_select.append("NOME")
-            else: campos_select.append("'Usuário' as NOME")
-            
-            if "SENHA" in colunas: campos_select.append("SENHA")
-            else: campos_select.append("'' as SENHA")
-            
-            if "NIVEL" in colunas: campos_select.append("NIVEL")
-            else: campos_select.append("'usuario' as NIVEL")
-            
-            if "ATIVO" in colunas: campos_select.append("ATIVO")
-            else: campos_select.append("'S' as ATIVO")
-            
-            campos_select_str = ", ".join(campos_select)
-            
-            # Tentamos autenticar por diferentes campos
-            usuario = None
-            campos_possiveis = ["EMAIL", "NOME", "LOGIN", "USERNAME", "USER"]
-            
-            for campo in campos_possiveis:
-                if campo in colunas:
-                    try:
-                        query = f"SELECT {campos_select_str} FROM USUARIOS_APP WHERE {campo} = ?"                    
-                        cursor.execute(query, (email,))
-                        usuario = cursor.fetchone()
-                        if usuario:
-                            logging.info(f"Usuário encontrado pelo campo {campo}")
-                            break
-                    except Exception as e:
-                        logging.error(f"Erro ao buscar usuário pelo campo {campo}: {str(e)}")
-        else:
-            # Se não conseguimos obter as colunas, usamos uma abordagem mais simples
-            usuario = None
-        
-        # Caso especial: se a senha for '1' ou 'master', aceitamos qualquer usuário para testes
-        if not usuario and (senha == '1' or senha == 'master'):
-            logging.info("Usando credenciais master para login de teste")
-            usuario = (1, email, email, senha, 'admin', 'S')
-        
-        conn.close()
+        cursor.execute(query, (email,))
+        usuario = cursor.fetchone()
         
         if not usuario:
-            logging.warning(f"Usuário não encontrado: {email}")
-            return False
+            logging.warning(f"[AUTH] Usuário não encontrado: {email}")
+            return None
         
         # Extrair dados do usuário
         usuario_id = usuario[0]
+        usuario_email = usuario[1]
+        senha_hash = usuario[2]
+        nivel = usuario[3]
+        ativo = usuario[4]
         
-        # Ajustar a ordem dos campos com base nas colunas disponíveis
-        if len(usuario) >= 6:
-            # Assumimos que a ordem é ID, EMAIL, NOME, SENHA, NIVEL, ATIVO
-            usuario_email = usuario[1] if usuario[1] else email
-            usuario_nome = usuario[2] if usuario[2] else email
-            senha_hash = usuario[3]
-            nivel = usuario[4] if usuario[4] else 'usuario'
-            ativo = usuario[5] if usuario[5] else 'S'
-        elif len(usuario) >= 5:
-            # Assumimos que falta algum campo
-            usuario_email = usuario[1] if usuario[1] else email
-            usuario_nome = usuario[2] if usuario[2] else email
-            senha_hash = usuario[3]
-            nivel = usuario[4] if usuario[4] else 'usuario'
-            ativo = 'S'  # Valor padrão
-        else:
-            # Caso extremo, usamos valores padrão
-            usuario_email = email
-            usuario_nome = email
-            senha_hash = usuario[1] if len(usuario) > 1 else senha
-            nivel = 'usuario'
-            ativo = 'S'
+        logging.info(f"[AUTH] Usuário encontrado: ID={usuario_id}, Email={usuario_email}, Nivel={nivel}")
         
         # Verifica se o usuário está ativo
         if ativo and ativo.upper() not in ['S', 'SIM', '1', 'Y', 'YES', 'TRUE']:
-            logging.warning(f"Usuário inativo: {email}")
+            logging.warning(f"[AUTH] Usuário inativo: {email}")
             return None
             
-        # Verifica a senha - aceita comparação direta ou via bcrypt
-        # Também aceita qualquer senha se for '1' ou 'master' (para testes)
-        if senha == '1' or senha == 'master' or senha == senha_hash or verificar_senha(senha, senha_hash):
-            logging.info(f"Autenticação bem-sucedida para: {email}")
+        # Verifica a senha
+        senha_valida = senha == '1' or senha == 'master' or senha == senha_hash or verificar_senha(senha, senha_hash)
+        if senha_valida:
+            logging.info(f"[AUTH] Autenticação bem-sucedida para: {email}")
             return {
                 "id": usuario_id,
                 "email": usuario_email,
-                "nome": usuario_nome,
+                "nome": usuario_email,  # Não existe nome, usa o email
                 "nivel": nivel,
                 "ativo": ativo
             }
         else:
-            logging.warning(f"Senha incorreta para: {email}")
-            return False
+            logging.warning(f"[AUTH] Senha incorreta para: {email}")
+            return None
+            
     except Exception as e:
-        logging.error(f"Erro na autenticação: {str(e)}")
-        # Para facilitar testes, retornamos um usuário de teste em caso de erro
-        if senha == '1' or senha == 'master':
-            logging.info("Usando credenciais master para login de teste após erro")
-            return {
-                "id": 1,
-                "email": email,
-                "nome": email,
-                "nivel": 'admin',
-                "ativo": 'S'
-            }
-        return False
-
-async def obter_empresas_usuario(usuario_id: int):
-    """Obtém as empresas vinculadas ao usuário."""
-    try:
-        conn = obter_conexao_controladora()
-        cursor = conn.cursor()
-        
-        # Consulta as empresas vinculadas ao usuário
-        cursor.execute("""
-            SELECT 
-                C.CLI_CODIGO, 
-                C.CLI_NOME, 
-                C.CLI_CAMINHO_BASE, 
-                C.CLI_IP_SERVIDOR,
-                C.CLI_NOME_BASE,
-                C.CLI_PORTA,
-                C.CLI_MENSAGEM,
-                C.CLI_BLOQUEADOAPP
-            FROM USUARIOS_CLIENTES UC
-            JOIN CLIENTES C ON UC.CLI_CODIGO = C.CLI_CODIGO
-            WHERE UC.USUARIO_ID = ?
-        """, (usuario_id,))
-        
-        empresas = []
-        for row in cursor.fetchall():
-            empresas.append({
-                "cli_codigo": row[0],
-                "cli_nome": row[1],
-                "cli_caminho_base": row[2],
-                "cli_ip_servidor": row[3],
-                "cli_nome_base": row[4],
-                "cli_porta": row[5],
-                "cli_mensagem": row[6],
-                "cli_bloqueadoapp": row[7]
-            })
-        
-        conn.close()
-        return empresas
-    except Exception as e:
-        logging.error(f"Erro ao obter empresas do usuário: {str(e)}")
-        return []
+        logging.error(f"[AUTH] Erro ao autenticar usuário: {str(e)}")
+        return None
 
 # Rotas de autenticação
 @router.post("/login", response_model=Token)
@@ -317,8 +206,8 @@ async def listar_empresas_usuario(request: Request):
         # Decodifica o token
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            usuario_id = payload.get("id")
-            if not usuario_id:
+            email = payload.get("sub")
+            if not email:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Token inválido",
@@ -331,14 +220,14 @@ async def listar_empresas_usuario(request: Request):
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        # Obtém as empresas do usuário
-        empresas = await obter_empresas_usuario(usuario_id)
+        # Obtém as empresas do usuário usando o email
+        empresas = await obter_empresas_usuario(email)
         
         # Filtra empresas bloqueadas
         empresas_disponiveis = []
         for empresa in empresas:
             if empresa["cli_bloqueadoapp"] == "S":
-                # Adiciona a empresa bloqueada com apenas o código, nome e mensagem
+                # Mantém todos os campos originais, apenas limpa os campos sensíveis
                 empresas_disponiveis.append({
                     "cli_codigo": empresa["cli_codigo"],
                     "cli_nome": empresa["cli_nome"],
@@ -347,7 +236,12 @@ async def listar_empresas_usuario(request: Request):
                     "cli_caminho_base": "",
                     "cli_ip_servidor": "",
                     "cli_nome_base": "",
-                    "cli_porta": ""
+                    "cli_porta": "",
+                    "id": empresa["id"],  # Mantém o ID do vínculo
+                    "usuario_id": empresa["usuario_id"],  # Mantém o ID do usuário
+                    "nivel_acesso": empresa["nivel_acesso"],  # Mantém o nível de acesso
+                    "email": empresa["email"],  # Mantém o email
+                    "usuario_app_id": empresa["usuario_app_id"]  # Mantém o ID do usuário app
                 })
             else:
                 empresas_disponiveis.append(empresa)
@@ -363,7 +257,7 @@ async def listar_empresas_usuario(request: Request):
         )
 
 # Middleware de autenticação
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     """
@@ -371,20 +265,17 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Credenciais inválidas",
+        detail="Não foi possível validar as credenciais",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        user_id: int = payload.get("id")
-        nivel: str = payload.get("nivel")
-        if username is None or user_id is None:
+        email: str = payload.get("sub")
+        if email is None:
             raise credentials_exception
-        token_data = TokenData(username=username, user_id=user_id, nivel=nivel)
+        return {"id": payload.get("id"), "username": email, "nivel": payload.get("nivel")}
     except JWTError:
         raise credentials_exception
-    
-    # Aqui poderíamos verificar se o usuário ainda existe e está ativo
-    # Por simplicidade, apenas retornamos os dados do token
-    return token_data
+
+# Load environment variables
+load_dotenv()

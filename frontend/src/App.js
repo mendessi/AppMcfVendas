@@ -68,27 +68,25 @@ function AppContent() {
     setLoading(true);
 
     try {
-      // URL da API - Apontando para a API Flask
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
       console.log('Tentando login na API:', `${API_URL}/login`);
       
-      // Usar fetch em vez de axios para simplificar
       const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        credentials: 'include', // Importante para cookies de sessão
+        credentials: 'include',
         body: JSON.stringify({
           email: username,
           senha: password
         })
       });
       
-      // Verificar se a resposta foi bem-sucedida
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.detail || 'Erro ao fazer login');
+        const errorData = await response.json().catch(() => ({ detail: 'Erro ao fazer login' }));
+        throw new Error(errorData.detail || 'Erro ao fazer login');
       }
       
       const data = await response.json();
@@ -96,19 +94,27 @@ function AppContent() {
       
       // Armazenar o token e dados do usuário
       localStorage.setItem('token', data.access_token);
-      localStorage.setItem('usuario_id', data.user_id);
-      localStorage.setItem('usuario_nome', data.name || username);
+      localStorage.setItem('usuario_id', data.usuario_id);
+      localStorage.setItem('usuario_nome', data.usuario_nome);
+      localStorage.setItem('usuario_nivel', data.usuario_nivel);
       
       const userData = {
-        id: data.user_id,
-        name: data.name || username,
-        username: username,
-        role: 'vendedor'
+        id: data.usuario_id,
+        name: data.usuario_nome,
+        email: username,
+        nivel: data.usuario_nivel,
+        empresas: data.empresas || []
       };
       
       setUser(userData);
       setIsLoggedIn(true);
       localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Se tiver empresas, mostrar o seletor
+      if (data.empresas && data.empresas.length > 0) {
+        console.log('Empresas disponíveis:', data.empresas);
+      }
+      
       console.log('Login bem-sucedido, token armazenado');
     } catch (err) {
       console.error('Erro durante o login:', err);

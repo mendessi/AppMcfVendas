@@ -8,19 +8,65 @@ from pydantic import BaseModel
 import uvicorn
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from starlette.responses import JSONResponse
-
-# Importa os módulos de autenticação e gerenciamento de empresas
-from auth import router as auth_router, get_current_user
+from auth import criar_token_acesso, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES, EmpresaBase, router as auth_router
 from empresa_manager import (
     EmpresaSelect, 
     EmpresaData, 
     selecionar_empresa, 
     get_empresa_atual,
     get_empresa_connection,
-    obter_empresas_usuario
+    obter_empresas_usuario,
+    empresa_sessions
 )
+from conexao_firebird import obter_conexao_cliente
+from auth import autenticar_usuario
+from fastapi import status
+import jwt
+from jose import JWTError
+
+# Modelos
+class EmpresaResponse(BaseModel):
+    cli_codigo: int
+    cli_nome: str
+    cli_bloqueadoapp: str = "N"
+    cli_mensagem: str = ""
+    cli_caminho_base: str = ""
+    cli_ip_servidor: str = "127.0.0.1"
+    cli_nome_base: str = ""
+    cli_porta: str = "3050"
+    id: int  # VINCULO_ID
+    usuario_id: int
+    nivel_acesso: str
+    email: str
+    usuario_app_id: int
+
+    class Config:
+        from_attributes = True
+        extra = "ignore"
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "EmpresaResponse":
+        """
+        Cria uma instância de EmpresaResponse a partir de um dicionário,
+        garantindo que todos os campos tenham valores válidos.
+        """
+        return cls(
+            cli_codigo=int(data.get("cli_codigo", 0)),
+            cli_nome=str(data.get("cli_nome", "")),
+            cli_bloqueadoapp=str(data.get("cli_bloqueadoapp", "N")),
+            cli_mensagem=str(data.get("cli_mensagem", "")),
+            cli_caminho_base=str(data.get("cli_caminho_base", "")),
+            cli_ip_servidor=str(data.get("cli_ip_servidor", "127.0.0.1")),
+            cli_nome_base=str(data.get("cli_nome_base", "")),
+            cli_porta=str(data.get("cli_porta", "3050")),
+            id=int(data.get("id", 0)),
+            usuario_id=int(data.get("usuario_id", 0)),
+            nivel_acesso=str(data.get("nivel_acesso", "")),
+            email=str(data.get("email", "")),
+            usuario_app_id=int(data.get("usuario_app_id", 0))
+        )
 
 # Configuração de logging
 logging.basicConfig(
@@ -32,39 +78,72 @@ logging.basicConfig(
     ]
 )
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="API Força de Vendas", description="API para aplicativo de força de vendas")
 
-# Configuração CORS para permitir o frontend
+# Configuração CORS específica
 origins = [
-    "http://localhost:3000",
     "http://localhost:3001",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001"
+    "http://localhost:3000",
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:3000"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins,  # Lista específica de origens
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
-# Middleware personalizado para garantir cabeçalhos CORS em todas as respostas
+# Middleware para garantir cabeçalhos CORS
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
-    response = await call_next(request)
-    origin = request.headers.get("origin", "")
-    
-    # Se a origem estiver na lista de origens permitidas, use-a especificamente
-    # caso contrário, não adicione o cabeçalho (o middleware CORSMiddleware cuidará disso)
-    if origin in origins:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept"
-    
-    return response
+    try:
+        # Log dos headers recebidos
+        logger.info(f"Headers recebidos: {dict(request.headers)}")
+        
+        response = await call_next(request)
+        origin = request.headers.get("origin")
+        
+        # Adiciona headers CORS apenas para origens permitidas
+        if origin in origins:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
+        
+        # Log dos headers enviados
+        logger.info(f"Headers enviados: {dict(response.headers)}")
+        
+        return response
+    except Exception as e:
+        logger.error(f"Erro no middleware CORS: {str(e)}")
+        error_response = JSONResponse(
+            status_code=500,
+            content={"detail": f"Erro interno do servidor: {str(e)}"}
+        )
+        # Adiciona headers CORS mesmo em caso de erro
+        origin = request.headers.get("origin")
+        if origin in origins:
+            error_response.headers["Access-Control-Allow-Origin"] = origin
+            error_response.headers["Access-Control-Allow-Credentials"] = "true"
+            error_response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+            error_response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept, X-Requested-With"
+        return error_response
+
+# Endpoint de teste CORS
+@app.get("/test-cors")
+async def test_cors(request: Request):
+    origin = request.headers.get("origin")
+    return {
+        "message": "CORS está funcionando!",
+        "origin": origin,
+        "headers": dict(request.headers)
+    }
 
 # Inclui as rotas de autenticação
 app.include_router(auth_router)
@@ -112,288 +191,162 @@ async def get_pedidos():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Rota para listar empresas do usuário - SEM AUTENTICAÇÃO para testes
-@app.get("/empresas")
-async def listar_empresas():
+# Modelos
+class UserLogin(BaseModel):
+    email: str
+    senha: str
+
+class EmpresaSelect(BaseModel):
+    cli_codigo: int
+
+# Rotas
+@app.post("/login")
+async def login(user_data: UserLogin):
+    try:
+        # Autenticar o usuário
+        user = await autenticar_usuario(user_data.email, user_data.senha)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Credenciais inválidas"
+            )
+        
+        # Buscar empresas do usuário usando o email
+        empresas = await obter_empresas_usuario(user_data.email)
+        
+        # Criar token de acesso
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = criar_token_acesso(
+            data={
+                "sub": user_data.email,  # Usando o email como sub
+                "id": user["id"],
+                "nivel": user["nivel"]
+            },
+            expires_delta=access_token_expires
+        )
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "usuario_id": user["id"],
+            "usuario_nome": user["nome"],
+            "usuario_nivel": user["nivel"]
+        }
+    except Exception as e:
+        logging.error(f"Erro no login: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao realizar login: {str(e)}"
+        )
+
+@app.get("/empresas", response_model=List[EmpresaResponse])
+async def listar_empresas(request: Request, user_data = Depends(get_current_user)):
     """
-    Lista todas as empresas - versão sem autenticação para testes.
+    Retorna a lista de empresas vinculadas ao usuário autenticado.
     """
     try:
-        # Usar um ID fixo para testes
-        usuario_id_teste = 1
-        logging.info(f"Listando empresas para o usuário ID de teste: {usuario_id_teste}")
-        
-        # Obter as empresas usando o ID de teste
-        empresas = await obter_empresas_usuario(usuario_id_teste)
-        
-        if not empresas:
-            logging.warning(f"Nenhuma empresa encontrada para o usuário ID de teste: {usuario_id_teste}")
+        # Obtém o token da requisição
+        authorization = request.headers.get("Authorization")
+        if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(
-                status_code=404,
-                detail="Nenhuma empresa encontrada para este usuário"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Não autorizado",
+                headers={"WWW-Authenticate": "Bearer"},
             )
-            
-        logging.info(f"Encontradas {len(empresas)} empresas para o usuário ID de teste: {usuario_id_teste}")
+        
+        token = authorization.replace("Bearer ", "")
+        
+        # Decodifica o token
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if not email:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token inválido",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        except JWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token inválido",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Obtém as empresas do usuário usando o email
+        empresas_raw = await obter_empresas_usuario(email)
+        
+        # Converte cada empresa para o modelo EmpresaResponse
+        empresas = []
+        for empresa_raw in empresas_raw:
+            try:
+                # Se a empresa estiver bloqueada, limpa os campos sensíveis mas mantém os IDs
+                if empresa_raw.get("cli_bloqueadoapp") == "S":
+                    empresa_raw.update({
+                        "cli_caminho_base": "",
+                        "cli_ip_servidor": "",
+                        "cli_nome_base": "",
+                        "cli_porta": ""
+                    })
+                
+                empresa = EmpresaResponse.from_dict(empresa_raw)
+                empresas.append(empresa)
+            except Exception as e:
+                logging.error(f"Erro ao converter empresa: {str(e)}")
+                logging.error(f"Dados da empresa: {empresa_raw}")
+                continue
+        
         return empresas
     except HTTPException:
         raise
     except Exception as e:
         logging.error(f"Erro ao listar empresas: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail=f"Erro ao listar empresas: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao listar empresas: {str(e)}",
         )
 
-# Rota para selecionar empresa
-@app.post("/selecionar-empresa", response_model=EmpresaData)
+@app.post("/selecionar-empresa")
 async def selecionar_empresa_route(empresa: EmpresaSelect, user_data = Depends(get_current_user)):
-    """
-    Seleciona uma empresa para o usuário atual.
-    """
     try:
-        logging.info(f"Selecionando empresa {empresa.cli_codigo} para o usuário ID: {user_data.user_id}")
-        resultado = await selecionar_empresa(user_data.user_id, empresa.cli_codigo)
-        logging.info(f"Empresa {empresa.cli_codigo} selecionada com sucesso para o usuário ID: {user_data.user_id}")
-        return resultado
-    except HTTPException:
-        raise
+        empresa_selecionada = await selecionar_empresa(user_data["id"], empresa.cli_codigo)
+        return empresa_selecionada
     except Exception as e:
-        logging.error(f"Erro ao selecionar empresa: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erro ao selecionar empresa: {str(e)}"
-        )
-
-# Rota para obter a empresa atual
-@app.get("/empresa-atual", response_model=EmpresaData)
-async def empresa_atual_route(request: Request):
-    """
-    Retorna a empresa atualmente selecionada pelo usuário.
-    """
-    try:
-        return get_empresa_atual(request)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Erro ao obter empresa atual: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erro ao obter empresa atual: {str(e)}"
-        )
-
-# Rota para obter clientes com autenticação e conexão à empresa selecionada
-@app.get("/clientes")
-async def get_clientes(request: Request):
-    try:
-        # Obtém a conexão com a empresa selecionada
-        conn = await get_empresa_connection(request)
-        try:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT 
-                    ID, 
-                    NOME, 
-                    CNPJ_CPF, 
-                    ENDERECO, 
-                    TELEFONE, 
-                    EMAIL 
-                FROM CLIENTES
-                ORDER BY NOME
-            """)
-            
-            # Obtém os nomes das colunas
-            columns = [desc[0].lower() for desc in cursor.description]
-            
-            # Converte os resultados em uma lista de dicionários
-            results = []
-            for row in cursor.fetchall():
-                result = {}
-                for i, value in enumerate(row):
-                    result[columns[i]] = value
-                results.append(result)
-            
-            return results
-        finally:
-            conn.close()
-    except Exception as e:
+        logger.error(f"Erro ao selecionar empresa: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Rota para obter produtos com autenticação e conexão à empresa selecionada
-@app.get("/produtos")
-async def get_produtos(request: Request):
+@app.get("/dashboard")
+async def dashboard(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None, user_data = Depends(get_current_user)):
     try:
-        # Obtém a conexão com a empresa selecionada
-        conn = await get_empresa_connection(request)
-        try:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT 
-                    ID, 
-                    CODIGO, 
-                    DESCRICAO, 
-                    PRECO, 
-                    ESTOQUE, 
-                    UNIDADE 
-                FROM PRODUTOS
-                ORDER BY DESCRICAO
-            """)
-            
-            # Obtém os nomes das colunas
-            columns = [desc[0].lower() for desc in cursor.description]
-            
-            # Converte os resultados em uma lista de dicionários
-            results = []
-            for row in cursor.fetchall():
-                result = {}
-                for i, value in enumerate(row):
-                    result[columns[i]] = value
-                results.append(result)
-            
-            return results
-        finally:
-            conn.close()
+        # Obtém a empresa atual
+        empresa = empresa_sessions.get(user_data["id"])
+        if not empresa:
+            raise HTTPException(status_code=400, detail="Nenhuma empresa selecionada")
+        
+        # Obtém a conexão com o banco
+        conn = obter_conexao_cliente(empresa)
+        cur = conn.cursor()
+        
+        # Aqui você implementa a lógica do dashboard
+        # Por exemplo, buscar vendas, clientes, etc.
+        
+        return {
+            "message": "Dashboard carregado com sucesso",
+            "data": {
+                "vendas": [],
+                "clientes": [],
+                "produtos": []
+            }
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Rota para criar pedido com autenticação e conexão à empresa selecionada
-@app.post("/pedidos")
-async def create_pedido(pedido: models.PedidoCreate, request: Request):
-    try:
-        # Obtém a conexão com a empresa selecionada
-        conn = await get_empresa_connection(request)
-        try:
-            cursor = conn.cursor()
-            
-            # Inicia uma transação
-            # Insere o cabeçalho do pedido
-            cursor.execute("""
-            INSERT INTO PEDIDOS (
-                CLIENTE_ID, 
-                DATA, 
-                STATUS, 
-                VALOR_TOTAL, 
-                OBSERVACAO
-            ) VALUES (?, ?, ?, ?, ?)
-            RETURNING ID
-            """, (
-                pedido.cliente_id, 
-                datetime.now(), 
-                'PENDENTE', 
-                0,  # Será atualizado depois
-                pedido.observacao
-            ))
-            
-            # Obtém o ID do pedido inserido
-            pedido_id = cursor.fetchone()[0]
-            
-            # Calcula o valor total
-            valor_total = 0
-            
-            # Insere os itens do pedido
-            for item in pedido.itens:
-                cursor.execute("""
-                INSERT INTO ITENS_PEDIDO (
-                    PEDIDO_ID, 
-                    PRODUTO_ID, 
-                    QUANTIDADE, 
-                    PRECO_UNITARIO, 
-                    VALOR_TOTAL
-                ) VALUES (?, ?, ?, ?, ?)
-                """, (
-                    pedido_id,
-                    item['produto_id'],
-                    item['quantidade'],
-                    item['preco_unitario'],
-                    item['quantidade'] * item['preco_unitario']
-                ))
-                
-                # Atualiza o valor total
-                valor_total += item['quantidade'] * item['preco_unitario']
-            
-            # Atualiza o valor total do pedido
-            cursor.execute("""
-            UPDATE PEDIDOS SET VALOR_TOTAL = ? WHERE ID = ?
-            """, (valor_total, pedido_id))
-            
-            conn.commit()
-            
-            # Retorna o pedido criado
-            return {"id": pedido_id, "mensagem": "Pedido criado com sucesso"}
-        except Exception as e:
-            conn.rollback()
-            raise e
-        finally:
-            conn.close()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Rota para obter pedidos com autenticação e conexão à empresa selecionada
-@app.get("/pedidos")
-async def get_pedidos(request: Request):
-    try:
-        # Obtém a conexão com a empresa selecionada
-        conn = await get_empresa_connection(request)
-        try:
-            cursor = conn.cursor()
-            
-            # Consulta para obter os pedidos
-            cursor.execute("""
-                SELECT 
-                    P.ID, 
-                    P.CLIENTE_ID, 
-                    C.NOME AS CLIENTE_NOME,
-                    P.DATA, 
-                    P.STATUS, 
-                    P.VALOR_TOTAL, 
-                    P.OBSERVACAO 
-                FROM PEDIDOS P
-                JOIN CLIENTES C ON P.CLIENTE_ID = C.ID
-                ORDER BY P.DATA DESC
-            """)
-            
-            # Obtém os nomes das colunas
-            columns = [desc[0].lower() for desc in cursor.description]
-            
-            # Converte os resultados em uma lista de dicionários
-            pedidos = []
-            for row in cursor.fetchall():
-                pedido = {}
-                for i, value in enumerate(row):
-                    pedido[columns[i]] = value
-                pedidos.append(pedido)
-            
-            # Para cada pedido, obtém os itens
-            for pedido in pedidos:
-                cursor.execute("""
-                    SELECT 
-                        IP.PRODUTO_ID, 
-                        P.DESCRICAO AS PRODUTO_DESCRICAO,
-                        IP.QUANTIDADE, 
-                        IP.PRECO_UNITARIO, 
-                        IP.VALOR_TOTAL 
-                    FROM ITENS_PEDIDO IP
-                    JOIN PRODUTOS P ON IP.PRODUTO_ID = P.ID
-                    WHERE IP.PEDIDO_ID = ?
-                """, (pedido['id'],))
-                
-                # Obtém os nomes das colunas
-                item_columns = [desc[0].lower() for desc in cursor.description]
-                
-                # Converte os resultados em uma lista de dicionários
-                itens = []
-                for row in cursor.fetchall():
-                    item = {}
-                    for i, value in enumerate(row):
-                        item[item_columns[i]] = value
-                    itens.append(item)
-                
-                pedido['itens'] = itens
-            
-            return pedidos
-        finally:
-            conn.close()
-    except Exception as e:
+        logger.error(f"Erro no dashboard: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8000,
+        reload=True,
+        log_level="info"
+    )

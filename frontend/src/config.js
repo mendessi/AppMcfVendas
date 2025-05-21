@@ -1,5 +1,14 @@
 // Configuração da API
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const getApiUrl = () => {
+    // Se estamos acessando via Cloudflare Tunnel
+    if (window.location.hostname === 'app.mendessolucao.site') {
+        return 'https://api.mendessolucao.site';
+    }
+    // Padrão para desenvolvimento local
+    return process.env.REACT_APP_API_URL || 'http://localhost:8000';
+};
+
+export const API_URL = getApiUrl();
 
 // Configuração de autenticação
 export const AUTH_CONFIG = {

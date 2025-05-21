@@ -66,13 +66,18 @@ app = FastAPI(title="API Força de Vendas", description="API para aplicativo de 
 
 # Configurar CORS - permitir origens específicas para credenciais
 origins = [
+    # URLs locais
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
     "http://localhost:5500",  # Live Server do VSCode
     "http://127.0.0.1:5500",
-    "file://"  # Para testes locais com arquivo HTML
+    "file://",  # Para testes locais com arquivo HTML
+    
+    # URLs do Cloudflare Tunnel
+    "https://api.mendessolucao.site",
+    "https://app.mendessolucao.site"
 ]
 
 # Middleware personalizado para garantir que CORS funcione em todas as respostas
@@ -104,8 +109,9 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
         # Garantir que os cabeçalhos CORS estejam presentes
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, x-empresa-codigo, x-empresa-codigo"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, x-empresa-codigo, x-empresa-codigo, Origin, Accept, X-Requested-With"
         response.headers["Access-Control-Allow-Credentials"] = "true"
+        response.headers["Access-Control-Max-Age"] = "3600"  # Cache para reduzir preflight requests (bom para mobile)
         
         return response
 

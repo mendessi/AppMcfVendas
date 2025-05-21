@@ -236,6 +236,33 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
             # Definir uma consulta SQL adequada com base nas tabelas e campos existentes
             log.info("Executando consulta principal de top clientes...")
             
+            # Verificar se precisa filtrar por vendedor
+            filtro_vendedor = False
+            parametros = [data_inicial, data_final]
+            
+            # Logs detalhados para depuração do filtro de vendedor
+            log.info(f"DEPURANDO FILTRO: Nivel={usuario_nivel}, tipo={type(usuario_nivel)}")
+            log.info(f"DEPURANDO FILTRO: Codigo Vendedor={codigo_vendedor}, tipo={type(codigo_vendedor)}")
+            
+            # CORREÇÃO: Verificar diretamente se o nível é 'VENDEDOR' (como na tabela)
+            eh_vendedor = False
+            if usuario_nivel:
+                # Verificar tanto maiúsculo quanto minúsculo
+                eh_vendedor = (usuario_nivel == 'VENDEDOR' or usuario_nivel.lower() == 'vendedor')
+                log.info(f"DEPURANDO FILTRO: Nivel={usuario_nivel}, Comparando com 'VENDEDOR' = {usuario_nivel == 'VENDEDOR'}")
+            log.info(f"DEPURANDO FILTRO: É vendedor? {eh_vendedor}")
+            
+            tem_codigo = codigo_vendedor is not None and codigo_vendedor != ''
+            log.info(f"DEPURANDO FILTRO: Tem código? {tem_codigo}")
+            
+            if eh_vendedor and tem_codigo:
+                filtro_vendedor = True
+                # Certificar que o código seja tratado como número
+                # Alguns bancos Firebird são sensíveis a tipo
+                codigo_vendedor_num = int(codigo_vendedor) if str(codigo_vendedor).isdigit() else codigo_vendedor
+                log.info(f"APLICANDO FILTRO POR VENDEDOR: {codigo_vendedor_num} (tipo: {type(codigo_vendedor_num)})")
+                parametros.append(codigo_vendedor_num)
+            
             # Consulta com CAST para garantir compatibilidade com Firebird
             consulta_sql = """
             SELECT FIRST 10
@@ -255,14 +282,28 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
             WHERE VENDAS.ecf_cancelada = 'N'
               AND VENDAS.ecf_concluida = 'S'
               AND VENDAS.ECF_DATA BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+            """ 
+            
+            # Adicionar filtro por vendedor se necessário
+            if filtro_vendedor:
+                log.info("===== CONFIRMADO: ADICIONANDO FILTRO DE VENDEDOR NA CONSULTA SQL =====")
+                log.info(f"TIPO DO CÓDIGO DE VENDEDOR NA CONSULTA: {type(codigo_vendedor_num)}")
+                # Certifique-se de que a coluna na tabela coincide exatamente com este nome
+                consulta_sql += "AND VENDAS.VEN_CODIGO = ? "
+            else:
+                log.warning("===== ALERTA: FILTRO DE VENDEDOR NÃO ESTÁ SENDO APLICADO! =====")
+                log.warning(f"Detalhes: Nivel={usuario_nivel}, Eh_vendedor={eh_vendedor}, Tem_codigo={tem_codigo}, Codigo={codigo_vendedor}")
+                
+            # Finalizar a consulta
+            consulta_sql += """
             GROUP BY VENDAS.CLI_CODIGO, VENDAS.NOME, CLIENTES.CIDADE, CLIENTES.UF, CLIENTES.TEL_WHATSAPP
             ORDER BY TOTAL_COMPRAS DESC
             """
             
             log.info(f"Executando consulta: {consulta_sql}")
-            log.info(f"Parâmetros: {data_inicial}, {data_final}")
+            log.info(f"Parâmetros: {parametros}")
             
-            cur.execute(consulta_sql, (data_inicial, data_final,))
+            cur.execute(consulta_sql, tuple(parametros))
             log.info("Consulta executada com sucesso")
             rows = cur.fetchall()
             

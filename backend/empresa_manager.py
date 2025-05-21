@@ -409,14 +409,8 @@ def get_empresa_atual(request: Request):
                     conn = database.get_connection()
                     cursor = conn.cursor()
                     
-                    # Listar todas as empresas disponíveis para debug
-                    cursor.execute("SELECT CLI_CODIGO, CLI_NOME FROM CLIENTES")
-                    empresas = cursor.fetchall()
-                    log.info(f"Total de empresas no banco: {len(empresas)}")
-                    for emp in empresas:
-                        log.info(f"Empresa disponível: ID={emp[0]}, Nome={emp[1]}")
-                    
-                    # Buscar a empresa especificada
+                    # Buscar diretamente a empresa especificada sem listar todas
+                    log.info(f"Buscando empresa com código {empresa_codigo}...")
                     cursor.execute("SELECT CLI_CODIGO, CLI_NOME, CLI_CAMINHO_BASE, CLI_IP_SERVIDOR, CLI_NOME_BASE, CLI_PORTA FROM CLIENTES WHERE CLI_CODIGO = ?", (empresa_codigo,))
                     empresa_db = cursor.fetchone()
                 

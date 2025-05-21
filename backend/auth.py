@@ -27,11 +27,13 @@ class Token(BaseModel):
     usuario_id: int
     usuario_nome: str
     usuario_nivel: str
+    codigo_vendedor: Optional[str] = None
     
 class TokenData(BaseModel):
     username: Optional[str] = None
     user_id: Optional[int] = None
     nivel: Optional[str] = None
+    codigo_vendedor: Optional[str] = None
     
 class UserLogin(BaseModel):
     email: str
@@ -53,6 +55,7 @@ class User(BaseModel):
     nome: str
     nivel: str
     ativo: str
+    codigo_vendedor: Optional[str] = None
     empresas: Optional[List[EmpresaBase]] = []
 
 # Funções de autenticação
@@ -120,23 +123,59 @@ async def autenticar_usuario(email: str, senha: str):
         senha_hash = usuario[2]
         nivel = usuario[3]
         ativo = usuario[4]
+        codigo_vendedor = None
         
         # Verifica se o usuário está ativo
         if ativo and ativo.upper() not in ['S', 'SIM', '1', 'Y', 'YES', 'TRUE']:
             logging.warning(f"Usuário inativo: {email}")
             return None
             
+        # Se o nível for vendedor, busca o código na tabela VENDEDOR
+        if nivel and nivel.lower() == 'vendedor':
+            logging.info(f"Usuário {email} é vendedor. Buscando código na tabela VENDEDOR...")
+            try:
+                # Tentamos buscar na empresa controladora primeiro
+                conn_vendedor = obter_conexao_controladora()
+                cursor_vendedor = conn_vendedor.cursor()
+                
+                # O email pode ser o login do vendedor
+                cursor_vendedor.execute("""
+                    SELECT VEN_CODIGO, VEN_NOME FROM VENDEDOR 
+                    WHERE VEN_EMAIL = ? OR VEN_LOGIN = ?
+                """, (usuario_email, usuario_email))
+                
+                vendedor = cursor_vendedor.fetchone()
+                if vendedor:
+                    codigo_vendedor = str(vendedor[0]).strip()  # Garantir que seja string e sem espaços
+                    logging.info(f"Código do vendedor encontrado: {codigo_vendedor}")
+                else:
+                    logging.warning(f"Vendedor não encontrado para o email/login: {usuario_email}")
+                
+                conn_vendedor.close()
+            except Exception as ve:
+                logging.error(f"Erro ao buscar código do vendedor: {str(ve)}")
+                # Não impede o login, apenas não terá o código do vendedor
+            
         # Verifica a senha - aceita comparação direta ou via bcrypt
         # Também aceita qualquer senha se for '1' ou 'master' (para testes)
         if senha == '1' or senha == 'master' or senha == senha_hash or verificar_senha(senha, senha_hash):
-            logging.info(f"Autenticação bem-sucedida para: {email}")
-            return {
+            # Se chegou até aqui, a autenticação foi bem-sucedida
+            logging.info(f"Usuário autenticado com sucesso: {email}")
+            
+            # Adicionalmente, poderia buscar mais informações do usuário
+            # como nome completo a partir do banco de dados
+            
+            # Cria um dicionário com as informações do usuário
+            user = {
                 "id": usuario_id,
                 "email": usuario_email,
-                "nome": usuario_email,  # Usando email como nome já que não temos coluna NOME
                 "nivel": nivel,
-                "ativo": ativo
+                "ativo": ativo,
+                "codigo_vendedor": codigo_vendedor,
+                # Se não tiver nome, usa o email como nome
+                "nome": usuario_email
             }
+            return user
         else:
             logging.warning(f"Senha incorreta para: {email}")
             return False
@@ -213,8 +252,15 @@ async def login(response: Response, form_data: UserLogin):
         
         # Cria o token de acesso
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        token_data = {
+            "sub": user["email"],
+            "id": user["id"],
+            "nivel": user["nivel"],
+            "codigo_vendedor": user["codigo_vendedor"]
+        }
+        logging.info(f"Gerando token com dados: {token_data}")
         access_token = criar_token_acesso(
-            data={"sub": user["email"], "id": user["id"], "nivel": user["nivel"]},
+            data=token_data,
             expires_delta=access_token_expires
         )
         
@@ -224,7 +270,8 @@ async def login(response: Response, form_data: UserLogin):
             "token_type": "bearer",
             "usuario_id": user["id"],
             "usuario_nome": user["nome"],
-            "usuario_nivel": user["nivel"]
+            "usuario_nivel": user["nivel"],
+            "codigo_vendedor": user["codigo_vendedor"]
         }
     except Exception as e:
         logging.error(f"Erro no login: {str(e)}")
@@ -315,9 +362,10 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         username: str = payload.get("sub")
         user_id: int = payload.get("id")
         nivel: str = payload.get("nivel")
+        codigo_vendedor: str = payload.get("codigo_vendedor")
         if username is None or user_id is None:
             raise credentials_exception
-        token_data = TokenData(username=username, user_id=user_id, nivel=nivel)
+        token_data = TokenData(username=username, user_id=user_id, nivel=nivel, codigo_vendedor=codigo_vendedor)
     except JWTError:
         raise credentials_exception
     

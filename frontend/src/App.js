@@ -116,8 +116,11 @@ function AppContent() {
             id: data.usuario_id,
             name: data.usuario_nome,
             username: username,
-            nivel: data.usuario_nivel
+            nivel: data.usuario_nivel,
+            codigo_vendedor: data.codigo_vendedor || null
         };
+        
+        console.log('Dados do usuário:', userData);
         
         setUser(userData);
         setIsLoggedIn(true);
@@ -343,6 +346,17 @@ function AppContent() {
                 <div className={`px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
                   <div className="font-medium">{empresaSelecionada?.cli_nome}</div>
                   <div className="text-sm text-gray-500">Código: {empresaSelecionada?.cli_codigo}</div>
+                </div>
+                
+                <div className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-2">Usuário</div>
+                <div className={`px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                  <div className="font-medium">{user?.name}</div>
+                  <div className="text-sm text-gray-500">
+                    Nível: <span className="capitalize">{user?.nivel || 'Não definido'}</span>
+                    {user?.nivel === 'vendedor' && user?.codigo_vendedor && (
+                      <><br/>Código Vendedor: {user?.codigo_vendedor}</>
+                    )}
+                  </div>
                 </div>
               </div>
               

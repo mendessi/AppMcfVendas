@@ -7,6 +7,7 @@ import { FiUsers, FiPackage, FiShoppingCart, FiDollarSign, FiCalendar, FiAlertCi
 // Componentes
 import EmpresaInfo from './EmpresaInfo';
 import TopClientes from './TopClientes';
+import EmpresaAtualInfo from './EmpresaAtualInfo';
 
 const Dashboard = ({ user, darkMode }) => {
   const [stats, setStats] = useState({
@@ -129,6 +130,9 @@ const Dashboard = ({ user, darkMode }) => {
 
   return (
     <div>
+      {/* Componente flutuante com informações detalhadas da empresa */}
+      <EmpresaAtualInfo darkMode={darkMode} />
+      
       <div className="mb-6">
         <div className="flex items-center justify-between">
           <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Dashboard</h1>

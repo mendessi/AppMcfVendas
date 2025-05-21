@@ -21,6 +21,12 @@ from teste_empresa_crud import router as teste_empresa_crud_router
 from teste_selecao_session import router as teste_selecao_session_router
 # Importar o router de teste session simples
 from teste_session_simples import router as teste_session_simples_router
+# Importar o router de teste de conexão de empresa
+from teste_conexao_api import router as teste_conexao_api_router
+# Importar o router de informações detalhadas da empresa
+from empresa_info_detalhada import router as empresa_info_detalhada_router
+# Importar o router de teste SQL da empresa
+from teste_sql_empresa import router as teste_sql_empresa_router
 from typing import List, Optional, Dict, Any
 import models
 import database
@@ -159,6 +165,15 @@ app.include_router(teste_selecao_session_router)
 
 # Inclui as rotas de teste session simples
 app.include_router(teste_session_simples_router)
+
+# Inclui as rotas de teste de conexão de empresa
+app.include_router(teste_conexao_api_router)
+
+# Inclui as rotas de informações detalhadas da empresa
+app.include_router(empresa_info_detalhada_router)
+
+# Inclui as rotas de teste SQL da empresa
+app.include_router(teste_sql_empresa_router)
 
 # Rotas básicas para teste
 @app.get("/")

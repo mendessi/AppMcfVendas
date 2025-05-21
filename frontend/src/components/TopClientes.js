@@ -57,24 +57,46 @@ const TopClientes = ({ darkMode }) => {
                          localStorage.getItem('empresa_atual') || 
                          localStorage.getItem('empresa_selecionada');
       
-      // Obter código da empresa do localStorage
-      const empresaCodigo = localStorage.getItem("empresaCodigo");
-      
-      if (!empresaData && !empresaCodigo) {
+      if (!empresaData) {
         setError('Nenhuma empresa selecionada');
+        setLoading(false);
+        return;
+      }
+
+      // Extrair o código da empresa do objeto JSON armazenado
+      let empresaCodigo = null;
+      try {
+        const empresaObj = JSON.parse(empresaData);
+        if (empresaObj && empresaObj.cli_codigo) {
+          empresaCodigo = empresaObj.cli_codigo;
+          console.log(`TopClientes - Empresa selecionada: ${empresaObj.cli_nome} (${empresaCodigo})`);
+        }
+      } catch (e) {
+        console.error('Erro ao processar dados da empresa:', e);
+      }
+      
+      // Se não conseguiu extrair do JSON, tentar o legado
+      if (!empresaCodigo) {
+        empresaCodigo = localStorage.getItem("empresaCodigo");
+      }
+      
+      if (!empresaCodigo) {
+        setError('Código da empresa não identificado');
         setLoading(false);
         return;
       }
       
       // Configurar headers
       const headers = {
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       };
       
-      // Adicionar cabeçalho de empresa se disponível
-      if (empresaCodigo) {
-        headers["x-empresa-codigo"] = empresaCodigo;
-      }
+      // Adicionar cabeçalho x-empresa-codigo - fundamental para nosso sistema híbrido
+      headers["x-empresa-codigo"] = empresaCodigo;
+      console.log(`TopClientes - Adicionando cabeçalho x-empresa-codigo: ${empresaCodigo}`);
+      
+      console.log(`TopClientes - Fazendo requisição com cabeçalhos:`, headers);
       
       const response = await axios.get(
         `${API_URL}/relatorios/top-clientes?data_inicial=${dataInicial}&data_final=${dataFinal}`,
@@ -83,6 +105,8 @@ const TopClientes = ({ darkMode }) => {
           withCredentials: true,
         }
       );
+      
+      console.log('TopClientes - Resposta recebida:', response.data);
 
       setTopClientes(response.data.top_clientes);
       setLoading(false);

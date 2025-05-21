@@ -6,6 +6,11 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionResult, setConnectionResult] = useState(null);
+  const [testingSql, setTestingSql] = useState(false);
+  const [sqlResult, setSqlResult] = useState(null);
+  const [selectedEmpresaForTest, setSelectedEmpresaForTest] = useState(null);
   const navigate = useNavigate();
   
   // URL da API - Usando a nova API Flask
@@ -63,6 +68,99 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
 
     fetchEmpresas();
   }, [navigate, API_URL]);
+
+  const handleTestConnection = async (empresa, e) => {
+    e.preventDefault(); // Impede que o clique propague para o botão de selecionar empresa
+    e.stopPropagation();
+    
+    try {
+      setTestingConnection(true);
+      setConnectionResult(null);
+      setSelectedEmpresaForTest(empresa.cli_codigo);
+      setError('');
+      
+      // Usar o token armazenado no localStorage
+      const token = localStorage.getItem('token');
+      
+      // Configurar o cabeçalho de autorização para o axios
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Content-Type'] = 'application/json';
+      
+      // Preparar dados para o teste de conexão
+      const dadosEmpresa = {
+        cli_codigo: parseInt(empresa.cli_codigo, 10),
+        cli_nome: empresa.cli_nome || '',
+        cli_caminho_base: empresa.cli_caminho_base || '',
+        cli_ip_servidor: empresa.cli_ip_servidor || '127.0.0.1',
+        cli_nome_base: empresa.cli_nome_base || '',
+        cli_porta: empresa.cli_porta || '3050'
+      };
+      
+      console.log('Testando conexão para empresa:', dadosEmpresa);
+      
+      // Chamar o endpoint para testar a conexão
+      const response = await axios.post(`${API_URL}/testar-conexao-empresa`, dadosEmpresa);
+      
+      console.log('Resultado do teste de conexão:', response.data);
+      setConnectionResult(response.data);
+    } catch (err) {
+      console.error('Erro ao testar conexão:', err);
+      setConnectionResult({
+        sucesso: false,
+        mensagem: err.response?.data?.detail || err.message || 'Erro ao testar conexão'
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  const handleTestSql = async (empresa, e) => {
+    e.preventDefault(); // Impede que o clique propague para o botão de selecionar empresa
+    e.stopPropagation();
+    
+    try {
+      setTestingSql(true);
+      setSqlResult(null);
+      setSelectedEmpresaForTest(empresa.cli_codigo);
+      setError('');
+      
+      // Usar o token armazenado no localStorage
+      const token = localStorage.getItem('token');
+      
+      // Configurar o cabeçalho de autorização para o axios
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Content-Type'] = 'application/json';
+      
+      // Adiionar o cabeçalho x-empresa-codigo
+      axios.defaults.headers.common['x-empresa-codigo'] = empresa.cli_codigo;
+      
+      // Preparar dados para o teste SQL
+      const dadosEmpresa = {
+        cli_codigo: parseInt(empresa.cli_codigo, 10),
+        cli_nome: empresa.cli_nome || '',
+        cli_caminho_base: empresa.cli_caminho_base || '',
+        cli_ip_servidor: empresa.cli_ip_servidor || '127.0.0.1',
+        cli_nome_base: empresa.cli_nome_base || '',
+        cli_porta: empresa.cli_porta || '3050'
+      };
+      
+      console.log('Testando SQL para empresa:', dadosEmpresa);
+      
+      // Chamar o endpoint para testar a consulta SQL
+      const response = await axios.post(`${API_URL}/testar-sql-empresa`, dadosEmpresa);
+      
+      console.log('Resultado do teste SQL:', response.data);
+      setSqlResult(response.data);
+    } catch (err) {
+      console.error('Erro ao testar SQL:', err);
+      setSqlResult({
+        sucesso: false,
+        mensagem: err.response?.data?.detail || err.message || 'Erro ao testar SQL'
+      });
+    } finally {
+      setTestingSql(false);
+    }
+  };
 
   const handleEmpresaSelect = async (empresa) => {
     try {
@@ -237,16 +335,88 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
                         <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                           {empresa.cli_caminho_base}/{empresa.cli_nome_base}
                         </p>
+                        
+                        {/* Resultado do teste de conexão */}
+                        {selectedEmpresaForTest === empresa.cli_codigo && connectionResult && (
+                          <div className={`mt-2 p-2 rounded text-sm ${connectionResult.sucesso ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            <p className="font-medium">
+                              {connectionResult.sucesso ? '✓ Conexão bem-sucedida!' : `✗ ${connectionResult.mensagem}`}
+                            </p>
+                            {connectionResult.sucesso && connectionResult.info_banco && (
+                              <div className="text-xs mt-1">
+                                <p>Versão Firebird: {connectionResult.info_banco.versao}</p>
+                                <p>Usuário: {connectionResult.info_banco.usuario}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Resultado do teste SQL */}
+                        {selectedEmpresaForTest === empresa.cli_codigo && sqlResult && (
+                          <div className={`mt-2 p-2 rounded text-sm ${sqlResult.sucesso ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            <p className="font-medium">
+                              {sqlResult.sucesso ? '✓ SQL executado com sucesso!' : `✗ ${sqlResult.mensagem}`}
+                            </p>
+                            {sqlResult.estrutura_bd && (
+                              <div className="text-xs mt-1">
+                                <p>Tabela EMPRESA: {sqlResult.estrutura_bd.tabela_empresa ? 'Existe' : 'Não existe'}</p>
+                                <p>Tabela PARAMET: {sqlResult.estrutura_bd.tabela_paramet ? 'Existe' : 'Não existe'}</p>
+                              </div>
+                            )}
+                            {sqlResult.sucesso && sqlResult.resultado && sqlResult.resultado.length > 0 && (
+                              <div className="text-xs mt-2 p-2 bg-white text-gray-800 rounded overflow-auto max-h-40">
+                                {sqlResult.resultado.map((item, index) => (
+                                  <div key={index} className="mb-1 p-1 border-b">
+                                    <p>Código: <span className="font-semibold">{item.emp_cod}</span></p>
+                                    <p>Nome: <span className="font-semibold">{item.emp_nome}</span></p>
+                                    <p>CNPJ: <span className="font-semibold">{item.emp_cnpj}</span></p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      {empresa.cli_bloqueadoapp === 'S' ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          Bloqueado
-                        </span>
-                      ) : (
-                        <svg className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                        </svg>
-                      )}
+                      <div className="flex flex-col items-end">
+                        {/* Botões de Teste */}
+                        <div className="flex flex-col space-y-2">
+                          {/* Botão de Testar Conexão */}
+                          <button
+                            onClick={(e) => handleTestConnection(empresa, e)}
+                            className={`px-3 py-1 text-xs rounded-md ${darkMode ? 'bg-blue-700 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-700'} text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                            disabled={testingConnection && selectedEmpresaForTest === empresa.cli_codigo}
+                          >
+                            {testingConnection && selectedEmpresaForTest === empresa.cli_codigo ? (
+                              <span>Testando...</span>
+                            ) : (
+                              <span>Testar Conexão</span>
+                            )}
+                          </button>
+                          
+                          {/* Botão de Testar SQL */}
+                          <button
+                            onClick={(e) => handleTestSql(empresa, e)}
+                            className={`px-3 py-1 text-xs rounded-md ${darkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-600 hover:bg-green-700'} text-white transition-colors focus:outline-none focus:ring-2 focus:ring-green-500`}
+                            disabled={testingSql && selectedEmpresaForTest === empresa.cli_codigo}
+                          >
+                            {testingSql && selectedEmpresaForTest === empresa.cli_codigo ? (
+                              <span>Testando SQL...</span>
+                            ) : (
+                              <span>Testar SQL</span>
+                            )}
+                          </button>
+                        </div>
+                        
+                        {empresa.cli_bloqueadoapp === 'S' ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Bloqueado
+                          </span>
+                        ) : (
+                          <svg className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
                     </div>
                     {empresa.cli_bloqueadoapp === 'S' && empresa.cli_mensagem && (
                       <div className="mt-2 text-sm text-red-600">

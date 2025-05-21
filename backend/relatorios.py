@@ -57,16 +57,18 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
             log.warning("Token de autenticação não fornecido")
             return usar_dados_exemplo(data_inicial, data_final)
             
-        # Verificar empresa no cabeçalho
-        empresa_codigo = request.headers.get("x-empresa-codigo")
-        if not empresa_codigo:
-            log.warning("Código da empresa não fornecido no cabeçalho, tentando buscar da sessão...")
-            # NÃO retornar dados de exemplo ainda, vamos tentar obter a empresa da sessão
-        else:
-            log.info(f"Empresa encontrada no cabeçalho: {empresa_codigo}")
-        
-        # Em ambos os casos (cabeçalho ou sessão), vamos usar get_empresa_atual que implementa nossa abordagem híbrida
+        # Aqui não precisamos verificar manualmente o cabeçalho da empresa
+        # Nossa função get_empresa_atual já implementa a abordagem híbrida:
+        # 1. Primeiro verifica o cabeçalho x-empresa-codigo
+        # 2. Se não encontrar, busca na sessão
         log.info("Buscando empresa atual usando abordagem híbrida (cabeçalho -> sessão)...")
+        
+        # Apenas para fins de log, vamos verificar se o cabeçalho existe
+        empresa_codigo = request.headers.get("x-empresa-codigo")
+        if empresa_codigo:
+            log.info(f"Cabeçalho x-empresa-codigo presente: {empresa_codigo}")
+        else:
+            log.info("Cabeçalho x-empresa-codigo não encontrado, recorrendo à sessão")
 
         try:
             # Obter conexão com a empresa atual

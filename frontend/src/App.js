@@ -70,7 +70,12 @@ function AppContent() {
         
         // Configurar o contexto da empresa para requisições
         if (empresaAtual.cli_codigo) {
-          axios.defaults.headers.common['X-Empresa-Codigo'] = empresaAtual.cli_codigo;
+          // Atualizar o header com o código da empresa - usando minúsculo para compatibilidade
+          axios.defaults.headers.common['x-empresa-codigo'] = empresaAtual.cli_codigo;
+          console.log(`App - Configurando cabeçalho de empresa: ${empresaAtual.cli_codigo}`);
+          
+          // Manter empresaCodigo por compatibilidade com código legado
+          localStorage.setItem('empresaCodigo', empresaAtual.cli_codigo);
         }
       }
     }
@@ -414,7 +419,7 @@ function AppContent() {
         <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
           <main className="container mx-auto px-4 py-8">
             <Routes>
-              <Route path="/" element={<Dashboard user={user} darkMode={darkMode} />} />
+              <Route path="/" element={<Dashboard user={user} darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="/clientes" element={<ClientesList darkMode={darkMode} />} />
               <Route path="/produtos" element={<ProdutosList darkMode={darkMode} />} />
               <Route path="/pedidos" element={<PedidosList darkMode={darkMode} />} />

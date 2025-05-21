@@ -3,7 +3,9 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import { FiUser, FiPhone, FiMapPin, FiShoppingBag, FiDollarSign, FiCalendar } from 'react-icons/fi';
 
-const TopClientes = ({ darkMode }) => {
+const TopClientes = ({ darkMode, empresaSelecionada }) => {
+  // Log para debug
+  console.log('TopClientes - Empresa selecionada recebida como prop:', empresaSelecionada);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [topClientes, setTopClientes] = useState([]);
@@ -52,39 +54,52 @@ const TopClientes = ({ darkMode }) => {
         return;
       }
       
-      // Verificar se há uma empresa selecionada
-      const empresaData = localStorage.getItem('empresa') || 
+      // Usar a empresa selecionada recebida como prop, se disponível
+      let empresaCodigo = null;
+      
+      if (empresaSelecionada && empresaSelecionada.cli_codigo) {
+        // Se recebemos a empresa como prop, usar diretamente
+        empresaCodigo = empresaSelecionada.cli_codigo;
+        console.log(`TopClientes - Usando empresa da prop: ${empresaSelecionada.cli_nome} (${empresaCodigo})`);
+      } else {
+        // Backup: Verificar localStorage se não recebemos a empresa como prop
+        console.log('TopClientes - Empresa não recebida como prop, verificando localStorage');
+        const empresaData = localStorage.getItem('empresa') || 
                          localStorage.getItem('empresa_atual') || 
                          localStorage.getItem('empresa_selecionada');
-      
-      if (!empresaData) {
-        setError('Nenhuma empresa selecionada');
-        setLoading(false);
-        return;
-      }
-
-      // Extrair o código da empresa do objeto JSON armazenado
-      let empresaCodigo = null;
-      try {
-        const empresaObj = JSON.parse(empresaData);
-        if (empresaObj && empresaObj.cli_codigo) {
-          empresaCodigo = empresaObj.cli_codigo;
-          console.log(`TopClientes - Empresa selecionada: ${empresaObj.cli_nome} (${empresaCodigo})`);
+        
+        if (!empresaData) {
+          setError('Nenhuma empresa selecionada');
+          setLoading(false);
+          return;
         }
-      } catch (e) {
-        console.error('Erro ao processar dados da empresa:', e);
+
+        // Extrair o código da empresa do objeto JSON armazenado
+        try {
+          const empresaObj = JSON.parse(empresaData);
+          if (empresaObj && empresaObj.cli_codigo) {
+            empresaCodigo = empresaObj.cli_codigo;
+            console.log(`TopClientes - Empresa do localStorage: ${empresaObj.cli_nome} (${empresaCodigo})`);
+          }
+        } catch (e) {
+          console.error('Erro ao processar dados da empresa:', e);
+        }
+        
+        // Se não conseguiu extrair do JSON, tentar o legado
+        if (!empresaCodigo) {
+          empresaCodigo = localStorage.getItem("empresaCodigo");
+          console.log(`TopClientes - Usando código legado do localStorage: ${empresaCodigo}`);
+        }
       }
       
-      // Se não conseguiu extrair do JSON, tentar o legado
-      if (!empresaCodigo) {
-        empresaCodigo = localStorage.getItem("empresaCodigo");
-      }
-      
+      // Verificar se temos um código de empresa válido
       if (!empresaCodigo) {
         setError('Código da empresa não identificado');
         setLoading(false);
         return;
       }
+      
+      console.log(`TopClientes - Código final da empresa: ${empresaCodigo}`);
       
       // Configurar headers
       const headers = {
@@ -112,7 +127,35 @@ const TopClientes = ({ darkMode }) => {
       setLoading(false);
     } catch (error) {
       console.error("Erro ao buscar top clientes:", error);
-      setError("Erro ao carregar os dados. Por favor, tente novamente.");
+      
+      // Obter detalhes do erro para exibir uma mensagem mais informativa
+      let mensagemErro = "Erro ao carregar os dados. Por favor, tente novamente.";
+      
+      if (error.response) {
+        // O servidor respondeu com um código de erro
+        console.log('Resposta de erro:', error.response);
+        
+        // Usar a mensagem de erro retornada pela API, se disponível
+        if (error.response.data && error.response.data.detail) {
+          mensagemErro = `Erro ${error.response.status}: ${error.response.data.detail}`;
+        } else {
+          mensagemErro = `Erro ${error.response.status}: ${error.response.statusText}`;
+        }
+        
+        // Mensagens personalizadas para códigos de erro comuns
+        if (error.response.status === 401) {
+          mensagemErro = "Sessão expirada. Por favor, faça login novamente.";
+        } else if (error.response.status === 404) {
+          mensagemErro = "As tabelas necessárias não foram encontradas no banco de dados.";
+        } else if (error.response.status === 503) {
+          mensagemErro = "Não foi possível conectar ao banco de dados. Verifique as configurações da empresa.";
+        }
+      } else if (error.request) {
+        // A requisição foi feita mas não houve resposta
+        mensagemErro = "Servidor não respondeu. Verifique sua conexão com a internet.";
+      }
+      
+      setError(mensagemErro);
       setLoading(false);
     }
   };

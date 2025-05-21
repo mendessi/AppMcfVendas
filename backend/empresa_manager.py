@@ -403,31 +403,46 @@ def get_empresa_atual(request: Request):
                 
                 # Buscar empresa pelo código
                 log.info(f"Buscando empresa no banco com código {empresa_codigo}...")
-                db = database.get_db()
                 
-                # Listar todas as empresas disponíveis para debug
-                empresas = db.query(models.Empresa).all()
-                log.info(f"Total de empresas no banco: {len(empresas)}")
-                for emp in empresas:
-                    log.info(f"Empresa disponível: ID={emp.cli_codigo}, Nome={emp.cli_nome}")
+                try:
+                    # Usar a conexão direta ao invés de ORM
+                    conn = database.get_connection()
+                    cursor = conn.cursor()
+                    
+                    # Listar todas as empresas disponíveis para debug
+                    cursor.execute("SELECT CLI_CODIGO, CLI_NOME FROM CLIENTES")
+                    empresas = cursor.fetchall()
+                    log.info(f"Total de empresas no banco: {len(empresas)}")
+                    for emp in empresas:
+                        log.info(f"Empresa disponível: ID={emp[0]}, Nome={emp[1]}")
+                    
+                    # Buscar a empresa especificada
+                    cursor.execute("SELECT CLI_CODIGO, CLI_NOME, CLI_CAMINHO_BASE, CLI_IP_SERVIDOR, CLI_NOME_BASE, CLI_PORTA FROM CLIENTES WHERE CLI_CODIGO = ?", (empresa_codigo,))
+                    empresa_db = cursor.fetchone()
                 
-                # Buscar a empresa especificada
-                empresa_db = db.query(models.Empresa).filter(models.Empresa.cli_codigo == empresa_codigo).first()
-                
-                if empresa_db:
-                    log.info(f"Empresa encontrada: {empresa_db.cli_nome}")
-                    # Converter para dicionário
-                    empresa = {
-                        "cli_codigo": empresa_db.cli_codigo,
-                        "cli_nome": empresa_db.cli_nome,
-                        "cli_caminho_base": empresa_db.cli_caminho_base,
-                        "cli_ip_servidor": empresa_db.cli_ip_servidor,
-                        "cli_nome_base": empresa_db.cli_nome_base,
-                        "cli_porta": str(empresa_db.cli_porta) if empresa_db.cli_porta else "3050",
-                    }
-                    return empresa
-                else:
-                    log.warning(f"Empresa com código {empresa_codigo} não encontrada no banco de dados")
+                    if empresa_db:
+                        log.info(f"Empresa encontrada: {empresa_db[1]}")
+                        # Converter para dicionário com os campos corretos
+                        empresa = {
+                            "cli_codigo": empresa_db[0],
+                            "cli_nome": empresa_db[1],
+                            "cli_caminho_base": empresa_db[2] or '',
+                            "cli_ip_servidor": empresa_db[3] or '127.0.0.1',
+                            "cli_nome_base": empresa_db[4] or '',
+                            "cli_porta": str(empresa_db[5]) if empresa_db[5] else "3050",
+                        }
+                        conn.close()
+                        return empresa
+                    else:
+                        log.warning(f"Empresa com código {empresa_codigo} não encontrada no banco de dados")
+                        conn.close()
+                except Exception as db_err:
+                    log.error(f"Erro ao consultar empresa no banco: {str(db_err)}")
+                    if 'conn' in locals():
+                        try:
+                            conn.close()
+                        except:
+                            pass
             except Exception as e:
                 log.error(f"Erro ao processar cabeçalho x-empresa-codigo: {str(e)}")
                 # Continue para a próxima opção (sessão do usuário)
@@ -439,11 +454,20 @@ def get_empresa_atual(request: Request):
         
         empresa = empresa_sessions.get(usuario_id)
         if not empresa:
-            log.error(f"Nenhuma empresa encontrada na sessão para o usuário {usuario_id}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Nenhuma empresa selecionada",
-            )
+            log.warning(f"Nenhuma empresa encontrada na sessão para o usuário {usuario_id}")
+            # Em vez de lançar uma exceção, vamos retornar uma empresa padrão vazia
+            # Isso permite que o frontend decida como lidar com a situação
+            log.info("Retornando empresa padrão vazia")
+            return {
+                "cli_codigo": 0,
+                "cli_nome": "Selecione uma empresa",
+                "cli_caminho_base": "",
+                "cli_ip_servidor": "",
+                "cli_nome_base": "",
+                "cli_porta": "3050",
+                "cli_cnpj": "Nenhuma empresa selecionada",
+                "empresa_nao_selecionada": True
+            }
         
         log.info(f"Empresa encontrada na sessão: {empresa['cli_nome']} (ID: {empresa['cli_codigo']})")
         

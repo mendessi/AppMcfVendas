@@ -9,7 +9,9 @@ import EmpresaInfo from './EmpresaInfo';
 import TopClientes from './TopClientes';
 import EmpresaAtualInfo from './EmpresaAtualInfo';
 
-const Dashboard = ({ user, darkMode }) => {
+const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
+  // Log para debug
+  console.log('Dashboard - Empresa selecionada:', empresaSelecionada);
   const [stats, setStats] = useState({
     totalClientes: 0,
     totalProdutos: 0,
@@ -330,14 +332,9 @@ const Dashboard = ({ user, darkMode }) => {
 
       {/* Gráficos e Tabelas */}
       <div className="grid grid-cols-1 gap-8 mb-8">
-        {/* Top Clientes com seletores de datas */}
-        <TopClientes darkMode={darkMode} />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-        {/* Top 10 Produtos */}
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6`}>
-          <h2 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"} mb-4`}>Top 10 Produtos</h2>
+        {/* Top Clientes */}
+        <div className="mb-8">
+          <TopClientes darkMode={darkMode} empresaSelecionada={empresaSelecionada} />
           
           {/* Versão para desktop */}
           <div className="hidden sm:block overflow-x-auto">

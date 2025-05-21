@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
   const [empresas, setEmpresas] = useState([]);
@@ -8,7 +9,7 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
   const navigate = useNavigate();
   
   // URL da API - Usando a nova API Flask
-  const API_URL = 'http://localhost:5000';
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
   console.log('API_URL:', API_URL);
 
   useEffect(() => {
@@ -30,24 +31,14 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
         // Usar o token armazenado no localStorage
         const token = localStorage.getItem('token');
         
-        // Buscar as empresas usando fetch
-        const response = await fetch(`${API_URL}/empresas`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        // Configurar o cabeçalho de autorização para o axios
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         
-        // Verificar se a resposta foi bem-sucedida
-        if (!response.ok) {
-          if (response.status === 401) {
-            throw new Error('Sessão expirada ou inválida. Por favor, faça login novamente.');
-          }
-          throw new Error(`Erro ao buscar empresas: ${response.status}`);
-        }
+        // Buscar as empresas usando axios com URLs completas
+        const response = await axios.get(`${API_URL}/empresas`);
         
-        const data = await response.json();
+        // Os dados já estão no formato JSON com axios
+        const data = response.data;
         console.log('Resposta da API:', data);
         
         // A API já retorna os dados no formato correto
@@ -85,37 +76,80 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
       const token = localStorage.getItem('token');
       
       // Chamar a API para selecionar a empresa
-      // Mapear os campos da empresa para os nomes esperados pela API
+      // Garantir que o código da empresa seja um número inteiro
       const dadosEmpresa = {
-        empresa_codigo: empresa.cli_codigo,
-        empresa_nome: empresa.cli_nome,
-        cli_bloqueadoapp: empresa.cli_bloqueadoapp,
-        cli_mensagem: empresa.cli_mensagem,
-        cli_caminho_base: empresa.cli_caminho_base,
-        cli_ip_servidor: empresa.cli_ip_servidor,
-        cli_nome_base: empresa.cli_nome_base,
-        cli_porta: empresa.cli_porta
+        cli_codigo: parseInt(empresa.cli_codigo, 10), // Converter para inteiro
+        cli_nome: empresa.cli_nome || '',
+        cli_bloqueadoapp: empresa.cli_bloqueadoapp || 'N',
+        cli_mensagem: empresa.cli_mensagem || '',
+        cli_caminho_base: empresa.cli_caminho_base || '',
+        cli_ip_servidor: empresa.cli_ip_servidor || '127.0.0.1',
+        cli_nome_base: empresa.cli_nome_base || '',
+        cli_porta: empresa.cli_porta || '3050'
       };
       
-      console.log('Enviando dados da empresa:', dadosEmpresa);
+      console.log('Enviando dados da empresa formatados:', dadosEmpresa);
       
-      const response = await fetch(`${API_URL}/selecionar-empresa`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(dadosEmpresa)
-      });
+      // Configurar o cabeçalho de autorização para o axios
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Content-Type'] = 'application/json';
       
-      // Verificar se a resposta foi bem-sucedida
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.detail || 'Erro ao selecionar empresa');
+      // Usar a rota real de seleção de empresa
+      try {
+        console.log('Fazendo a seleção real da empresa');
+        // Primeiro testar com o endpoint simplificado para confirmar CORS
+        console.log('Testando com o endpoint simplificado para CORS');
+        const testURL = `${API_URL}/teste-selecionar-empresa`;
+        console.log('URL de teste:', testURL);
+        
+        // Configuração detalhada para debug
+        const config = {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          validateStatus: status => status < 500
+        };
+        
+        console.log('Configuração da requisição:', config);
+        console.log('Dados enviados:', dadosEmpresa);
+        
+        // Testar primeiro com o endpoint simplificado
+        const response = await axios.post(testURL, dadosEmpresa, config);
+        console.log('Resposta do teste:', response);
+        
+        // Se o teste funcionou, testar com o endpoint real
+        //const responseReal = await axios.post(`${API_URL}/selecionar-empresa`, dadosEmpresa, config);
+        
+        // Verificar se a resposta não é bem-sucedida (códigos 4xx)
+        if (response.status >= 400) {
+          console.error('Erro na resposta:', response.data);
+          throw new Error(response.data.detail || 'Erro ao selecionar empresa: ' + response.status);
+        }
+      
+        // Os dados já estão no formato JSON com axios
+        const data = response.data;
+        console.log('Empresa selecionada com sucesso:', data);
+      } catch (axiosError) {
+        console.error('Erro na requisição axios:', axiosError);
+        
+        // Extrair informações de erro mais detalhadas
+        if (axiosError.response) {
+          // A requisição foi feita e o servidor respondeu com um status de erro
+          console.error('Dados do erro:', axiosError.response.data);
+          console.error('Status do erro:', axiosError.response.status);
+          console.error('Headers do erro:', axiosError.response.headers);
+          throw new Error(axiosError.response.data?.detail || `Erro ${axiosError.response.status}: ${axiosError.message}`);
+        } else if (axiosError.request) {
+          // A requisição foi feita mas não houve resposta
+          console.error('Requisição sem resposta:', axiosError.request);
+          throw new Error('Sem resposta do servidor. Verifique sua conexão.');
+        } else {
+          // Algo aconteceu na configuração da requisição que causou um erro
+          console.error('Erro na configuração:', axiosError.message);
+          throw new Error(`Erro de configuração: ${axiosError.message}`);
+        }
       }
-      
-      const data = await response.json();
-      console.log('Empresa selecionada com sucesso:', data);
       
       // Notificar o componente pai que a empresa foi selecionada
       if (onSelectEmpresa) {
@@ -125,13 +159,25 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
       }
       
       // Armazena os dados da empresa selecionada localmente
+      localStorage.setItem('empresa', JSON.stringify(empresa));
       localStorage.setItem('empresa_atual', JSON.stringify(empresa));
+      
+      // Atualiza os headers do axios para incluir o contexto da empresa
+      const empresaContexto = {
+        codigo: empresa.cli_codigo,
+        nome: empresa.cli_nome
+      };
+      localStorage.setItem('empresa_contexto', JSON.stringify(empresaContexto));
       
       // Registrar no console que estamos entrando no sistema
       console.log(`Entrando no sistema com a empresa: ${empresa.cli_nome}`);
 
-      // Redirecionar diretamente para o dashboard sem mostrar alerta
-      navigate('/');
+      // Redirecionar para o dashboard após pequeno delay para garantir que o contexto foi atualizado
+      setTimeout(() => {
+        console.log('Redirecionando para o dashboard com a empresa:', empresa.cli_nome);
+        // Recarregar a página para garantir que todas as atualizações de contexto sejam aplicadas
+        window.location.href = '/';
+      }, 300);
     } catch (err) {
       console.error('Erro ao selecionar empresa:', err);
       setError(err.message || 'Erro ao selecionar empresa. Tente novamente.');
@@ -185,6 +231,12 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
                       <div>
                         <h3 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{empresa.cli_nome}</h3>
                         <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Código: {empresa.cli_codigo}</p>
+                        <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'} mt-1`}>
+                          {empresa.cli_ip_servidor}{empresa.cli_porta ? `:${empresa.cli_porta}` : ''}
+                        </p>
+                        <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                          {empresa.cli_caminho_base}/{empresa.cli_nome_base}
+                        </p>
                       </div>
                       {empresa.cli_bloqueadoapp === 'S' ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">

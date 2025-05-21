@@ -13,17 +13,24 @@ ALGORITHM = "HS256"
 # Modelo para seleção de empresa
 class EmpresaSelect(BaseModel):
     cli_codigo: int
+    cli_nome: str
+    cli_caminho_base: str
+    cli_ip_servidor: str
+    cli_nome_base: str
+    cli_porta: Optional[str] = "3050"  # Tornando opcional com valor padrão
+    cli_mensagem: Optional[str] = None
+    cli_bloqueadoapp: str
 
 # Modelo para dados da empresa
 class EmpresaData(BaseModel):
     cli_codigo: int
     cli_nome: str
+    cli_bloqueadoapp: str
+    cli_mensagem: Optional[str] = None
     cli_caminho_base: str
     cli_ip_servidor: str
     cli_nome_base: str
     cli_porta: str
-    cli_mensagem: Optional[str] = None
-    cli_bloqueadoapp: str
 
 # Armazenamento temporário de conexões de empresas (em produção, use Redis ou similar)
 # Chave: ID do usuário, Valor: Dados da empresa selecionada
@@ -33,62 +40,117 @@ empresa_sessions = {}
 # Chave: ID do usuário, Valor: Lista de empresas liberadas
 empresas_liberadas = {}
 
-async def obter_empresas_usuario(usuario_id: int) -> List[Dict[str, Any]]:
+async def obter_empresas_usuario(email: str) -> List[Dict[str, Any]]:
     """
-    Obtém as empresas liberadas para o usuário.
-    
-    Versão simplificada para testes que retorna empresas de exemplo
-    sem acessar o banco de dados.
+    Obtém as empresas liberadas para o usuário pelo email.
     """
-    logging.info(f"Obtendo empresas para o usuário ID: {usuario_id}")
+    logging.info(f"[EMPRESAS] Obtendo empresas para o email: {email}")
     
-    # Retornar empresas de teste diretamente sem acessar o banco de dados
-    empresas = [
-        {
-            "cli_codigo": 1,
-            "cli_nome": "Empresa Teste 1",
-            "cli_caminho_base": os.getenv("DB_PATH", "/caminho/teste"),
-            "cli_ip_servidor": "localhost",
-            "cli_nome_base": "base_teste1",
-            "cli_porta": "3050",
-            "cli_mensagem": "Empresa de teste 1",
-            "cli_bloqueadoapp": "N",
-            "cnpj": "11.111.111/0001-11",
-            "usuario_id": usuario_id,
-            "caminho_completo": os.getenv("DB_PATH", "/caminho/teste")
-        },
-        {
-            "cli_codigo": 2,
-            "cli_nome": "Empresa Teste 2",
-            "cli_caminho_base": os.getenv("DB_PATH", "/caminho/teste"),
-            "cli_ip_servidor": "localhost",
-            "cli_nome_base": "base_teste2",
-            "cli_porta": "3050",
-            "cli_mensagem": "Empresa de teste 2",
-            "cli_bloqueadoapp": "N",
-            "cnpj": "22.222.222/0001-22",
-            "usuario_id": usuario_id,
-            "caminho_completo": os.getenv("DB_PATH", "/caminho/teste")
-        },
-        {
-            "cli_codigo": 3,
-            "cli_nome": "Empresa Teste 3",
-            "cli_caminho_base": os.getenv("DB_PATH", "/caminho/teste"),
-            "cli_ip_servidor": "localhost",
-            "cli_nome_base": "base_teste3",
-            "cli_porta": "3050",
-            "cli_mensagem": "Empresa de teste 3",
-            "cli_bloqueadoapp": "N",
-            "cnpj": "33.333.333/0001-33",
-            "usuario_id": usuario_id,
-            "caminho_completo": os.getenv("DB_PATH", "/caminho/teste")
-        }
-    ]
+    if not email or not isinstance(email, str):
+        logging.error(f"[EMPRESAS] Email de usuário inválido: {email}")
+        return []
     
-    # Armazenar as empresas liberadas para o usuário
-    empresas_liberadas[usuario_id] = empresas
-    logging.info(f"Retornando {len(empresas)} empresas de teste para o usuário ID: {usuario_id}")
-    return empresas
+    try:
+        conn = obter_conexao_controladora()
+        cursor = conn.cursor()
+        
+        # Primeiro verifica se o usuário existe e está ativo
+        cursor.execute("""
+            SELECT ID, NIVEL_ACESSO, ATIVO, EMAIL
+            FROM USUARIOS_APP
+            WHERE EMAIL = ?
+        """, (email,))
+        
+        usuario = cursor.fetchone()
+        if not usuario:
+            logging.error(f"[EMPRESAS] Usuário não encontrado: {email}")
+            return []
+            
+        if usuario[2] != 'S':  # ATIVO
+            logging.error(f"[EMPRESAS] Usuário inativo: {email}")
+            return []
+        
+        logging.info(f"[EMPRESAS] Usuário encontrado: ID={usuario[0]}, Nível={usuario[1]}, Email={usuario[3]}")
+        
+        # Consulta as empresas vinculadas ao usuário com todos os campos necessários
+        cursor.execute("""
+            SELECT
+                c.CLI_CODIGO, 
+                c.CLI_NOME,
+                CASE 
+                    WHEN c.CLI_BLOQUEADOAPP IS NULL THEN 'N'
+                    ELSE c.CLI_BLOQUEADOAPP 
+                END as CLI_BLOQUEADOAPP,
+                CASE 
+                    WHEN c.CLI_MENSAGEM IS NULL THEN ''
+                    ELSE c.CLI_MENSAGEM 
+                END as CLI_MENSAGEM,
+                CASE 
+                    WHEN c.CLI_CAMINHO_BASE IS NULL THEN ''
+                    ELSE c.CLI_CAMINHO_BASE 
+                END as CLI_CAMINHO_BASE,
+                CASE 
+                    WHEN c.cli_ip_servidor IS NULL THEN '127.0.0.1'
+                    ELSE c.cli_ip_servidor 
+                END as cli_ip_servidor,
+                CASE 
+                    WHEN c.CLI_NOME_BASE IS NULL THEN ''
+                    ELSE c.CLI_NOME_BASE 
+                END as CLI_NOME_BASE,
+                CASE 
+                    WHEN c.CLI_PORTA IS NULL THEN '3050'
+                    ELSE CAST(c.CLI_PORTA AS VARCHAR(10))
+                END as CLI_PORTA,
+                uc.ID as VINCULO_ID,
+                uc.USUARIO_ID,
+                ua.nivel_acesso,
+                ua.email,
+                ua.id AS usuario_app_id
+            FROM usuarios_clientes uc
+            JOIN CLIENTES c ON c.CLI_CODIGO = uc.CLI_CODIGO
+            JOIN usuarios_app ua ON ua.id = uc.USUARIO_ID
+            WHERE ua.email = ?
+            ORDER BY c.CLI_NOME
+        """, (email,))
+        
+        rows = cursor.fetchall()
+        logging.info(f"[EMPRESAS] Dados brutos do banco: {rows}")
+        
+        empresas = []
+        for row in rows:
+            try:
+                logging.info(f"[EMPRESAS] Processando linha: {row}")
+                empresa = {
+                    "cli_codigo": int(row[0]),
+                    "cli_nome": str(row[1]),
+                    "cli_bloqueadoapp": str(row[2]),
+                    "cli_mensagem": str(row[3]),
+                    "cli_caminho_base": str(row[4]),
+                    "cli_ip_servidor": str(row[5]),
+                    "cli_nome_base": str(row[6]),
+                    "cli_porta": str(row[7]),
+                    "id": int(row[8]),  # VINCULO_ID
+                    "usuario_id": int(row[9]),
+                    "nivel_acesso": str(row[10]),
+                    "email": str(row[11]),
+                    "usuario_app_id": int(row[12])
+                }
+                logging.info(f"[EMPRESAS] Empresa processada: {empresa}")
+                empresas.append(empresa)
+            except Exception as e:
+                logging.error(f"[EMPRESAS] Erro ao processar empresa: {str(e)}")
+                logging.error(f"[EMPRESAS] Linha com erro: {row}")
+                continue
+        
+        conn.close()
+        logging.info(f"[EMPRESAS] {len(empresas)} empresas encontradas para o email {email}")
+        return empresas
+    except Exception as e:
+        logging.error(f"[EMPRESAS] Erro ao obter empresas: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao buscar empresas: {str(e)}"
+        )
 
 async def obter_empresa_controladora(usuario_id: int):
     """
@@ -200,49 +262,83 @@ async def verificar_acesso_empresa(usuario_id: int, cli_codigo: int):
         return False
 
 async def selecionar_empresa(usuario_id: int, cli_codigo: int):
-    """
-    Seleciona uma empresa para o usuário e armazena na sessão.
-    """
+    log.info(f"Iniciando seleção de empresa. Usuario ID: {usuario_id}, Codigo Empresa: {cli_codigo}")
+    
     # Verifica se o usuário tem acesso à empresa
     tem_acesso = await verificar_acesso_empresa(usuario_id, cli_codigo)
     if not tem_acesso:
+        log.warning(f"Usuário {usuario_id} não tem acesso à empresa {cli_codigo}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário não tem acesso a esta empresa",
+            detail="Usuário não tem acesso a esta empresa"
+        )
+
+    # Obtém os dados da empresa
+    try:
+        empresa = await obter_empresa_por_codigo(cli_codigo)
+    except Exception as e:
+        log.error(f"Erro ao obter dados da empresa {cli_codigo}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao obter dados da empresa: {str(e)}"
         )
     
-    # Obtém os dados da empresa
-    empresa = await obter_empresa_por_codigo(cli_codigo)
     if not empresa:
+        log.warning(f"Empresa {cli_codigo} não encontrada")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa não encontrada",
+            detail="Empresa não encontrada"
         )
     
-    # Verifica se a empresa está bloqueada
-    if empresa["cli_bloqueadoapp"] == "S":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=empresa["cli_mensagem"] or "Acesso bloqueado para esta empresa",
-        )
+    # Verificar conexão com o banco de dados da empresa selecionada
+    connection_info = None
+    connection_success = False
+    error_message = None
     
-    # Armazena a empresa selecionada na sessão
-    empresa_sessions[usuario_id] = empresa
-    
-    # Testa a conexão com a empresa
     try:
-        conn = obter_conexao_cliente(empresa)
-        conn.close()
+        # Tenta obter conexão com a base do cliente
+        from conexao_firebird import obter_conexao_cliente, testar_conexao
+        connection = obter_conexao_cliente(empresa)
+        
+        # Testa a conexão fazendo uma consulta simples
+        conexao_ok, info = await testar_conexao(connection)
+        connection_success = conexao_ok
+        connection_info = info
+        
+        # Fecha a conexão após o teste
+        connection.close()
+        
+        # Armazena a empresa selecionada na sessão apenas se a conexão for bem-sucedida
+        if connection_success:
+            empresa_sessions[usuario_id] = empresa
     except Exception as e:
+        log.error(f"Erro ao conectar com a base do cliente {cli_codigo}: {str(e)}")
+        error_message = str(e)
+        connection_success = False
         # Remove a empresa da sessão em caso de erro
         if usuario_id in empresa_sessions:
             del empresa_sessions[usuario_id]
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao conectar à empresa: {str(e)}",
-        )
     
-    return empresa
+    # Converter empresa para dicionário e adicionar informações de conexão
+    if isinstance(empresa, dict):
+        empresa_dict = empresa
+    else:
+        empresa_dict = dict(empresa)
+    
+    # Adicionar informações de conexão à resposta
+    empresa_dict["conexao_estabelecida"] = connection_success
+    empresa_dict["conexao_info"] = connection_info
+    empresa_dict["dsn"] = f"{empresa_dict['cli_ip_servidor']}:{empresa_dict['cli_caminho_base']}/{empresa_dict['cli_nome_base']}"
+    
+    if not connection_success:
+        empresa_dict["conexao_erro"] = error_message
+        log.warning(f"Conexão com a base do cliente {cli_codigo} falhou: {error_message}")
+        # Não retorna erro, apenas informa que houve falha na conexão
+    else:
+        log.info(f"Conexão com a base do cliente {cli_codigo} estabelecida com sucesso")
+    
+    log.info(f"Empresa {cli_codigo} selecionada com sucesso para o usuário {usuario_id}")
+    return empresa_dict
 
 def get_empresa_atual(request: Request):
     """

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import axios from 'axios';
 import './App.css';
+import { API_URL, AUTH_CONFIG, ROUTES } from './config';
 
 // Ícones
 import { FiMenu, FiX, FiHome, FiUsers, FiPackage, FiShoppingCart, FiPlusCircle, FiLogOut, FiMoon, FiSun, FiGrid } from 'react-icons/fi';
@@ -45,19 +47,31 @@ function AppContent() {
     }
     
     // Verificar se o usuário já está logado
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user'));
-    const empresaAtual = JSON.parse(localStorage.getItem('empresa_atual'));
+    const token = localStorage.getItem(AUTH_CONFIG.tokenKey);
+    const user = JSON.parse(localStorage.getItem(AUTH_CONFIG.userKey));
+    
+    // Verificar todas as possíveis chaves para empresa selecionada
+    const empresaAtual = JSON.parse(localStorage.getItem(AUTH_CONFIG.empresaKey)) || 
+                          JSON.parse(localStorage.getItem('empresa')) || 
+                          JSON.parse(localStorage.getItem('empresa_atual'));
     
     if (token && user) {
       console.log('Usuário já está logado:', user);
       setUser(user);
       setIsLoggedIn(true);
       
-      // Se já tiver uma empresa selecionada, definir o estado
+      // Configurar o token no header padrão para requisições
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Se já tiver uma empresa selecionada, definir o estado e configurar
       if (empresaAtual) {
         console.log('Empresa já selecionada:', empresaAtual);
         setEmpresaSelecionada(empresaAtual);
+        
+        // Configurar o contexto da empresa para requisições
+        if (empresaAtual.cli_codigo) {
+          axios.defaults.headers.common['X-Empresa-Codigo'] = empresaAtual.cli_codigo;
+        }
       }
     }
   }, [darkMode]);
@@ -68,53 +82,62 @@ function AppContent() {
     setLoading(true);
 
     try {
-      // URL da API - Apontando para a API Flask
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-      console.log('Tentando login na API:', `${API_URL}/login`);
-      
-      // Usar fetch em vez de axios para simplificar
-      const response = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Importante para cookies de sessão
-        body: JSON.stringify({
-          email: username,
-          senha: password
-        })
-      });
-      
-      // Verificar se a resposta foi bem-sucedida
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.detail || 'Erro ao fazer login');
-      }
-      
-      const data = await response.json();
-      console.log('Resposta do login:', data);
-      
-      // Armazenar o token e dados do usuário
-      localStorage.setItem('token', data.access_token);
-      localStorage.setItem('usuario_id', data.user_id);
-      localStorage.setItem('usuario_nome', data.name || username);
-      
-      const userData = {
-        id: data.user_id,
-        name: data.name || username,
-        username: username,
-        role: 'vendedor'
-      };
-      
-      setUser(userData);
-      setIsLoggedIn(true);
-      localStorage.setItem('user', JSON.stringify(userData));
-      console.log('Login bem-sucedido, token armazenado');
+        console.log('Tentando login na API:', `${API_URL}${ROUTES.login}`);
+        
+        // Usar axios para o login - melhor suporte para CORS com credentials
+        const response = await axios.post(`${API_URL}${ROUTES.login}`, {
+            email: username,
+            senha: password
+        }, {
+            withCredentials: true,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        // Axios já retorna os dados no formato JSON
+        const data = response.data;
+        console.log('Resposta de login:', data);
+        
+        if (!data.access_token) {
+            throw new Error('Token de acesso não recebido');
+        }
+        
+        localStorage.setItem(AUTH_CONFIG.tokenKey, data.access_token);
+        localStorage.setItem('usuario_id', data.usuario_id);
+        localStorage.setItem('usuario_nome', data.usuario_nome);
+        
+        const userData = {
+            id: data.usuario_id,
+            name: data.usuario_nome,
+            username: username,
+            nivel: data.usuario_nivel
+        };
+        
+        setUser(userData);
+        setIsLoggedIn(true);
+        localStorage.setItem(AUTH_CONFIG.userKey, JSON.stringify(userData));
+        console.log('Login bem-sucedido, token armazenado');
     } catch (err) {
-      console.error('Erro durante o login:', err);
-      setError(err.message || 'Erro ao fazer login. Tente novamente.');
+        console.error('Erro durante o login:', err);
+        
+        // Tratar erros do axios de forma mais detalhada
+        if (err.response) {
+            // O servidor respondeu com um status de erro
+            const errorMsg = err.response.data.detail || err.response.data.message || 'Erro de autenticação';
+            console.error('Erro do servidor:', errorMsg, 'Status:', err.response.status);
+            setError(errorMsg);
+        } else if (err.request) {
+            // A requisição foi feita mas não houve resposta (CORS ou problemas de rede)
+            console.error('Sem resposta do servidor:', err.request);
+            setError('Não foi possível conectar ao servidor. Verifique sua conexão ou contate o suporte.');
+        } else {
+            // Erro na configuração da requisição
+            console.error('Erro na requisição:', err.message);
+            setError(err.message || 'Erro ao fazer login. Verifique suas credenciais e tente novamente.');
+        }
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
@@ -122,16 +145,38 @@ function AppContent() {
     setUser(null);
     setIsLoggedIn(false);
     setEmpresaSelecionada(null);
-    localStorage.removeItem('token');
+    localStorage.removeItem(AUTH_CONFIG.tokenKey);
     localStorage.removeItem('usuario_id');
     localStorage.removeItem('usuario_nome');
-    localStorage.removeItem('user');
-    localStorage.removeItem('empresa_atual');
+    localStorage.removeItem(AUTH_CONFIG.userKey);
+    localStorage.removeItem(AUTH_CONFIG.empresaKey);
   };
 
   const handleSelectEmpresa = (empresa) => {
+    console.log('Empresa selecionada no App:', empresa);
     setEmpresaSelecionada(empresa);
+    
+    // Armazenar a empresa em todos os formatos esperados para garantir compatibilidade
+    localStorage.setItem(AUTH_CONFIG.empresaKey, JSON.stringify(empresa));
+    localStorage.setItem('empresa', JSON.stringify(empresa));
     localStorage.setItem('empresa_atual', JSON.stringify(empresa));
+    
+    // Armazenar o contexto da empresa para uso em chamadas de API
+    const empresaContexto = {
+      codigo: empresa.cli_codigo,
+      nome: empresa.cli_nome
+    };
+    localStorage.setItem('empresa_contexto', JSON.stringify(empresaContexto));
+    
+    // Configurar o axios com o contexto da empresa
+    if (empresa.cli_codigo) {
+      const token = localStorage.getItem(AUTH_CONFIG.tokenKey);
+      if (token) {
+        // Garantir que todas as requisições futuras incluam o token e o contexto
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        axios.defaults.headers.common['X-Empresa-Codigo'] = empresa.cli_codigo;
+      }
+    }
   };
 
   const toggleSidebar = () => {
@@ -142,6 +187,9 @@ function AppContent() {
     setDarkMode(!darkMode);
   };
 
+  // Variáveis para controlar o fluxo de navegação
+  const isFullyAuthenticated = isLoggedIn && empresaSelecionada;
+  
   // Tela de Login
   if (!isLoggedIn) {
     return (
@@ -210,7 +258,7 @@ function AppContent() {
   }
   
   // Se o usuário está logado mas não selecionou empresa, mostrar o seletor de empresas
-  if (!empresaSelecionada) {
+  if (isLoggedIn && !empresaSelecionada) {
     return (
       <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
         <div className="container mx-auto p-4">

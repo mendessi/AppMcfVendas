@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+# Importar o router de mock para teste sem CORS
+from mock_response import mock_router
 from typing import List, Optional, Dict, Any
 import models
 import database
@@ -10,6 +12,8 @@ import logging
 import os
 from datetime import datetime
 from starlette.responses import JSONResponse
+import jwt
+from jose import JWTError
 
 # Importa os módulos de autenticação e gerenciamento de empresas
 from auth import router as auth_router, get_current_user
@@ -19,7 +23,9 @@ from empresa_manager import (
     selecionar_empresa, 
     get_empresa_atual,
     get_empresa_connection,
-    obter_empresas_usuario
+    obter_empresas_usuario,
+    SECRET_KEY,
+    ALGORITHM
 )
 
 # Configuração de logging
@@ -34,57 +40,106 @@ logging.basicConfig(
 
 app = FastAPI(title="API Força de Vendas", description="API para aplicativo de força de vendas")
 
-# Configuração CORS para permitir o frontend
+# Configuração CORS com origens específicas
 origins = [
     "http://localhost:3000",
-    "http://localhost:3001",
     "http://127.0.0.1:3000",
+    "http://localhost:3001",
     "http://127.0.0.1:3001"
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins,  # Permitir apenas origens específicas quando usando credentials
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Middleware personalizado para garantir cabeçalhos CORS em todas as respostas
-@app.middleware("http")
-async def add_cors_headers(request: Request, call_next):
-    response = await call_next(request)
-    origin = request.headers.get("origin", "")
-    
-    # Se a origem estiver na lista de origens permitidas, use-a especificamente
-    # caso contrário, não adicione o cabeçalho (o middleware CORSMiddleware cuidará disso)
-    if origin in origins:
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Credentials"] = "true"
+# Middleware personalizado para garantir que CORS funcione em todas as respostas
+class CustomCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        # Determinar a origem da requisição
+        origin = request.headers.get("Origin", "")
+        allow_origin = "*"
+        
+        # Se temos uma origem específica na requisição, verificar se é permitida
+        if origin:
+            if origin in origins:
+                allow_origin = origin
+                
+        # Para requisições OPTIONS (preflight), responder imediatamente
+        if request.method == "OPTIONS":
+            response = Response(
+                status_code=200,
+                content="",
+                headers={
+                    "Access-Control-Allow-Origin": allow_origin,
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                    "Access-Control-Allow-Credentials": "true"
+                }
+            )
+            return response
+            
+        # Para outras requisições, chamar o próximo middleware
+        response = await call_next(request)
+        
+        # Garantir que os cabeçalhos CORS estejam presentes
+        response.headers["Access-Control-Allow-Origin"] = allow_origin
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Accept"
-    
-    return response
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        if allow_origin != "*":
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        
+        return response
+
+# Adicionar o middleware personalizado (deve ser o primeiro da pilha)
+app.add_middleware(CustomCORSMiddleware)
 
 # Inclui as rotas de autenticação
 app.include_router(auth_router)
+
+# Inclui as rotas de mock para testes
+app.include_router(mock_router)
 
 # Rotas básicas para teste
 @app.get("/")
 async def root():
     return {"message": "API de Força de Vendas funcionando!", "version": "1.0.0"}
 
-# Rota para obter clientes
-@app.get("/clientes")
-async def get_clientes():
+@app.get("/teste-cors")
+async def teste_cors():
+    """Rota simples para testar se o CORS está funcionando"""
+    return {"cors_ok": True, "message": "Se você consegue ver esta mensagem, o CORS está funcionando!", "timestamp": datetime.now().isoformat()}
+
+@app.options("/teste-cors")
+async def options_teste_cors():
+    """Responder a requisições OPTIONS para teste"""
+    return {"cors_ok": True}
+
+@app.post("/teste-selecionar-empresa")
+async def teste_selecionar_empresa(dados: dict):
+    """Endpoint simplificado para testar a seleção de empresa sem lógica de negócios"""
+    print(f"Dados recebidos: {dados}")
+    
+    # Simular resposta de sucesso
+    return {
+        "mensagem": "Empresa selecionada com sucesso (teste)",
+        "empresa": dados
+    }
+
+# Rota para obter clientes (deprecada, usar a versão autenticada)
+@app.get("/api/clientes-old")
+async def get_clientes_old():
     try:
         return await database.get_clientes()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Rota para obter produtos
-@app.get("/produtos")
-async def get_produtos():
+# Rota para obter produtos (deprecada, usar a versão autenticada)
+@app.get("/api/produtos-old")
+async def get_produtos_old():
     try:
         return await database.get_produtos()
     except Exception as e:
@@ -104,36 +159,62 @@ async def create_pedido(pedido: PedidoCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Rota para obter pedidos
-@app.get("/pedidos")
-async def get_pedidos():
+# Rota para obter pedidos (deprecada, usar a versão autenticada)
+@app.get("/api/pedidos-old")
+async def get_pedidos_old():
     try:
         return await database.get_pedidos()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Rota para listar empresas do usuário - SEM AUTENTICAÇÃO para testes
+# Rota para listar empresas do usuário
 @app.get("/empresas")
-async def listar_empresas():
+async def listar_empresas(request: Request):
     """
-    Lista todas as empresas - versão sem autenticação para testes.
+    Lista todas as empresas do usuário autenticado.
     """
     try:
-        # Usar um ID fixo para testes
-        usuario_id_teste = 1
-        logging.info(f"Listando empresas para o usuário ID de teste: {usuario_id_teste}")
+        # Obtém o token da requisição
+        authorization = request.headers.get("Authorization")
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(
+                status_code=401,
+                detail="Não autorizado",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         
-        # Obter as empresas usando o ID de teste
-        empresas = await obter_empresas_usuario(usuario_id_teste)
+        token = authorization.replace("Bearer ", "")
+        
+        # Decodifica o token
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            if not email:
+                raise HTTPException(
+                    status_code=401,
+                    detail="Token inválido",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        except JWTError:
+            raise HTTPException(
+                status_code=401,
+                detail="Token inválido",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        logging.info(f"Listando empresas para o email: {email}")
+        
+        # Obter as empresas usando o email
+        empresas = await obter_empresas_usuario(email)
         
         if not empresas:
-            logging.warning(f"Nenhuma empresa encontrada para o usuário ID de teste: {usuario_id_teste}")
+            logging.warning(f"Nenhuma empresa encontrada para o email: {email}")
             raise HTTPException(
                 status_code=404,
                 detail="Nenhuma empresa encontrada para este usuário"
             )
             
-        logging.info(f"Encontradas {len(empresas)} empresas para o usuário ID de teste: {usuario_id_teste}")
+        logging.info(f"Encontradas {len(empresas)} empresas para o email: {email}")
         return empresas
     except HTTPException:
         raise
@@ -151,14 +232,40 @@ async def selecionar_empresa_route(empresa: EmpresaSelect, user_data = Depends(g
     Seleciona uma empresa para o usuário atual.
     """
     try:
-        logging.info(f"Selecionando empresa {empresa.cli_codigo} para o usuário ID: {user_data.user_id}")
+        # Log detalhado para debugging
+        logging.info("===== INICIANDO SELEÇÃO DE EMPRESA =====")
+        logging.info(f"Dados recebidos: {empresa.dict()}")
+        logging.info(f"Usuário autenticado: {user_data}")
+        logging.info(f"Tipo de cli_codigo: {type(empresa.cli_codigo)}")
+        
+        # Verifica se os dados necessários estão presentes
+        if not empresa.cli_codigo:
+            logging.error("Código da empresa não fornecido")
+            raise HTTPException(status_code=400, detail="Código da empresa é obrigatório")
+            
+        if not user_data or not user_data.user_id:
+            logging.error("Dados do usuário inválidos")
+            raise HTTPException(status_code=401, detail="Usuário não autenticado")
+        
+        logging.info(f"Chamando selecionar_empresa com usuario_id={user_data.user_id}, cli_codigo={empresa.cli_codigo}")
         resultado = await selecionar_empresa(user_data.user_id, empresa.cli_codigo)
-        logging.info(f"Empresa {empresa.cli_codigo} selecionada com sucesso para o usuário ID: {user_data.user_id}")
+        logging.info(f"Empresa selecionada com sucesso: {resultado}")
+        
         return resultado
-    except HTTPException:
+    except HTTPException as he:
+        logging.error(f"Erro HTTP ao selecionar empresa: {str(he)}")
         raise
     except Exception as e:
+        import traceback
         logging.error(f"Erro ao selecionar empresa: {str(e)}")
+        logging.error(f"Tipo do erro: {type(e).__name__}")
+        logging.error(f"Traceback:\n{traceback.format_exc()}")
+        # Log dos dados recebidos novamente no erro para debugging
+        try:
+            logging.error(f"Dados da empresa que causaram erro: {empresa.dict() if empresa else 'Nenhum'}")
+        except Exception as err:
+            logging.error(f"Erro ao logar dados da empresa: {str(err)}")
+        
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao selecionar empresa: {str(e)}"
@@ -396,4 +503,5 @@ async def get_pedidos(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    print("Iniciando servidor na porta 8000...")
+    uvicorn.run(app, host="0.0.0.0", port=8000)

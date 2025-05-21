@@ -2803,3 +2803,797 @@
 2025-05-21 07:57:29,480 - root - INFO - [EMPRESAS] Empresa processada: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_bloqueadoapp': 'N', 'cli_mensagem': 'SUCESSO', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'id': 9, 'usuario_id': 1, 'nivel_acesso': 'MASTER', 'email': 'master', 'usuario_app_id': 1}
 2025-05-21 07:57:29,481 - root - INFO - [EMPRESAS] 2 empresas encontradas para o email master
 2025-05-21 07:57:29,482 - main - INFO - Headers enviados: {'content-length': '537', 'content-type': 'application/json', 'access-control-allow-credentials': 'true', 'access-control-expose-headers': '*', 'access-control-allow-origin': 'http://localhost:3001', 'vary': 'Origin', 'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS', 'access-control-allow-headers': 'Content-Type, Authorization, Accept, X-Requested-With'}
+2025-05-21 08:38:57,525 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-21 08:38:57,562 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-21 08:38:57,573 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-21 08:38:57,575 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-21 08:38:57,576 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-21 08:38:57,577 - root - WARNING - Senha incorreta para: master
+2025-05-21 08:38:57,577 - root - ERROR - Erro no login: 401: Email ou senha incorretos
+2025-05-21 08:39:03,170 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-21 08:39:03,185 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-21 08:39:03,194 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-21 08:39:03,196 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-21 08:39:03,197 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-21 08:39:03,198 - root - WARNING - Senha incorreta para: master
+2025-05-21 08:39:03,198 - root - ERROR - Erro no login: 401: Email ou senha incorretos
+2025-05-21 08:39:12,339 - root - INFO - Tentando conectar ao banco inicial: C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
+2025-05-21 08:39:12,353 - root - INFO - Tentando conectar à base controladora: 127.0.0.1:****
+2025-05-21 08:39:12,363 - root - INFO - Conexão com base controladora estabelecida com sucesso
+2025-05-21 08:39:12,365 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-21 08:39:12,366 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-21 08:39:12,367 - root - WARNING - Senha incorreta para: master
+2025-05-21 08:39:12,367 - root - ERROR - Erro no login: 401: Email ou senha incorretos
+2025-05-21 08:44:46,434 - root - INFO - Colunas da tabela USUARIOS_APP: ['ID', 'EMAIL', 'SENHA_HASH', 'NIVEL_ACESSO', 'ATIVO', 'CRIADO_EM']
+2025-05-21 08:44:46,435 - root - INFO - Usuário encontrado pelo campo EMAIL
+2025-05-21 08:44:46,436 - root - WARNING - Senha incorreta para: master
+2025-05-21 08:44:46,436 - root - ERROR - Erro no login: 401: Email ou senha incorretos
+2025-05-21 08:59:46,581 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:47,200 - watchfiles.main - INFO - 6 changes detected
+2025-05-21 08:59:47,559 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:47,916 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:48,326 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:48,732 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:49,136 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:49,541 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:49,948 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:50,352 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:50,708 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:51,115 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:51,522 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:51,924 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:52,329 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:52,734 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:53,092 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:53,505 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:53,911 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:54,268 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:54,678 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:55,084 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:55,487 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:55,893 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:56,298 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:56,704 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:57,109 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:57,464 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:57,874 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:58,279 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:58,684 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:59,091 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:59,497 - watchfiles.main - INFO - 1 change detected
+2025-05-21 08:59:59,905 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:00,307 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:00,673 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:01,082 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:01,486 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:01,890 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:02,295 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:02,704 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:03,059 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:03,469 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:03,875 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:04,281 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:04,686 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:05,092 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:05,499 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:05,903 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:06,309 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:06,667 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:07,076 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:07,480 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:07,886 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:08,286 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:08,693 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:09,099 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:09,504 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:09,908 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:10,314 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:10,722 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:11,127 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:11,486 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:11,899 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:12,306 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:12,714 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:13,121 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:13,528 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:13,936 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:14,293 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:14,704 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:15,106 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:15,511 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:15,917 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:16,322 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:16,729 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:17,135 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:17,494 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:17,902 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:18,307 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:18,714 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:19,118 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:19,523 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:19,930 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:20,336 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:20,692 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:21,101 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:21,510 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:21,918 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:22,321 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:22,681 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:23,091 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:23,495 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:23,898 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:24,308 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:24,714 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:25,117 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:25,525 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:25,930 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:26,332 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:26,736 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:27,142 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:27,550 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:27,909 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:28,320 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:28,727 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:29,083 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:29,494 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:29,910 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:30,315 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:30,672 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:31,079 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:31,484 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:31,891 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:32,296 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:32,702 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:33,107 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:33,513 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:33,920 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:34,325 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:34,731 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:35,136 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:35,543 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:35,949 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:36,357 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:36,762 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:37,163 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:37,569 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:37,976 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:38,383 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:38,786 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:39,189 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:39,592 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:39,996 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:40,400 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:40,755 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:41,164 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:41,569 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:41,975 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:42,380 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:42,786 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:43,192 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:43,600 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:44,009 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:44,414 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:44,819 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:45,224 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:45,630 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:45,988 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:46,395 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:46,799 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:47,205 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:47,611 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:48,017 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:48,422 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:48,829 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:49,234 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:49,643 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:50,048 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:50,453 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:50,857 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:51,263 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:51,668 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:52,074 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:52,481 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:52,887 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:53,294 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:53,697 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:54,103 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:54,459 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:54,870 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:55,278 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:55,685 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:56,090 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:56,496 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:56,904 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:57,263 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:57,676 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:58,083 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:58,488 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:58,896 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:59,300 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:00:59,708 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:00,066 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:00,478 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:00,886 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:01,292 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:01,696 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:02,104 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:02,509 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:02,913 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:03,319 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:03,722 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:04,128 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:04,531 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:04,889 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:05,300 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:05,705 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:06,113 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:06,518 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:06,926 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:07,331 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:07,737 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:08,143 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:08,548 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:08,957 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:09,362 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:09,721 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:10,126 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:10,534 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:10,942 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:11,346 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:11,702 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:12,112 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:12,567 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:12,920 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:13,332 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:13,733 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:14,139 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:14,545 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:14,948 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:15,352 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:15,759 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:16,164 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:16,567 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:16,924 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:17,330 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:17,739 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:18,147 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:18,551 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:18,957 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:19,361 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:19,768 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:20,170 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:20,577 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:20,982 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:21,389 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:21,795 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:22,201 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:22,556 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:22,965 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:23,524 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:23,889 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:24,301 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:24,711 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:25,118 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:25,478 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:25,888 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:26,291 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:26,696 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:27,103 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:27,462 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:27,874 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:28,278 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:28,685 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:29,091 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:29,497 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:29,903 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:30,260 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:30,670 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:31,075 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:31,480 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:31,884 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:32,289 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:32,697 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:33,101 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:33,506 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:33,911 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:34,316 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:34,723 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:35,128 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:35,531 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:35,939 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:36,295 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:36,706 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:37,112 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:37,521 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:37,878 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:38,288 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:38,695 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:39,103 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:39,460 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:39,872 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:40,278 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:40,684 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:41,092 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:41,498 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:41,909 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:42,268 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:42,680 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:43,086 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:43,494 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:43,853 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:44,262 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:44,672 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:45,079 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:45,483 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:45,891 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:46,249 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:46,657 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:47,061 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:47,468 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:47,875 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:48,279 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:48,682 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:49,090 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:49,499 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:49,902 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:50,259 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:50,670 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:51,072 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:51,478 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:51,835 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:52,245 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:52,651 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:53,060 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:53,466 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:53,873 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:54,279 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:54,684 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:55,090 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:55,495 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:55,851 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:56,265 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:56,674 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:57,079 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:57,436 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:57,845 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:58,251 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:58,655 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:59,062 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:59,468 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:01:59,872 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:00,274 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:00,679 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:01,037 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:01,445 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:01,851 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:02,259 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:02,671 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:03,079 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:03,484 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:03,889 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:04,297 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:04,655 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:05,065 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:05,472 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:05,878 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:06,281 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:06,688 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:07,093 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:07,496 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:07,904 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:08,309 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:08,714 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:09,122 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:09,481 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:09,892 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:10,298 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:10,703 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:11,106 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:11,514 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:11,919 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:12,325 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:12,728 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:13,135 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:13,541 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:13,947 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:14,351 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:14,755 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:15,160 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:15,568 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:15,975 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:16,330 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:16,739 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:17,144 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:17,548 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:17,956 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:18,357 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:18,763 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:19,167 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:19,574 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:19,981 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:20,337 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:20,744 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:21,150 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:21,555 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:21,962 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:22,367 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:22,778 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:23,184 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:23,542 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:23,953 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:24,362 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:24,770 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:25,176 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:25,581 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:25,988 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:26,393 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:26,800 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:27,206 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:27,612 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:28,015 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:28,372 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:28,730 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:29,139 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:29,497 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:29,905 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:30,310 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:30,714 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:31,122 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:31,527 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:31,885 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:32,295 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:32,699 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:33,108 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:33,148 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 09:02:33,515 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:33,920 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:34,275 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:34,686 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:35,090 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:35,494 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:35,901 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:36,307 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:36,712 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:37,067 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:37,479 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:37,884 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:38,292 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:38,652 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:39,061 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:39,467 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:39,870 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:40,278 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:40,686 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:41,090 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:41,498 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:41,902 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:42,310 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:42,715 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:43,121 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:43,476 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:43,888 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:44,399 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:44,814 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:45,170 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:45,583 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:45,989 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:46,396 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:46,755 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:47,165 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:47,569 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:47,976 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:48,332 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:48,742 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:49,146 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:49,550 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:49,911 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:50,320 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:50,728 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:51,086 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:51,497 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:51,906 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:52,308 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:52,715 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:53,073 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:53,482 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:53,887 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:54,294 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:54,698 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:55,058 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:55,468 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:55,872 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:56,276 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:56,681 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:57,086 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:57,443 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:57,852 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:58,256 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:58,660 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:59,065 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:59,470 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:02:59,876 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:00,286 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:00,645 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:01,058 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:01,462 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:01,867 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:02,270 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:02,674 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:03,081 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:03,488 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:03,892 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:04,301 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:04,657 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:05,065 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:05,475 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:05,878 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:06,282 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:06,688 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:07,094 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:07,502 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:07,905 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:08,310 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:08,666 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:09,128 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:09,534 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:09,937 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:10,294 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:10,706 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:11,113 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:11,518 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:11,924 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:12,328 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:12,733 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:13,138 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:13,544 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:13,902 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:36,703 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:37,062 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:37,420 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:37,830 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:38,237 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:38,642 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:39,046 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:39,451 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:39,854 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:40,212 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:40,618 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:41,027 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:41,431 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:41,790 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:42,200 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:42,609 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:43,015 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:43,526 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:43,890 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:44,300 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:44,706 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:45,060 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:45,468 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:45,874 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:46,281 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:46,686 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:47,093 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:47,500 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:47,904 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:48,308 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:48,710 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:49,116 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:49,520 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:49,878 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:50,290 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:50,697 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:51,100 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:51,505 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:51,861 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:52,219 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:52,580 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:52,940 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:53,300 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:53,658 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:54,016 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:54,424 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:54,830 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:55,239 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:55,644 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:56,002 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:56,412 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:56,816 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:57,224 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:57,626 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:58,032 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:58,388 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:58,799 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:59,207 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:59,611 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:03:59,968 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:00,376 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:00,782 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:01,187 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:01,592 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:01,951 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:02,356 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:02,761 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:03,169 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:03,526 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:03,936 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:04,339 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:04,743 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:05,100 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:05,610 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:06,024 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:06,429 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:06,835 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:07,240 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:07,596 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:08,003 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:08,411 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:08,821 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:09,227 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:09,631 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:10,035 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:10,491 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:10,894 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:11,297 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:11,701 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:12,058 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:12,466 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:12,871 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:13,273 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:13,678 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:14,085 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:14,489 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:14,894 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:15,298 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:15,702 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:16,110 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:16,513 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:16,919 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:17,274 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:17,685 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:18,088 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:18,496 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:18,902 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:19,308 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:19,712 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:04:20,119 - watchfiles.main - INFO - 1 change detected
+2025-05-21 09:11:57,485 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 09:16:19,935 - root - INFO - Selecionando empresa 1 para o usuário ID: 1
+2025-05-21 09:16:20,660 - root - ERROR - Erro ao conectar ao banco do cliente: ('Error while connecting to database:\n- SQLCODE: -902\n- I/O error during "CreateFile (open)" operation for file "C:\\ERP_MACFIN\\BANCO\\SANTOS"\n- Error while trying to open file\n- Access is denied. ', -902, 335544344)
+2025-05-21 09:18:02,958 - root - INFO - Selecionando empresa 1 para o usuário ID: 1
+2025-05-21 09:18:03,006 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:18:03,598 - root - INFO - Empresa 1 selecionada com sucesso para o usuário ID: 1
+2025-05-21 09:19:06,475 - root - WARNING - Senha incorreta para: master
+2025-05-21 09:19:06,475 - root - ERROR - Erro no login: 401: Email ou senha incorretos
+2025-05-21 09:19:18,956 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 09:19:22,386 - root - INFO - Selecionando empresa 1 para o usuário ID: 1
+2025-05-21 09:19:22,435 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:19:23,026 - root - INFO - Empresa 1 selecionada com sucesso para o usuário ID: 1
+2025-05-21 09:20:04,170 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 09:21:54,770 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:21:54,771 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:21:54,821 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:21:55,402 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:23:55,880 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:23:55,881 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:23:55,928 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:23:56,511 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:24:56,754 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:24:56,755 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:24:56,803 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:24:57,389 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:37:04,353 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 09:38:23,818 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 09:38:27,381 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:38:27,382 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:38:27,432 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:38:28,015 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:39:21,793 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:39:21,794 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:39:21,842 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:39:22,423 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:39:59,075 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:39:59,076 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:39:59,133 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:39:59,730 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:47:54,690 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 09:47:56,058 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:47:56,059 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:47:56,108 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:47:56,693 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:48:17,487 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:48:17,487 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:48:17,537 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:48:18,116 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:48:28,660 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:48:28,661 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:48:28,711 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:48:29,293 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:50:45,360 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 09:50:47,908 - root - INFO - Recebendo requisição para selecionar empresa: cli_codigo=1 cli_nome='SANTOS INDUSTRIA' cli_caminho_base='C:\\ERP_MACFIN\\Banco\\Santos' cli_ip_servidor='149.56.77.81' cli_nome_base='BASE_PRI.GDB' cli_porta='3050' cli_mensagem='SUCESSO' cli_bloqueadoapp='N'
+2025-05-21 09:50:47,908 - root - INFO - Dados do usuário: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:50:47,956 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:50:48,539 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:54:08,803 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 09:54:08,803 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:54:08,803 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:54:08,803 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 09:54:08,804 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 09:54:08,851 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:54:09,434 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:59:32,595 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 09:59:34,275 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 09:59:34,275 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:59:34,275 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:59:34,275 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 09:59:34,276 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 09:59:34,323 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:59:34,905 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:59:50,099 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 09:59:50,099 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:59:50,100 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:59:50,100 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 09:59:50,100 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 09:59:50,151 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:59:50,739 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:59:51,706 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 09:59:51,706 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 09:59:51,707 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 09:59:51,707 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 09:59:51,707 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 09:59:51,757 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 09:59:52,342 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:01:40,105 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 10:01:41,403 - root - INFO - MOCK: Recebendo requisição para selecionar empresa: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_bloqueadoapp': 'N', 'cli_mensagem': 'SUCESSO', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050'}
+2025-05-21 10:01:41,403 - root - INFO - MOCK: Retornando resposta simulada: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_bloqueadoapp': 'N', 'cli_mensagem': 'SUCESSO (MOCK)', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050'}
+2025-05-21 10:04:57,713 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 10:04:59,737 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 10:04:59,738 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:04:59,738 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 10:04:59,738 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 10:04:59,738 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 10:04:59,785 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 10:05:00,365 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:08:12,347 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 10:08:14,857 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 10:08:14,857 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:08:14,857 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 10:08:14,857 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 10:08:14,857 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 10:08:14,904 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 10:08:15,484 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:08:22,400 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 10:08:22,400 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:08:22,400 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 10:08:22,400 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 10:08:22,400 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 10:08:22,447 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 10:08:23,025 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:08:29,085 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 10:08:29,085 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:08:29,085 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 10:08:29,085 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 10:08:29,085 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 10:08:29,133 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 10:08:29,709 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:09:11,774 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 10:09:11,774 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:09:11,774 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 10:09:11,774 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 10:09:11,775 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 10:09:11,826 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 10:09:12,403 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:13:54,478 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 10:13:55,911 - root - INFO - ===== INICIANDO SELEÇÃO DE EMPRESA =====
+2025-05-21 10:13:55,912 - root - INFO - Dados recebidos: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': '3050', 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:13:55,912 - root - INFO - Usuário autenticado: username='master' user_id=1 nivel='MASTER'
+2025-05-21 10:13:55,912 - root - INFO - Tipo de cli_codigo: <class 'int'>
+2025-05-21 10:13:55,912 - root - INFO - Chamando selecionar_empresa com usuario_id=1, cli_codigo=1
+2025-05-21 10:13:55,960 - root - INFO - Tentando conectar ao banco do cliente: 149.56.77.81:C:\ERP_MACFIN\Banco\Santos/BASE_PRI.GDB
+2025-05-21 10:13:56,541 - root - INFO - Empresa selecionada com sucesso: {'cli_codigo': 1, 'cli_nome': 'SANTOS INDUSTRIA', 'cli_caminho_base': 'C:\\ERP_MACFIN\\Banco\\Santos', 'cli_ip_servidor': '149.56.77.81', 'cli_nome_base': 'BASE_PRI.GDB', 'cli_porta': 3050, 'cli_mensagem': 'SUCESSO', 'cli_bloqueadoapp': 'N'}
+2025-05-21 10:17:44,595 - root - INFO - Autenticação bem-sucedida para: master
+2025-05-21 10:18:10,120 - root - WARNING - Senha incorreta para: master
+2025-05-21 10:18:10,120 - root - ERROR - Erro no login: 401: Email ou senha incorretos
+2025-05-21 10:24:38,683 - root - WARNING - Senha incorreta para: master
+2025-05-21 10:24:38,684 - root - ERROR - Erro no login: 401: Email ou senha incorretos
+2025-05-21 10:24:43,822 - root - INFO - Autenticação bem-sucedida para: master

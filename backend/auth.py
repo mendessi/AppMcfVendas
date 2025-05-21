@@ -84,68 +84,29 @@ async def autenticar_usuario(email: str, senha: str):
     
     Estrutura da tabela USUARIOS_APP:
     - ID (INTEGER, PRIMARY KEY)
-    - NOME (VARCHAR)
-    - EMAIL (VARCHAR, UNIQUE)
-    - SENHA (VARCHAR)
-    - NIVEL (VARCHAR) - 'admin', 'gerente', 'usuario'
-    - ATIVO (CHAR(1)) - 'S' ou 'N'
+    - EMAIL (VARCHAR)
+    - SENHA_HASH (VARCHAR)
+    - NIVEL_ACESSO (VARCHAR)
+    - ATIVO (CHAR(1))
+    - CRIADO_EM (TIMESTAMP)
     """
     try:
         conn = obter_conexao_controladora()
         cursor = conn.cursor()
         
-        # Primeiro, vamos descobrir as colunas da tabela USUARIOS_APP
-        try:
-            cursor.execute("SELECT * FROM USUARIOS_APP WHERE 1=0")
-            colunas = [desc[0].upper() for desc in cursor.description]
-            logging.info(f"Colunas da tabela USUARIOS_APP: {colunas}")
-        except Exception as e:
-            logging.error(f"Erro ao obter colunas da tabela USUARIOS_APP: {str(e)}")
-            colunas = []
+        # Consulta direta usando os nomes corretos das colunas
+        cursor.execute("""
+            SELECT ID, EMAIL, SENHA_HASH, NIVEL_ACESSO, ATIVO
+            FROM USUARIOS_APP
+            WHERE EMAIL = ?
+        """, (email,))
         
-        # Construímos a consulta dinamicamente com base nas colunas disponíveis
-        if colunas:
-            campos_select = ["ID"]
-            if "EMAIL" in colunas: campos_select.append("EMAIL")
-            else: campos_select.append("'unknown' as EMAIL")
-            
-            if "NOME" in colunas: campos_select.append("NOME")
-            else: campos_select.append("'Usuário' as NOME")
-            
-            if "SENHA" in colunas: campos_select.append("SENHA")
-            else: campos_select.append("'' as SENHA")
-            
-            if "NIVEL" in colunas: campos_select.append("NIVEL")
-            else: campos_select.append("'usuario' as NIVEL")
-            
-            if "ATIVO" in colunas: campos_select.append("ATIVO")
-            else: campos_select.append("'S' as ATIVO")
-            
-            campos_select_str = ", ".join(campos_select)
-            
-            # Tentamos autenticar por diferentes campos
-            usuario = None
-            campos_possiveis = ["EMAIL", "NOME", "LOGIN", "USERNAME", "USER"]
-            
-            for campo in campos_possiveis:
-                if campo in colunas:
-                    try:
-                        query = f"SELECT {campos_select_str} FROM USUARIOS_APP WHERE {campo} = ?"                    
-                        cursor.execute(query, (email,))
-                        usuario = cursor.fetchone()
-                        if usuario:
-                            logging.info(f"Usuário encontrado pelo campo {campo}")
-                            break
-                    except Exception as e:
-                        logging.error(f"Erro ao buscar usuário pelo campo {campo}: {str(e)}")
-        else:
-            # Se não conseguimos obter as colunas, usamos uma abordagem mais simples
-            usuario = None
+        usuario = cursor.fetchone()
         
         # Caso especial: se a senha for '1' ou 'master', aceitamos qualquer usuário para testes
         if not usuario and (senha == '1' or senha == 'master'):
             logging.info("Usando credenciais master para login de teste")
-            usuario = (1, email, email, senha, 'admin', 'S')
+            usuario = (1, email, senha, 'admin', 'S')
         
         conn.close()
         
@@ -155,29 +116,10 @@ async def autenticar_usuario(email: str, senha: str):
         
         # Extrair dados do usuário
         usuario_id = usuario[0]
-        
-        # Ajustar a ordem dos campos com base nas colunas disponíveis
-        if len(usuario) >= 6:
-            # Assumimos que a ordem é ID, EMAIL, NOME, SENHA, NIVEL, ATIVO
-            usuario_email = usuario[1] if usuario[1] else email
-            usuario_nome = usuario[2] if usuario[2] else email
-            senha_hash = usuario[3]
-            nivel = usuario[4] if usuario[4] else 'usuario'
-            ativo = usuario[5] if usuario[5] else 'S'
-        elif len(usuario) >= 5:
-            # Assumimos que falta algum campo
-            usuario_email = usuario[1] if usuario[1] else email
-            usuario_nome = usuario[2] if usuario[2] else email
-            senha_hash = usuario[3]
-            nivel = usuario[4] if usuario[4] else 'usuario'
-            ativo = 'S'  # Valor padrão
-        else:
-            # Caso extremo, usamos valores padrão
-            usuario_email = email
-            usuario_nome = email
-            senha_hash = usuario[1] if len(usuario) > 1 else senha
-            nivel = 'usuario'
-            ativo = 'S'
+        usuario_email = usuario[1]
+        senha_hash = usuario[2]
+        nivel = usuario[3]
+        ativo = usuario[4]
         
         # Verifica se o usuário está ativo
         if ativo and ativo.upper() not in ['S', 'SIM', '1', 'Y', 'YES', 'TRUE']:
@@ -191,7 +133,7 @@ async def autenticar_usuario(email: str, senha: str):
             return {
                 "id": usuario_id,
                 "email": usuario_email,
-                "nome": usuario_nome,
+                "nome": usuario_email,  # Usando email como nome já que não temos coluna NOME
                 "nivel": nivel,
                 "ativo": ativo
             }
@@ -226,7 +168,7 @@ async def obter_empresas_usuario(usuario_id: int):
                 C.CLI_CAMINHO_BASE, 
                 C.CLI_IP_SERVIDOR,
                 C.CLI_NOME_BASE,
-                C.CLI_PORTA,
+                CAST(C.CLI_PORTA AS VARCHAR(10)) as CLI_PORTA,
                 C.CLI_MENSAGEM,
                 C.CLI_BLOQUEADOAPP
             FROM USUARIOS_CLIENTES UC
@@ -257,45 +199,39 @@ async def obter_empresas_usuario(usuario_id: int):
 @router.post("/login", response_model=Token)
 async def login(response: Response, form_data: UserLogin):
     """
-    Rota de login que autentica o usuário e retorna um token JWT.
+    Autentica um usuário e retorna um token JWT.
     """
-    usuario = await autenticar_usuario(form_data.email, form_data.senha)
-    
-    if not usuario:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Email ou senha incorretos",
-            headers={"WWW-Authenticate": "Bearer"},
+    try:
+        # Autentica o usuário
+        user = await autenticar_usuario(form_data.email, form_data.senha)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email ou senha incorretos",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Cria o token de acesso
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = criar_token_acesso(
+            data={"sub": user["email"], "id": user["id"], "nivel": user["nivel"]},
+            expires_delta=access_token_expires
         )
-    
-    if usuario.get("ativo") != "S":
+        
+        # Retorna o token e informações do usuário
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "usuario_id": user["id"],
+            "usuario_nome": user["nome"],
+            "usuario_nivel": user["nivel"]
+        }
+    except Exception as e:
+        logging.error(f"Erro no login: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Usuário inativo. Contate o suporte.",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao realizar login: {str(e)}"
         )
-    
-    # Dados para o token
-    token_data = {
-        "sub": usuario["email"],
-        "id": usuario["id"],
-        "nivel": usuario["nivel"]
-    }
-    
-    # Cria o token de acesso
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = criar_token_acesso(
-        data=token_data, expires_delta=access_token_expires
-    )
-    
-    # Retorna o token e informações do usuário
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "usuario_id": usuario["id"],
-        "usuario_nome": usuario["nome"],
-        "usuario_nivel": usuario["nivel"]
-    }
 
 @router.get("/empresas", response_model=List[EmpresaBase])
 async def listar_empresas_usuario(request: Request):

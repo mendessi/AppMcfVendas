@@ -88,6 +88,47 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
         else:
             log.info("Cabeçalho x-empresa-codigo não encontrado, recorrendo à sessão")
 
+        # Extrair informações do usuário do token JWT
+        usuario_nivel = None
+        codigo_vendedor = None
+        
+        try:
+            # Obter o token da requisição
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.replace("Bearer ", "")
+                # Decodificar o token
+                from auth import SECRET_KEY, ALGORITHM
+                from jose import jwt
+                
+                try:
+                    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                    usuario_nivel = payload.get("nivel")
+                    
+                    # NOVO: Agora buscamos o código do vendedor diretamente do token JWT
+                    # O código é armazenado na tabela usuarios_app junto com o nível
+                    codigo_vendedor = payload.get("codigo_vendedor")
+                    
+                    log.info(f"Usuário com nível: {usuario_nivel}, código vendedor do JWT: {codigo_vendedor}")
+                except Exception as jwt_err:
+                    log.error(f"Erro ao decodificar token JWT: {str(jwt_err)}")
+        except Exception as auth_err:
+            log.error(f"Erro ao processar informações de autenticação: {str(auth_err)}")
+        
+        # Obter dados da empresa atual apenas para referência (não precisamos mais do código de vendedor dela)
+        from empresa_manager import get_empresa_atual
+        empresa_atual = get_empresa_atual(request)
+        
+        # Logar todos os dados da empresa para depuração
+        log.info(f"DADOS COMPLETOS DA EMPRESA: {empresa_atual}")
+        
+        # Verificar se temos código de vendedor quando o usuário é vendedor
+        if usuario_nivel and usuario_nivel.lower() == 'vendedor':
+            if codigo_vendedor:
+                log.info(f"Código de vendedor obtido do token JWT: {codigo_vendedor}")
+            else:
+                log.warning(f"Usuário com nível VENDEDOR, mas código de vendedor não foi encontrado no token JWT! Detalhes: Nivel={usuario_nivel}, Empresa={empresa_atual.get('cli_nome')}, Código Empresa={empresa_atual.get('cli_codigo')}")
+
         try:
             # Obter informações da empresa atual
             log.info("Chamando get_empresa_atual...")
@@ -283,12 +324,28 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
             
             conn.close()
             
-            # Retornar resposta
-            return TopClientesResponse(
-                data_inicial=data_inicial,
-                data_final=data_final,
-                top_clientes=top_clientes
-            )
+            # Criar vendedor_info para a resposta
+            vendedor_info = {}
+            if usuario_nivel and usuario_nivel.lower() == 'vendedor':
+                if codigo_vendedor:
+                    vendedor_info['codigo'] = codigo_vendedor
+                    vendedor_info['nome'] = f"Vendedor {codigo_vendedor}"
+                    log.info(f"Adicionando info de vendedor na resposta: {vendedor_info}")
+            
+            # Converter para dict para adicionar informações extras
+            resposta = {
+                "data_inicial": data_inicial,
+                "data_final": data_final,
+                "top_clientes": top_clientes,
+                "filtro_aplicado": {
+                    "nivel_usuario": usuario_nivel,
+                    "vendedor": vendedor_info,
+                    "filtro_vendedor_ativo": usuario_nivel and usuario_nivel.lower() == 'vendedor' and codigo_vendedor is not None
+                }
+            }
+            
+            log.info(f"Resposta completa (resumida): {resposta['filtro_aplicado']}")
+            return resposta
         except Exception as e:
             log.error(f"Erro na execução da consulta SQL: {str(e)}")
             # Fechar a conexão em caso de erro

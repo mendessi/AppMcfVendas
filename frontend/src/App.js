@@ -353,8 +353,12 @@ function AppContent() {
                   <div className="font-medium">{user?.name}</div>
                   <div className="text-sm text-gray-500">
                     Nível: <span className="capitalize">{user?.nivel || 'Não definido'}</span>
-                    {user?.nivel === 'vendedor' && user?.codigo_vendedor && (
-                      <><br/>Código Vendedor: {user?.codigo_vendedor}</>
+                    {user?.nivel?.toUpperCase() === 'VENDEDOR' && user?.codigo_vendedor && (
+                      <div className="mt-1">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'}`}>
+                          Cód. Vendedor: {user.codigo_vendedor}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>

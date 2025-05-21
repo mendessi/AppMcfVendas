@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaBuilding, FaIdCard, FaInfoCircle } from 'react-icons/fa';
+import { FaBuilding, FaIdCard, FaInfoCircle, FaUser, FaTag } from 'react-icons/fa';
 
 // Componente que exibe discretamente informações da empresa atual
 const EmpresaAtualInfo = ({ darkMode = false }) => {
@@ -8,6 +8,7 @@ const EmpresaAtualInfo = ({ darkMode = false }) => {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userInfo, setUserInfo] = useState(null);
 
   // URL da API
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
@@ -55,6 +56,18 @@ const EmpresaAtualInfo = ({ darkMode = false }) => {
         }
 
         console.log('Fazendo requisição para obter informações da empresa com config:', config);
+        
+        // Obter informações do usuário do localStorage
+        const userString = localStorage.getItem('user');
+        if (userString) {
+          try {
+            const userData = JSON.parse(userString);
+            setUserInfo(userData);
+            console.log('Informações do usuário:', userData);
+          } catch (error) {
+            console.error('Erro ao processar informações do usuário:', error);
+          }
+        }
         
         // Buscar informações detalhadas da empresa atual
         const response = await axios.get(`${API_URL}/empresa-info-detalhada`, config);
@@ -121,6 +134,31 @@ const EmpresaAtualInfo = ({ darkMode = false }) => {
               <span className={`font-medium mr-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>CNPJ:</span>
               <span>{emp_cnpj}</span>
             </div>
+            
+            {/* Informações do vendedor, caso o usuário seja vendedor */}
+            {userInfo && userInfo.nivel === 'VENDEDOR' && (
+              <div className={`mt-3 p-2 rounded-md ${darkMode ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
+                <div className="flex items-center mb-1">
+                  <FaUser className={`mr-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} size={14} />
+                  <span className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>Vendedor</span>
+                </div>
+                
+                <div className="text-sm">
+                  <div className="flex items-center">
+                    <span className="font-medium mr-1">Nome:</span>
+                    <span>{userInfo.nome || 'Não informado'}</span>
+                  </div>
+                  
+                  {userInfo.codigo_vendedor && (
+                    <div className="flex items-center mt-1">
+                      <FaTag className={`mr-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} size={12} />
+                      <span className="font-medium mr-1">Código:</span>
+                      <span className="font-bold">{userInfo.codigo_vendedor}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           
           <div className={`mt-3 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>

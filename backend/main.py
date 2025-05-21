@@ -75,27 +75,6 @@ origins = [
     "file://"  # Para testes locais com arquivo HTML
 ]
 
-class CustomCORSMiddleware(CORSMiddleware):
-    async def process_response(self, response, request):
-        response = await super().process_response(response, request)
-        
-        # Verificar se a origem é null (arquivo local) e permitir credenciais
-        origin = request.headers.get("origin", "").lower()
-        if origin == "null" or not origin:
-            # Para arquivos locais
-            response.headers["Access-Control-Allow-Origin"] = "*"
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-        
-        return response
-
-app.add_middleware(
-    CustomCORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Middleware personalizado para garantir que CORS funcione em todas as respostas
 class CustomCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):

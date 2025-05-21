@@ -9,6 +9,7 @@ const TopClientes = ({ darkMode, empresaSelecionada }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [topClientes, setTopClientes] = useState([]);
+  const [filtroVendedor, setFiltroVendedor] = useState(null);
   const [dataInicial, setDataInicial] = useState('');
   const [dataFinal, setDataFinal] = useState('');
 
@@ -121,9 +122,40 @@ const TopClientes = ({ darkMode, empresaSelecionada }) => {
         }
       );
       
-      console.log('TopClientes - Resposta recebida:', response.data);
+      console.log('TopClientes - Resposta completa recebida:', response.data);
 
-      setTopClientes(response.data.top_clientes);
+      // Armazenar os clientes
+      if (Array.isArray(response.data.top_clientes)) {
+        setTopClientes(response.data.top_clientes);
+      } else if (Array.isArray(response.data)) {
+        // Compatibilidade com o formato anterior
+        setTopClientes(response.data);
+        console.log('Formato antigo detectado - array direto');
+      } else {
+        console.error('Formato de resposta inesperado:', response.data);
+        setTopClientes([]);
+      }
+      
+      // Verificar se temos informações de filtro de vendedor
+      // Estrutura esperada: { filtro_aplicado: { vendedor: { codigo, nome }, filtro_vendedor_ativo: true } }
+      console.log('Verificando se há filtro de vendedor:', response.data);
+      
+      if (response.data.filtro_aplicado) {
+        console.log('Filtro aplicado encontrado:', response.data.filtro_aplicado);
+        
+        if (response.data.filtro_aplicado.filtro_vendedor_ativo && 
+            response.data.filtro_aplicado.vendedor) {
+          console.log('Vendedor encontrado nos dados da resposta:', response.data.filtro_aplicado.vendedor);
+          setFiltroVendedor(response.data.filtro_aplicado.vendedor);
+        } else {
+          console.log('Filtro de vendedor não está ativo ou vendedor ausente');
+          setFiltroVendedor(null);
+        }
+      } else {
+        console.log('Estrutura filtro_aplicado não encontrada na resposta');
+        setFiltroVendedor(null);
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error("Erro ao buscar top clientes:", error);
@@ -181,6 +213,19 @@ const TopClientes = ({ darkMode, empresaSelecionada }) => {
 
   return (
     <div className={`p-4 mb-6 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'} shadow-md`}>
+      {/* Exibir informações do vendedor se disponíveis */}
+      {filtroVendedor && (
+        <div className={`mb-4 px-3 py-2 rounded ${darkMode ? 'bg-blue-900/30 text-blue-200' : 'bg-blue-50 text-blue-800'}`}>
+          <div className="flex items-center">
+            <span className="font-medium">Vendedor:</span>
+            <span className="ml-2 font-bold">{filtroVendedor.codigo}</span>
+            {filtroVendedor.nome && (
+              <span className="ml-1">- {filtroVendedor.nome}</span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-4">
         <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
           Top Clientes
@@ -237,9 +282,11 @@ const TopClientes = ({ darkMode, empresaSelecionada }) => {
       </div>
       
       {loading ? (
-        <p className={`text-center py-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          Carregando...
-        </p>
+        <div className="text-center py-4">
+          <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            Carregando dados...
+          </p>
+        </div>
       ) : error ? (
         <p className={`text-center py-4 ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
           {error}

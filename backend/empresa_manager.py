@@ -316,8 +316,96 @@ async def selecionar_empresa(usuario_id: int, cli_codigo: int):
         # Fecha a conexão após o teste
         connection.close()
         
-        # Armazena a empresa selecionada na sessão apenas se a conexão for bem-sucedida
+        # Se a conexão for bem-sucedida, verificar se o usuário é vendedor e se tem email cadastrado
         if connection_success:
+            # Obter dados do usuário para verificar se é vendedor
+            try:
+                conn_controladora = obter_conexao_controladora()
+                cursor_controladora = conn_controladora.cursor()
+                
+                cursor_controladora.execute("""
+                    SELECT ID, EMAIL, NIVEL_ACESSO FROM USUARIOS_APP 
+                    WHERE ID = ?
+                """, (usuario_id,))
+                
+                usuario_info = cursor_controladora.fetchone()
+                conn_controladora.close()
+                
+                if usuario_info and usuario_info[2] and 'vendedor' in usuario_info[2].lower():
+                    log.info(f"Usuário {usuario_id} é vendedor. Verificando email na tabela VENDEDOR da empresa selecionada.")
+                    # É vendedor, precisa verificar se o email existe na tabela VENDEDOR da empresa
+                    usuario_email = usuario_info[1]
+                    
+                    # Usar a conexão com a empresa selecionada
+                    conn_empresa = obter_conexao_cliente(empresa)
+                    cursor_empresa = conn_empresa.cursor()
+                    
+                    # Verificar se a tabela VENDEDOR existe
+                    try:
+                        cursor_empresa.execute("""SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'VENDEDOR'""")
+                        tabela_vendedor_existe = cursor_empresa.fetchone() is not None
+                        
+                        if tabela_vendedor_existe:
+                            # Verificar se existe um vendedor com o email do usuário
+                            cursor_empresa.execute("""
+                                SELECT VEN_CODIGO, VEN_NOME FROM VENDEDOR 
+                                WHERE VEN_EMAIL = ?
+                            """, (usuario_email,))
+                            
+                            vendedor = cursor_empresa.fetchone()
+                            if not vendedor:
+                                log.warning(f"VENDEDOR SEM EMAIL NO CADASTRO DA EMPRESA {cli_codigo}: {usuario_email}")
+                                if usuario_id in empresa_sessions:
+                                    del empresa_sessions[usuario_id]
+                                    
+                                conn_empresa.close()
+                                raise HTTPException(
+                                    status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="VENDEDOR SEM EMAIL NO CADASTRO. Contacte o administrador para atualizar seu cadastro na empresa selecionada."
+                                )
+                            else:
+                                codigo_vendedor = str(vendedor[0]).strip()  # Garantir que seja string e sem espaços
+                                nome_vendedor = vendedor[1] if vendedor[1] else usuario_email
+                                log.info(f"Vendedor validado com sucesso na empresa {cli_codigo}: {nome_vendedor} (Código: {codigo_vendedor})")
+                                
+                                # Armazenar o código do vendedor junto com os dados da empresa
+                                if not isinstance(empresa, dict):
+                                    empresa = dict(empresa)
+                                    
+                                # Adicionar o código do vendedor aos dados da empresa para uso nos relatórios
+                                empresa['codigo_vendedor'] = codigo_vendedor
+                                empresa['nome_vendedor'] = nome_vendedor
+                        else:
+                            log.warning(f"Tabela VENDEDOR não existe na empresa {cli_codigo}. Vendedor não pode ser validado.")
+                            if usuario_id in empresa_sessions:
+                                del empresa_sessions[usuario_id]
+                                
+                            conn_empresa.close()
+                            raise HTTPException(
+                                status_code=status.HTTP_403_FORBIDDEN,
+                                detail="A empresa selecionada não possui tabela de vendedores. Contacte o administrador."
+                            )
+                    except Exception as e:
+                        log.error(f"Erro ao verificar vendedor na empresa {cli_codigo}: {str(e)}")
+                        if usuario_id in empresa_sessions:
+                            del empresa_sessions[usuario_id]
+                        raise HTTPException(
+                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Erro ao verificar vendedor: {str(e)}"
+                        )
+                    finally:
+                        if 'conn_empresa' in locals():
+                            try:
+                                conn_empresa.close()
+                            except:
+                                pass
+            except HTTPException:
+                raise
+            except Exception as e:
+                log.error(f"Erro ao verificar nível do usuário {usuario_id}: {str(e)}")
+                # Continua sem validar vendedor em caso de erro neste ponto
+            
+            # Armazena a empresa na sessão se todas as validações passarem
             empresa_sessions[usuario_id] = empresa
     except Exception as e:
         log.error(f"Erro ao conectar com a base do cliente {cli_codigo}: {str(e)}")

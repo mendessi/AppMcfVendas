@@ -97,19 +97,32 @@ async def autenticar_usuario(email: str, senha: str):
         conn = obter_conexao_controladora()
         cursor = conn.cursor()
         
-        # Consulta direta usando os nomes corretos das colunas
-        cursor.execute("""
-            SELECT ID, EMAIL, SENHA_HASH, NIVEL_ACESSO, ATIVO
-            FROM USUARIOS_APP
-            WHERE EMAIL = ?
-        """, (email,))
+        # Consultar dados da tabela com o nome correto da coluna USU_VEN_CODIGO
+        try:
+            cursor.execute("""
+                SELECT ID, EMAIL, SENHA_HASH, NIVEL_ACESSO, ATIVO, USU_VEN_CODIGO
+                FROM USUARIOS_APP
+                WHERE EMAIL = ?
+            """, (email,))
+            logging.info("Consultando tabela USUARIOS_APP com campo USU_VEN_CODIGO")
+            has_codigo_vendedor = True
+        except Exception as e:
+            logging.warning(f"Erro ao consultar com USU_VEN_CODIGO: {str(e)}")
+            # Caso a coluna não exista ou ocorra outro erro, fazer a consulta sem ela
+            cursor.execute("""
+                SELECT ID, EMAIL, SENHA_HASH, NIVEL_ACESSO, ATIVO
+                FROM USUARIOS_APP
+                WHERE EMAIL = ?
+            """, (email,))
+            has_codigo_vendedor = False
         
         usuario = cursor.fetchone()
         
         # Caso especial: se a senha for '1' ou 'master', aceitamos qualquer usuário para testes
         if not usuario and (senha == '1' or senha == 'master'):
             logging.info("Usando credenciais master para login de teste")
-            usuario = (1, email, senha, 'admin', 'S')
+            # Mantenha consistente com a ordem dos campos na consulta SQL
+            usuario = (1, email, senha, 'admin', 'S', None)  # ID, EMAIL, SENHA, NIVEL, ATIVO, USU_VEN_CODIGO
         
         conn.close()
         
@@ -123,7 +136,13 @@ async def autenticar_usuario(email: str, senha: str):
         senha_hash = usuario[2]
         nivel = usuario[3]
         ativo = usuario[4]
+        
+        # Obter código do vendedor apenas se a coluna existir
         codigo_vendedor = None
+        if has_codigo_vendedor and len(usuario) > 5:
+            codigo_vendedor = usuario[5]
+        
+        logging.info(f"Usuário encontrado: {usuario_email}, nivel: {nivel}, codigo_vendedor: {codigo_vendedor}")
         
         # Verifica se o usuário está ativo
         if ativo and ativo.upper() not in ['S', 'SIM', '1', 'Y', 'YES', 'TRUE']:
@@ -131,30 +150,23 @@ async def autenticar_usuario(email: str, senha: str):
             return None
             
         # Se o nível for vendedor, busca o código na tabela VENDEDOR
+        # IMPORTANTE: Para desenvolvimento/teste, permitimos vendedores sem código
+        # Em produção, podemos descomentar o código abaixo para exigir código de vendedor
         if nivel and nivel.lower() == 'vendedor':
-            logging.info(f"Usuário {email} é vendedor. Buscando código na tabela VENDEDOR...")
+            logging.info(f"Usuário {email} é vendedor. Não validaremos o código neste momento.")
+            # A validação do vendedor será feita apenas ao selecionar uma empresa e acessar os relatórios
+            
+            # Adicionar aqui mais tarde a validação obrigatória se desejar
+            """            
             try:
-                # Tentamos buscar na empresa controladora primeiro
-                conn_vendedor = obter_conexao_controladora()
-                cursor_vendedor = conn_vendedor.cursor()
-                
-                # O email pode ser o login do vendedor
-                cursor_vendedor.execute("""
-                    SELECT VEN_CODIGO, VEN_NOME FROM VENDEDOR 
-                    WHERE VEN_EMAIL = ? OR VEN_LOGIN = ?
-                """, (usuario_email, usuario_email))
-                
-                vendedor = cursor_vendedor.fetchone()
-                if vendedor:
-                    codigo_vendedor = str(vendedor[0]).strip()  # Garantir que seja string e sem espaços
-                    logging.info(f"Código do vendedor encontrado: {codigo_vendedor}")
-                else:
-                    logging.warning(f"Vendedor não encontrado para o email/login: {usuario_email}")
-                
-                conn_vendedor.close()
+                # Buscar na base do cliente quando uma empresa for selecionada
+                # Esta validação está temporariamente desabilitada para facilitar testes
+                pass
             except Exception as ve:
                 logging.error(f"Erro ao buscar código do vendedor: {str(ve)}")
-                # Não impede o login, apenas não terá o código do vendedor
+            """
+            
+            # Não impedimos o login neste momento
             
         # Verifica a senha - aceita comparação direta ou via bcrypt
         # Também aceita qualquer senha se for '1' ou 'master' (para testes)
@@ -244,6 +256,31 @@ async def login(response: Response, form_data: UserLogin):
         # Autentica o usuário
         user = await autenticar_usuario(form_data.email, form_data.senha)
         if not user:
+            # Verificar se é um caso especial de vendedor sem email cadastrado
+            # fazendo uma consulta direta para determinar se o usuário existe mas é vendedor sem email
+            try:
+                conn = obter_conexao_controladora()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT ID, EMAIL, NIVEL_ACESSO FROM USUARIOS_APP 
+                    WHERE EMAIL = ? AND NIVEL_ACESSO LIKE '%vendedor%'
+                """, (form_data.email,))
+                
+                vendedor_sem_email = cursor.fetchone()
+                conn.close()
+                
+                if vendedor_sem_email:
+                    # É um vendedor sem email cadastrado
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="VENDEDOR SEM EMAIL NO CADASTRO. Contacte o administrador para atualizar seu cadastro.",
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
+            except Exception:
+                # Em caso de erro, usar a mensagem genérica
+                pass
+                
+            # Mensagem genérica para outros casos
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Email ou senha incorretos",
@@ -252,12 +289,56 @@ async def login(response: Response, form_data: UserLogin):
         
         # Cria o token de acesso
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires = datetime.utcnow() + access_token_expires
+        
+        # Se o usuário é um vendedor, adicionar o código do vendedor ao token
+        codigo_vendedor = None
+        if user["nivel"] and user["nivel"].lower() == 'vendedor':
+            # Buscar o código do vendedor
+            try:
+                conn = obter_conexao_controladora()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT VEN_CODIGO FROM VENDEDOR
+                    WHERE USUARIO_ID = ?
+                """, (user["id"],))
+                
+                ven_codigo = cursor.fetchone()
+                conn.close()
+                
+                if ven_codigo:
+                    codigo_vendedor = ven_codigo[0]
+                    logging.info(f"Adicionando código de vendedor {ven_codigo[0]} ao token JWT")
+            except Exception as e:
+                logging.error(f"Erro ao buscar código do vendedor: {str(e)}")
+        
         token_data = {
             "sub": user["email"],
             "id": user["id"],
             "nivel": user["nivel"],
-            "codigo_vendedor": user["codigo_vendedor"]
+            "nome": user["nome"],
+            "codigo_vendedor": codigo_vendedor,
+            "exp": expires
         }
+        # Se for vendedor mas não tem código de vendedor, verificar se há um código na tabela usuarios_app
+        if user["nivel"] == "VENDEDOR" and token_data["codigo_vendedor"] is None:
+            try:
+                conn = obter_conexao_controladora()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT CODIGO_VENDEDOR FROM USUARIOS_APP 
+                    WHERE ID = ?
+                """, (user["id"],))
+                
+                resultado = cursor.fetchone()
+                conn.close()
+                
+                if resultado and resultado[0]:
+                    token_data["codigo_vendedor"] = resultado[0]
+                    logging.info(f"Código de vendedor obtido da tabela USUARIOS_APP: {resultado[0]}")
+            except Exception as e:
+                logging.error(f"Erro ao buscar código do vendedor na tabela USUARIOS_APP: {str(e)}")
+        
         logging.info(f"Gerando token com dados: {token_data}")
         access_token = criar_token_acesso(
             data=token_data,

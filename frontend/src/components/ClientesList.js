@@ -156,7 +156,7 @@ const handleVerItensVenda = async (venda) => {
         </button>
       </div>
 
-      <form className="mb-6 flex gap-2" onSubmit={handleSearch} autoComplete="off">
+      <form className="mb-6 flex gap-2 md:gap-2 md:mb-6" onSubmit={handleSearch} autoComplete="off">
         <input
           type="text"
           placeholder="Buscar por nome, CNPJ/CPF ou email..."
@@ -230,25 +230,26 @@ const handleVerItensVenda = async (venda) => {
       </div>
 
       {/* Versão mobile: cards */}
-      <div className="block md:hidden space-y-4">
+      <div className="grid grid-cols-1 gap-2 mt-4 sm:gap-3 md:gap-4">
         {clientes.length > 0 ? (
           clientes.map((cliente) => (
-            <div key={cliente.cli_codigo} className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-4 flex flex-col gap-2`}>
-              <div className="flex items-center justify-between">
+            <div key={cliente.cli_codigo} className={`${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"} rounded-lg shadow border p-3 flex flex-col justify-between min-w-0 w-full max-w-full overflow-x-auto`} style={{wordBreak:'break-word'}}>
+              <div className="flex flex-col gap-1">
                 <div className="text-lg font-semibold truncate">{cliente.cli_nome}</div>
-                <span className="text-xs text-gray-400">{cliente.cnpj || '-'}</span>
+                <div className="flex flex-row gap-2 items-center text-xs text-gray-500">
+                  <span className="font-bold">Cód:</span> <span>{cliente.cli_codigo}</span>
+                  <span className="font-bold ml-2">CNPJ:</span> <span>{cliente.cnpj || '-'}</span>
+                </div>
               </div>
               <div className="text-sm text-gray-500">{cliente.endereco}{cliente.numero ? ', ' + cliente.numero : ''}</div>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="font-medium">WhatsApp:</span> {cliente.tel_whatsapp || '-'}
-                <span className="font-medium">Bairro:</span> {cliente.bairro || '-'}
-                <span className="font-medium">Cidade/UF:</span> {cliente.cidade} / {cliente.uf}
+              <div className="flex flex-col gap-1 text-xs mt-2">
+                <span><span className="font-medium">WhatsApp:</span> {cliente.tel_whatsapp || '-'}</span>
+                <span><span className="font-medium">Bairro:</span> {cliente.bairro || '-'}</span>
+                <span><span className="font-medium">Cidade/UF:</span> {cliente.cidade} / {cliente.uf}</span>
               </div>
               <div className="flex gap-2 mt-2">
-                <button className={darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-900"}>Editar</button>
                 <button className={darkMode ? "text-green-400 hover:text-green-300" : "text-green-600 hover:text-green-900"} onClick={() => handleVerVendas(cliente)}>Ver Vendas</button>
                 <button className={darkMode ? "text-purple-400 hover:text-purple-300" : "text-purple-600 hover:text-purple-900"} onClick={() => handleVerContas(cliente)}>Ver Contas</button>
-                <button className={darkMode ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-900"}>Excluir</button>
               </div>
             </div>
           ))
@@ -282,7 +283,6 @@ const handleVerItensVenda = async (venda) => {
                       <th className="px-2 py-1">Total</th>
                       <th className="px-2 py-1">Desconto</th>
                       <th className="px-2 py-1">Forma Pgto</th>
-                      <th className="px-2 py-1">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -295,7 +295,7 @@ const handleVerItensVenda = async (venda) => {
                         <td className="px-2 py-1">R$ {Number(venda.ecf_desconto).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
                         <td className="px-2 py-1">{venda.fpg_nome}</td>
                         <td className="px-2 py-1">
-                          <button className="text-blue-600 hover:underline mr-2" onClick={() => handleVerItensVenda(venda)}>Ver Itens</button>
+                          <button className="text-blue-600 hover:underline" onClick={() => handleVerItensVenda(venda)}>Ver Itens</button>
                         </td>
                       </tr>
                     ))}

@@ -1,51 +1,60 @@
 import React, { useState, useEffect } from 'react';
 
-const ProdutosList = ({ darkMode }) => {
+const ProdutosList = ({ darkMode, empresaSelecionada }) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProdutos, setFilteredProdutos] = useState([]);
 
   useEffect(() => {
-    // Em um ambiente real, você faria uma chamada à API aqui
-    // Por enquanto, vamos simular dados
-    const fetchProdutos = async () => {
-      try {
-        // Simular uma chamada de API
-        setTimeout(() => {
-          const mockProdutos = [
-            { id: 1, codigo: 'P001', descricao: 'Arroz Branco 5kg', preco: 24.90, estoque: 50, unidade: 'PCT' },
-            { id: 2, codigo: 'P002', descricao: 'Feijão Carioca 1kg', preco: 8.50, estoque: 35, unidade: 'PCT' },
-            { id: 3, codigo: 'P003', descricao: 'Açúcar Refinado 1kg', preco: 5.99, estoque: 40, unidade: 'PCT' },
-            { id: 4, codigo: 'P004', descricao: 'Café Torrado 500g', preco: 15.90, estoque: 25, unidade: 'PCT' },
-            { id: 5, codigo: 'P005', descricao: 'Óleo de Soja 900ml', preco: 7.80, estoque: 30, unidade: 'UND' },
-            { id: 6, codigo: 'P006', descricao: 'Leite Integral 1L', preco: 4.99, estoque: 60, unidade: 'CX' },
-            { id: 7, codigo: 'P007', descricao: 'Macarrão Espaguete 500g', preco: 3.50, estoque: 45, unidade: 'PCT' },
-            { id: 8, codigo: 'P008', descricao: 'Sal Refinado 1kg', preco: 2.99, estoque: 55, unidade: 'PCT' },
-            { id: 9, codigo: 'P009', descricao: 'Farinha de Trigo 1kg', preco: 4.50, estoque: 38, unidade: 'PCT' },
-            { id: 10, codigo: 'P010', descricao: 'Molho de Tomate 340g', preco: 2.79, estoque: 42, unidade: 'UND' },
-          ];
-          setProdutos(mockProdutos);
-          setFilteredProdutos(mockProdutos);
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error('Erro ao carregar produtos:', error);
-        setLoading(false);
-      }
-    };
-
-    fetchProdutos();
+    // Busca inicial vazia
+    fetchProdutos('');
+    // eslint-disable-next-line
   }, []);
 
+  const fetchProdutos = async (busca) => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const empresaCodigo = empresaSelecionada?.cli_codigo || empresaSelecionada?.codigo;
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'x-empresa-codigo': empresaCodigo,
+        'Content-Type': 'application/json',
+      };
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const url = busca && busca.length >= 2 ? `${apiUrl}/relatorios/produtos?q=${encodeURIComponent(busca)}` : `${apiUrl}/relatorios/produtos?q=`;
+      const response = await fetch(url, { headers });
+      if (!response.ok) throw new Error('Erro ao buscar produtos');
+      const data = await response.json();
+      // Ajustar os campos para o padrão esperado no front
+      const produtosPadronizados = data.map((p, idx) => ({
+        id: idx + 1,
+        codigo: p.pro_codigo,
+        descricao: p.pro_descricao,
+        preco: p.pro_venda,
+        estoque: p.pro_quantidade,
+        unidade: p.uni_codigo
+      }));
+      setProdutos(produtosPadronizados);
+      setFilteredProdutos(produtosPadronizados);
+    } catch (error) {
+      setProdutos([]);
+      setFilteredProdutos([]);
+      console.error('Erro ao carregar produtos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   useEffect(() => {
-    // Filtrar produtos com base no termo de pesquisa
-    const results = produtos.filter(produto =>
-      produto.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      produto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredProdutos(results);
-  }, [searchTerm, produtos]);
+    // Chama a API sempre que o termo de busca mudar e tiver pelo menos 2 caracteres
+    if (searchTerm.length >= 2 || searchTerm.length === 0) {
+      fetchProdutos(searchTerm);
+    }
+    // eslint-disable-next-line
+  }, [searchTerm]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {

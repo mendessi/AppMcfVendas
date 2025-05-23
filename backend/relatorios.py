@@ -142,6 +142,57 @@ async def listar_itens_venda(ecf_numero: int, request: Request):
             pass
 # --- FIM DOS NOVOS ENDPOINTS ---
 
+@router.get("/produtos")
+async def listar_produtos(request: Request):
+    """
+    Lista produtos ativos para venda, filtrando por descrição (mín. 2 caracteres).
+    Query param: q
+    Retorna: pro_codigo, pro_descricao, uni_codigo, pro_venda, prazo_valor, pro_quantidade
+    """
+    log.info(f"[PRODUTOS] Headers recebidos: {dict(request.headers)}")
+    busca = request.query_params.get('q', '').strip()
+    if not busca or len(busca) < 2:
+        return []
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT 
+                PRODUTO.PRO_CODIGO,
+                PRODUTO.PRO_DESCRICAO,
+                PRODUTO.UNI_CODIGO,
+                PRODUTO.PRO_VENDA,
+                PRODUTO.PRO_VENDA as prazo_valor,
+                PRODUTO.PRO_QUANTIDADE
+            FROM PRODUTO
+            WHERE (UPPER(PRODUTO.PRO_DESCRICAO) LIKE UPPER(?)) 
+            AND PRODUTO.ITEM_TABLET = 'S'   
+            AND PRODUTO.PRO_INATIVO = 'N'
+            ORDER BY PRODUTO.PRO_DESCRICAO
+            """,
+            (f"%{busca}%",)
+        )
+        rows = cursor.fetchall()
+        columns = [col[0].lower() for col in cursor.description]
+        produtos = [dict(zip(columns, row)) for row in rows]
+        return produtos
+    except Exception as e:
+        import traceback
+        log.error(f"[PRODUTOS] Erro ao listar produtos: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar produtos: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
 @router.get("/clientes")
 async def listar_clientes(request: Request):
     log.info(f"[CLIENTES] Headers recebidos: {dict(request.headers)}")
@@ -170,12 +221,14 @@ async def listar_clientes(request: Request):
         '''
         params = []
         if search:
-            sql += " AND (UPPER(CLI_NOME) LIKE UPPER(?)"
-            params.append(f"%{search}%")
-            if len(search) <= 14:
-                sql += " OR CNPJ LIKE ?"
+            # Se busca for numérica e exatamente 14 dígitos, buscar por CNPJ com '='
+            if search.isdigit() and len(search) == 14:
+                sql += " AND (UPPER(CLI_NOME) LIKE UPPER(?) OR CNPJ = ?)"
                 params.append(f"%{search}%")
-            sql += ")"
+                params.append(search)
+            else:
+                sql += " AND (UPPER(CLI_NOME) LIKE UPPER(?))"
+                params.append(f"%{search}%")
         sql += ' ORDER BY CLIENTES.cli_nome'
         cursor.execute(sql, params)
         rows = cursor.fetchall()
@@ -187,8 +240,9 @@ async def listar_clientes(request: Request):
         raise e
     except Exception as e:
         import traceback
-        log.error(f"Erro ao listar clientes: {e}\n{traceback.format_exc()}")
-        return JSONResponse(status_code=500, content={"detail": f"Erro ao listar clientes: {str(e)}"})
+        tb = traceback.format_exc()
+        log.error(f"[CLIENTES] Erro ao listar clientes: {e}\n{tb}")
+        return JSONResponse(status_code=500, content={"detail": f"Erro ao listar clientes: {str(e)}", "traceback": tb})
 
 class TopCliente(BaseModel):
     codigo: int

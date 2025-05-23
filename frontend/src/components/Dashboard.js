@@ -9,6 +9,7 @@ import { FiUsers, FiPackage, FiShoppingCart, FiDollarSign, FiCalendar, FiAlertCi
 import EmpresaInfo from './EmpresaInfo';
 import TopClientes from './TopClientes';
 import EmpresaAtualInfo from './EmpresaAtualInfo';
+import VendasPorDiaChart from './VendasPorDiaChart';
 
 // Configuração
 import { API_URL } from '../config';
@@ -486,6 +487,14 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
 
       </div>
 
+      {/* Gráfico de Vendas por Dia (logo abaixo dos cards) */}
+      <VendasPorDiaChart 
+        empresaSelecionada={empresaSelecionada}
+        dataInicial={dataInicial}
+        dataFinal={dataFinal}
+        darkMode={darkMode}
+      />
+
       {/* Tabela de Vendedores */}
       <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6 mb-8`}>
         <h2 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"} mb-4`}>
@@ -619,18 +628,6 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         </div>
       </div>
 
-      {/* Gráficos e Tabelas */}
-      <div className="grid grid-cols-1 gap-8 mb-8">
-        {/* Top Clientes */}
-        <div className="mb-8">
-          <TopClientes 
-            darkMode={darkMode} 
-            empresaSelecionada={empresaSelecionada} 
-            dataInicial={dataInicial}
-            dataFinal={dataFinal}
-          />
-        </div>
-      </div>
 
       {/* Ações Rápidas */}
       <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6 mb-8`}>

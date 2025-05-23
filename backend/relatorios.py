@@ -823,22 +823,22 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
         # Nova lógica inspirada no endpoint de top-vendedores
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
-825:         stats = DashboardStats()
-826:         # Inicializar usuario_nivel e codigo_vendedor antes de qualquer uso
-827:         usuario_nivel = None
-828:         codigo_vendedor = None
-829:         # Extrair do token, se existir
-830:         authorization = request.headers.get("Authorization")
-831:         if authorization and authorization.startswith("Bearer "):
-832:             token = authorization.split(" ")[1]
-833:             try:
-834:                 import jwt
-835:                 payload = jwt.decode(token, options={"verify_signature": False})
-836:                 usuario_nivel = payload.get("nivel")
-837:                 codigo_vendedor = payload.get("codigo_vendedor")
-838:             except Exception as e:
-839:                 log.warning(f"Falha ao decodificar token JWT: {str(e)}")
-840:         try:
+        stats = DashboardStats()
+        # Inicializar usuario_nivel e codigo_vendedor antes de qualquer uso
+        usuario_nivel = None
+        codigo_vendedor = None
+        # Extrair do token, se existir
+        authorization = request.headers.get("Authorization")
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization.split(" ")[1]
+            try:
+                import jwt
+                payload = jwt.decode(token, options={"verify_signature": False})
+                usuario_nivel = payload.get("nivel")
+                codigo_vendedor = payload.get("codigo_vendedor")
+            except Exception as e:
+                log.warning(f"Falha ao decodificar token JWT: {str(e)}")
+        try:
             # Verificar se a tabela VENDAS existe
             log.info("Verificando tabela VENDAS...")
             cursor.execute("SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'VENDAS'")
@@ -1023,4 +1023,77 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
         log.error(f"Erro ao buscar estatísticas do dashboard: {str(e)}")
         # Retornar erro
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro geral: {str(e)}")
+
+
+@router.get("/vendas-por-dia")
+async def get_vendas_por_dia(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
+    """
+    Endpoint para retornar as vendas agrupadas por dia no período informado.
+    Se o usuário for vendedor, filtra pelo código do vendedor.
+    """
+    from datetime import datetime, date, timedelta
+    log.info(f"Recebendo requisição para vendas-por-dia com data_inicial={data_inicial} e data_final={data_final}")
+    hoje = date.today()
+    # Datas padrão: mês atual
+    if not data_inicial:
+        data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+    else:
+        datetime.fromisoformat(data_inicial)
+    if not data_final:
+        if hoje.month == 12:
+            proximo_mes = date(hoje.year + 1, 1, 1)
+        else:
+            proximo_mes = date(hoje.year, hoje.month + 1, 1)
+        data_final = (proximo_mes - timedelta(days=1)).isoformat()
+    else:
+        datetime.fromisoformat(data_final)
+    log.info(f"Período de consulta: {data_inicial} a {data_final}")
+    empresa = get_empresa_atual(request)
+    if not empresa:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa não encontrada. Selecione uma empresa válida.")
+    conn = await get_empresa_connection(request)
+    cursor = conn.cursor()
+    # Extrair vendedor do JWT
+    usuario_nivel = None
+    codigo_vendedor = None
+    authorization = request.headers.get("Authorization")
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        try:
+            import jwt
+            payload = jwt.decode(token, options={"verify_signature": False})
+            usuario_nivel = payload.get("nivel")
+            codigo_vendedor = payload.get("codigo_vendedor")
+        except Exception as e:
+            log.warning(f"Falha ao decodificar token JWT: {str(e)}")
+    # Descobrir coluna de data
+    cursor.execute("SELECT FIRST 1 * FROM VENDAS")
+    colunas_vendas = [col[0].lower() for col in cursor.description]
+    date_column = "ecf_data" if "ecf_data" in colunas_vendas else ("ecf_cx_data" if "ecf_cx_data" in colunas_vendas else None)
+    if not date_column:
+        conn.close()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
+    filtro_vendedor = ""
+    if usuario_nivel and usuario_nivel.lower() == "vendedor" and codigo_vendedor:
+        filtro_vendedor = f" AND USU_VEN_CODIGO = '{codigo_vendedor}' "
+    sql = f'''
+        SELECT CAST({date_column} AS DATE) as dia, COALESCE(SUM(ECF_TOTAL),0) as total
+        FROM VENDAS
+        WHERE VENDAS.ecf_cancelada = 'N'
+        AND VENDAS.ecf_concluida = 'S'
+        AND {date_column} IS NOT NULL
+        AND CAST({date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+        {filtro_vendedor}
+        GROUP BY CAST({date_column} AS DATE)
+        ORDER BY dia
+    '''
+    log.info(f"Executando SQL vendas por dia: {sql}")
+    cursor.execute(sql, (data_inicial, data_final))
+    rows = cursor.fetchall()
+    resultado = []
+    for row in rows:
+        # row[0]: data, row[1]: total
+        resultado.append({"data": row[0].isoformat() if hasattr(row[0], 'isoformat') else str(row[0]), "total": float(row[1])})
+    conn.close()
+    return resultado
 

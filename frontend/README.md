@@ -1,11 +1,61 @@
-Projeto React com fastapi
-tailwindcss
-react-icons
-react-router-dom    
+Projeto React com FastAPI
+========================
 
-# 🚀 Primeiros Passos com Create React App
+Este frontend React foi desenvolvido para integração com backend FastAPI.
+Principais libs: tailwindcss, react-icons, react-router-dom, recharts.
 
-Este projeto foi iniciado com [Create React App](https://github.com/facebook/create-react-app).
+---
+
+# 🚀 Guia Rápido de Instalação e Deploy (Produção)
+
+## 1. Pré-requisitos
+- Node.js (recomendado: v18 ou superior)
+- npm (geralmente já vem com o Node)
+
+## 2. Clonar o projeto
+```bash
+git clone https://github.com/mendessi/AppMcfVendas.git
+cd AppMcfVendas/frontend
+```
+
+## 3. Instalar dependências
+```bash
+npm install
+```
+Ou, para garantir tudo:
+```bash
+npm install $(cat requirements.txt)
+```
+
+## 4. Variáveis de ambiente
+Se necessário, configure um arquivo `.env` com a URL da API:
+```
+REACT_APP_API_URL=https://sua-api-em-producao.com
+```
+
+## 5. Gerar build de produção
+```bash
+npm run build
+```
+Os arquivos finais estarão em `build/`.
+
+## 6. Servir o build
+Recomendado: usar um servidor web (Nginx, Apache) ou o pacote `serve`:
+```bash
+npm install -g serve
+serve -s build
+```
+
+---
+
+# 📋 Checklist rápido para produção
+- [ ] Node e npm instalados
+- [ ] Dependências instaladas (`npm install`)
+- [ ] Variáveis de ambiente configuradas (se necessário)
+- [ ] Build realizado (`npm run build`)
+- [ ] Servindo a pasta `build` em produção
+
+---
 
 ## 📜 Scripts Disponíveis
 

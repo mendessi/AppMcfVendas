@@ -4,6 +4,72 @@ import { API_URL } from '../config';
 import { FiUser, FiPhone, FiMapPin, FiShoppingBag, FiDollarSign, FiCalendar } from 'react-icons/fi';
 
 const TopClientes = ({ darkMode, empresaSelecionada, dataInicial, dataFinal }) => {
+  // Estados para modais e carregamento de vendas/itens
+  const [modalVendas, setModalVendas] = useState({ open: false, vendas: [], cliente: null });
+  const [modalItens, setModalItens] = useState({ open: false, itens: [], venda: null });
+  const [loadingVendas, setLoadingVendas] = useState(false);
+  const [loadingItens, setLoadingItens] = useState(false);
+  const [errorVendas, setErrorVendas] = useState(null);
+  const [errorItens, setErrorItens] = useState(null);
+
+  // Handler para abrir vendas do cliente
+  const handleVerVendas = async (cliente) => {
+    setLoadingVendas(true);
+    setErrorVendas(null);
+    setModalVendas({ open: true, vendas: [], cliente });
+    try {
+      const token = localStorage.getItem('token');
+      const empresaCodigo = empresaSelecionada?.cli_codigo || empresaSelecionada?.codigo;
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'x-empresa-codigo': empresaCodigo,
+        'Content-Type': 'application/json'
+      };
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      // Montar query string com período
+      const params = [];
+      if (dataInicial) params.push(`data_inicial=${encodeURIComponent(dataInicial)}`);
+      if (dataFinal) params.push(`data_final=${encodeURIComponent(dataFinal)}`);
+      const queryString = params.length > 0 ? `?${params.join('&')}` : '';
+      const response = await fetch(`${apiUrl}/relatorios/clientes/${cliente.codigo}/vendas${queryString}`, { headers });
+      if (!response.ok) throw new Error('Erro ao buscar vendas do cliente');
+      const vendas = await response.json();
+      setModalVendas({ open: true, vendas, cliente });
+    } catch (err) {
+      setErrorVendas('Erro ao buscar vendas.');
+      setModalVendas({ open: true, vendas: [], cliente });
+    } finally {
+      setLoadingVendas(false);
+    }
+  };
+
+  // Handler para abrir itens da venda
+  const handleVerItensVenda = async (venda) => {
+    setLoadingItens(true);
+    setErrorItens(null);
+    setModalItens({ open: true, itens: [], venda });
+    try {
+      const token = localStorage.getItem('token');
+      const empresaCodigo = empresaSelecionada?.cli_codigo || empresaSelecionada?.codigo;
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'x-empresa-codigo': empresaCodigo,
+        'Content-Type': 'application/json'
+      };
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const response = await fetch(`${apiUrl}/relatorios/vendas/${venda.ecf_numero}/itens`, { headers });
+      if (!response.ok) throw new Error('Erro ao buscar itens da venda');
+      const itens = await response.json();
+      setModalItens({ open: true, itens, venda });
+    } catch (err) {
+      setErrorItens('Erro ao buscar itens da venda.');
+      setModalItens({ open: true, itens: [], venda });
+    } finally {
+      setLoadingItens(false);
+    }
+  };
+  const closeModalVendas = () => setModalVendas({ open: false, vendas: [], cliente: null });
+  const closeModalItens = () => setModalItens({ open: false, itens: [], venda: null });
   // Log para debug
   console.log('TopClientes - Empresa selecionada recebida como prop:', empresaSelecionada);
   const [loading, setLoading] = useState(true);
@@ -289,8 +355,15 @@ const TopClientes = ({ darkMode, empresaSelecionada, dataInicial, dataFinal }) =
                     <div className="flex items-center justify-end">
                       <FiShoppingBag className={`mr-2 ${darkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                       <span>{cliente.qtde_compras}</span>
+                      <button
+                        className="ml-2 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded shadow"
+                        onClick={() => handleVerVendas(cliente)}
+                        title="Ver vendas do cliente"
+                      >
+                        Ver Vendas
+                      </button>
                     </div>
-                  </td>
+                  </td> 
                   <td className="px-2 py-3 text-sm text-right">
                     <div className="flex items-center justify-end">
                       <FiDollarSign className={`mr-2 ${darkMode ? 'text-green-400' : 'text-green-500'}`} />
@@ -311,7 +384,102 @@ const TopClientes = ({ darkMode, empresaSelecionada, dataInicial, dataFinal }) =
           </table>
         </div>
       )}
-    </div>
+    {/* Modal de Vendas do Cliente */}
+    {modalVendas.open && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-3xl w-full p-2 sm:p-6 relative text-gray-900 dark:text-white`} style={{maxHeight:'95vh', overflowY:'auto'}}>
+          <button className="absolute top-3 right-3 text-gray-500 hover:text-red-500" onClick={closeModalVendas}>&times;</button>
+          <h2 className="text-xl font-bold mb-4">Vendas de {modalVendas.cliente?.nome}</h2>
+          {loadingVendas ? (
+            <div className="text-blue-500">Carregando vendas...</div>
+          ) : errorVendas ? (
+            <div className="text-red-500">{errorVendas}</div>
+          ) : modalVendas.vendas.length === 0 ? (
+            <div className="text-gray-500">Nenhuma venda encontrada para este cliente.</div>
+          ) : (
+            <div className="overflow-x-auto max-h-80 sm:max-h-96" style={{maxHeight:'20rem', overflowY:'auto'}}>
+              <table className="min-w-full text-xs md:text-sm">
+                <thead className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">
+                  <tr>
+                    <th className="px-2 py-1">Venda</th>
+                    <th className="px-2 py-1">Data</th>
+                    <th className="px-2 py-1">Vendedor</th>
+                    <th className="px-2 py-1">Total</th>
+                    <th className="px-2 py-1">Desconto</th>
+                    <th className="px-2 py-1">Forma Pgto</th>
+                    <th className="px-2 py-1">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalVendas.vendas.map((venda) => (
+                    <tr key={venda.ecf_numero} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-2 py-1">{venda.ecf_numero}</td>
+                      <td className="px-2 py-1">{venda.ecf_data ? new Date(venda.ecf_data).toLocaleDateString() : '-'}</td>
+                      <td className="px-2 py-1">{venda.ven_nome}</td>
+                      <td className="px-2 py-1">R$ {Number(venda.ecf_total).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                      <td className="px-2 py-1">R$ {Number(venda.ecf_desconto).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                      <td className="px-2 py-1">{venda.fpg_nome}</td>
+                      <td className="px-2 py-1">
+                        <button className="text-blue-600 dark:text-blue-400 hover:underline mr-2" onClick={() => handleVerItensVenda(venda)}>Ver Itens</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+    {/* Modal de Itens da Venda */}
+    {modalItens.open && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full p-2 sm:p-6 relative text-gray-900 dark:text-white`} style={{maxHeight:'95vh', overflowY:'auto'}}>
+          <button className="absolute top-3 right-3 text-gray-500 hover:text-red-500" onClick={closeModalItens}>&times;</button>
+          <h2 className="text-xl font-bold mb-4">Itens da Venda {modalItens.venda?.ecf_numero}</h2>
+          {loadingItens ? (
+            <div className="text-blue-500">Carregando itens...</div>
+          ) : errorItens ? (
+            <div className="text-red-500">{errorItens}</div>
+          ) : modalItens.itens.length === 0 ? (
+            <div className="text-gray-500">Nenhum item encontrado para esta venda.</div>
+          ) : (
+            <div className="overflow-x-auto max-h-80 sm:max-h-96" style={{maxHeight:'20rem', overflowY:'auto'}}>
+              <table className="min-w-full text-xs md:text-sm">
+                <thead className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">
+                  <tr>
+                    <th className="px-2 py-1">Código</th>
+                    <th className="px-2 py-1">Descrição</th>
+                    <th className="px-2 py-1">Marca</th>
+                    <th className="px-2 py-1">Unidade</th>
+                    <th className="px-2 py-1">Qtde</th>
+                    <th className="px-2 py-1">Preço</th>
+                    <th className="px-2 py-1">Estoque</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modalItens.itens.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-2 py-1">{item.pro_codigo}</td>
+                      <td className="px-2 py-1">{item.pro_descricao}</td>
+                      <td className="px-2 py-1">{item.pro_marca}</td>
+                      <td className="px-2 py-1">{item.uni_codigo}</td>
+                      <td className="px-2 py-1">{Number(item.pro_quantidade)}</td>
+                      <td className="px-2 py-1">R$ {Number(item.pro_venda).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                      <td className={`px-2 py-1 ${Number(item.estoque_atual) <= 0 ? 'text-red-600 font-bold' : ''}`}>{Number(item.estoque_atual)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <div className="flex justify-end mt-4">
+            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded" onClick={closeModalItens}>Fechar</button>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
   );
 };
 

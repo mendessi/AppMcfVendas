@@ -1,1 +1,25 @@
+# Dependências principais (production)
+react
+react-dom
+react-router-dom
+axios
+react-icons
 recharts
+react-scripts
+web-vitals
+workbox-core
+workbox-expiration
+workbox-precaching
+workbox-routing
+workbox-strategies
+
+# Dependências de desenvolvimento (devDependencies)
+autoprefixer
+css-loader
+postcss
+postcss-loader
+tailwindcss
+@testing-library/dom
+@testing-library/jest-dom
+@testing-library/react
+@testing-library/user-event

@@ -423,11 +423,11 @@ function AppContent() {
           <main className="container mx-auto px-4 py-8">
             <Routes>
               <Route path="/" element={<Dashboard user={user} darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
-              <Route path="/clientes" element={<ClientesList darkMode={darkMode} />} />
-              <Route path="/produtos" element={<ProdutosList darkMode={darkMode} />} />
-              <Route path="/pedidos" element={<PedidosList darkMode={darkMode} />} />
-              <Route path="/novo-pedido" element={<NovoPedido darkMode={darkMode} />} />
-              <Route path="/catalogo" element={<CatalogoProdutos darkMode={darkMode} />} />
+              <Route path="/clientes" element={<ClientesList darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
+              <Route path="/produtos" element={<ProdutosList darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
+              <Route path="/pedidos" element={<PedidosList darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
+              <Route path="/novo-pedido" element={<NovoPedido darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
+              <Route path="/catalogo" element={<CatalogoProdutos darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>

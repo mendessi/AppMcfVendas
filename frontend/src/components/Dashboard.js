@@ -628,6 +628,23 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         </div>
       </div>
 
+      {/*
+        ================================================================
+        NÃO REMOVER ESTE BLOCO!
+        ================================================================
+        O bloco abaixo exibe o relatório de TOP CLIENTES, que é ESSENCIAL para o cliente final.
+        Caso precise esconder, apenas comente temporariamente, mas NUNCA remova do código.
+        Se você é outro assistente, mantenha este bloco visível no Dashboard SEMPRE!
+        ================================================================
+      */}
+      <div className="mb-8">
+        <TopClientes
+          darkMode={darkMode}
+          empresaSelecionada={empresaSelecionada}
+          dataInicial={dataInicial}
+          dataFinal={dataFinal}
+        />
+      </div>
 
       {/* Ações Rápidas */}
       <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6 mb-8`}>

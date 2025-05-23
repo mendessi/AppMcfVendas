@@ -220,15 +220,23 @@ async def listar_clientes(request: Request):
               AND CLIENTES.cli_tipo = 1
         '''
         params = []
-        if search:
-            # Se busca for numérica e exatamente 14 dígitos, buscar por CNPJ com '='
-            if search.isdigit() and len(search) == 14:
-                sql += " AND (UPPER(CLI_NOME) LIKE UPPER(?) OR CNPJ = ?)"
-                params.append(f"%{search}%")
-                params.append(search)
-            else:
-                sql += " AND (UPPER(CLI_NOME) LIKE UPPER(?))"
-                params.append(f"%{search}%")
+        if search and len(search.strip()) >= 2:
+            like = f"%{search.strip()}%"
+            # Tenta converter para inteiro para busca por código
+            try:
+                codigo_int = int(search.strip())
+            except:
+                codigo_int = -1
+            sql += ''' AND (
+                UPPER(CLI_NOME) LIKE UPPER(?)
+                OR (CNPJ IS NOT NULL AND CNPJ LIKE ?)
+                OR (tel_whatsapp IS NOT NULL AND tel_whatsapp LIKE ?)
+                OR CLI_CODIGO = ?
+            )'''
+            params = [like, like, like, codigo_int]
+        elif search:
+            # Menos de 2 caracteres, retorna vazio
+            return []
         sql += ' ORDER BY CLIENTES.cli_nome'
         cursor.execute(sql, params)
         rows = cursor.fetchall()

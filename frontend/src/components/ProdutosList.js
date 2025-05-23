@@ -12,6 +12,12 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
     // eslint-disable-next-line
   }, []);
 
+  const handleBuscar = () => {
+    if (searchTerm.length >= 2 || searchTerm.length === 0) {
+      fetchProdutos(searchTerm);
+    }
+  };
+
   const fetchProdutos = async (busca) => {
     setLoading(true);
     try {
@@ -48,13 +54,8 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
   };
 
 
-  useEffect(() => {
-    // Chama a API sempre que o termo de busca mudar e tiver pelo menos 2 caracteres
-    if (searchTerm.length >= 2 || searchTerm.length === 0) {
-      fetchProdutos(searchTerm);
-    }
-    // eslint-disable-next-line
-  }, [searchTerm]);
+  // Removido o useEffect automático para busca
+
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -80,14 +81,22 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
         </button>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 flex gap-2">
         <input
           type="text"
           placeholder="Buscar por código ou descrição..."
-          className={`w-full p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "bg-white border-gray-300 text-gray-700"}`}
+          className={`flex-1 p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "bg-white border-gray-300 text-gray-700"}`}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') handleBuscar(); }}
         />
+        <button
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          onClick={handleBuscar}
+          disabled={loading || searchTerm.length < 2}
+        >
+          Buscar
+        </button>
       </div>
 
       {/* Versão para desktop */}

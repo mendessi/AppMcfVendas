@@ -1,248 +1,120 @@
 import React, { useState, useEffect } from 'react';
 import { FiShoppingCart, FiFilter, FiSearch, FiX } from 'react-icons/fi';
 
-const CatalogoProdutos = ({ darkMode }) => {
+const CatalogoProdutos = ({ darkMode, empresaSelecionada }) => {
   const [produtos, setProdutos] = useState([]);
-  const [categorias, setCategorias] = useState([]);
+  const [categorias, setCategorias] = useState([{ nome: 'Todas', codigo: 'todas' }]);
   const [categoriaAtiva, setCategoriaAtiva] = useState('todas');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [produtosFiltrados, setProdutosFiltrados] = useState([]); // For explicit search/filter
   const [carrinhoItens, setCarrinhoItens] = useState([]);
   const [carrinhoAberto, setCarrinhoAberto] = useState(false);
 
   useEffect(() => {
-    // Em um ambiente real, você faria chamadas à API aqui
-    // Por enquanto, vamos simular dados
-    const fetchData = async () => {
+    // Busca grupos de produtos ao montar o componente
+    const fetchGrupos = async () => {
       try {
-        // Simular uma chamada de API para produtos
-        setTimeout(() => {
-          const mockProdutos = [
-            { 
-              id: 1, 
-              codigo: 'M001', 
-              descricao: 'Pneu Dianteiro Moto 90/90-19', 
-              preco: 189.90, 
-              estoque: 25, 
-              unidade: 'UND',
-              categoria: 'pneus-moto',
-              imagem: 'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 2, 
-              codigo: 'M002', 
-              descricao: 'Pneu Traseiro Moto 110/90-17', 
-              preco: 219.50, 
-              estoque: 20, 
-              unidade: 'UND',
-              categoria: 'pneus-moto',
-              imagem: 'https://images.unsplash.com/photo-1605001011156-cbf0b0f67a51?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 3, 
-              codigo: 'M003', 
-              descricao: 'Óleo Motor 4T 20W-50 1L', 
-              preco: 35.99, 
-              estoque: 50, 
-              unidade: 'UND',
-              categoria: 'lubrificantes',
-              imagem: 'https://images.unsplash.com/photo-1635273051839-003250536b68?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 4, 
-              codigo: 'M004', 
-              descricao: 'Kit Relação Moto CG 160', 
-              preco: 145.90, 
-              estoque: 15, 
-              unidade: 'KIT',
-              categoria: 'transmissao-moto',
-              imagem: 'https://images.unsplash.com/photo-1600861195091-690de43c4106?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 5, 
-              codigo: 'M005', 
-              descricao: 'Bateria Moto 12V 6Ah', 
-              preco: 159.80, 
-              estoque: 18, 
-              unidade: 'UND',
-              categoria: 'eletrica-moto',
-              imagem: 'https://images.unsplash.com/photo-1620714223084-8fcacc6dfd8d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 6, 
-              codigo: 'M006', 
-              descricao: 'Pastilha de Freio Dianteiro CB 300', 
-              preco: 49.99, 
-              estoque: 30, 
-              unidade: 'PAR',
-              categoria: 'freios-moto',
-              imagem: 'https://images.unsplash.com/photo-1600345957894-4854e82910ac?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 7, 
-              codigo: 'M007', 
-              descricao: 'Disco de Freio Dianteiro CB 300', 
-              preco: 129.50, 
-              estoque: 12, 
-              unidade: 'UND',
-              categoria: 'freios-moto',
-              imagem: 'https://images.unsplash.com/photo-1616712134411-6b6ae89bc3ba?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 8, 
-              codigo: 'M008', 
-              descricao: 'Filtro de Ar CG 160', 
-              preco: 29.99, 
-              estoque: 40, 
-              unidade: 'UND',
-              categoria: 'filtros-moto',
-              imagem: 'https://images.unsplash.com/photo-1600861194942-7f2ff2f5e2c3?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 9, 
-              codigo: 'B001', 
-              descricao: 'Pneu Bicicleta Aro 29 MTB', 
-              preco: 89.50, 
-              estoque: 22, 
-              unidade: 'UND',
-              categoria: 'pneus-bicicleta',
-              imagem: 'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 10, 
-              codigo: 'B002', 
-              descricao: 'Câmara de Ar Bicicleta Aro 29', 
-              preco: 22.79, 
-              estoque: 35, 
-              unidade: 'UND',
-              categoria: 'pneus-bicicleta',
-              imagem: 'https://images.unsplash.com/photo-1582516217413-6a0d6d8083e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 11, 
-              codigo: 'B003', 
-              descricao: 'Corrente Bicicleta 21 Marchas', 
-              preco: 45.99, 
-              estoque: 28, 
-              unidade: 'UND',
-              categoria: 'transmissao-bicicleta',
-              imagem: 'https://images.unsplash.com/photo-1511994298241-608e28f14fde?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 12, 
-              codigo: 'B004', 
-              descricao: 'Pastilha Freio a Disco Bicicleta', 
-              preco: 39.99, 
-              estoque: 25, 
-              unidade: 'PAR',
-              categoria: 'freios-bicicleta',
-              imagem: 'https://images.unsplash.com/photo-1559348349-86d1b6b0a795?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 13, 
-              codigo: 'B005', 
-              descricao: 'Guidão MTB Alumínio 720mm', 
-              preco: 89.90, 
-              estoque: 15, 
-              unidade: 'UND',
-              categoria: 'componentes-bicicleta',
-              imagem: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 14, 
-              codigo: 'B006', 
-              descricao: 'Pedal Plataforma Alumínio', 
-              preco: 69.50, 
-              estoque: 20, 
-              unidade: 'PAR',
-              categoria: 'componentes-bicicleta',
-              imagem: 'https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 15, 
-              codigo: 'A001', 
-              descricao: 'Capacete Moto Integral', 
-              preco: 289.90, 
-              estoque: 10, 
-              unidade: 'UND',
-              categoria: 'acessorios-moto',
-              imagem: 'https://images.unsplash.com/photo-1591370409347-2fd43b7842d8?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 16, 
-              codigo: 'A002', 
-              descricao: 'Capacete Ciclismo MTB', 
-              preco: 129.90, 
-              estoque: 18, 
-              unidade: 'UND',
-              categoria: 'acessorios-bicicleta',
-              imagem: 'https://images.unsplash.com/photo-1505739818593-d28c6e386340?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 17, 
-              codigo: 'A003', 
-              descricao: 'Luva Ciclismo Gel', 
-              preco: 59.90, 
-              estoque: 22, 
-              unidade: 'PAR',
-              categoria: 'acessorios-bicicleta',
-              imagem: 'https://images.unsplash.com/photo-1531413458087-ea3a5faa2a90?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 18, 
-              codigo: 'A004', 
-              descricao: 'Jaqueta Motociclista Impermeável', 
-              preco: 259.90, 
-              estoque: 8, 
-              unidade: 'UND',
-              categoria: 'acessorios-moto',
-              imagem: 'https://images.unsplash.com/photo-1558981852-426c6c22a060?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 19, 
-              codigo: 'F001', 
-              descricao: 'Graxa para Corrente Moto 100g', 
-              preco: 19.90, 
-              estoque: 30, 
-              unidade: 'UND',
-              categoria: 'lubrificantes',
-              imagem: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-            { 
-              id: 20, 
-              codigo: 'F002', 
-              descricao: 'Óleo Lubrificante Corrente Bicicleta', 
-              preco: 29.90, 
-              estoque: 25, 
-              unidade: 'UND',
-              categoria: 'lubrificantes',
-              imagem: 'https://images.unsplash.com/photo-1622398925373-3f91b1e275f5?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80'
-            },
-          ];
-          
-          // Extrair categorias únicas
-          const uniqueCategorias = ['todas', ...new Set(mockProdutos.map(produto => produto.categoria))];
-          
-          setProdutos(mockProdutos);
-          setCategorias(uniqueCategorias);
-          setLoading(false);
-        }, 1000);
+        const token = localStorage.getItem('token');
+        const empresaCodigo = empresaSelecionada?.cli_codigo || empresaSelecionada?.codigo;
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'x-empresa-codigo': empresaCodigo,
+          'Content-Type': 'application/json',
+        };
+        const apiUrl = process.env.REACT_APP_API_URL || '';
+        const url = `${apiUrl}/grupos`;
+        const response = await fetch(url, { headers });
+        if (!response.ok) throw new Error('Erro ao buscar grupos');
+        const grupos = await response.json();
+        setCategorias([{ nome: 'Todas', codigo: 'todas' }, ...grupos.map(g => ({ nome: g.gru_nome || g.nome, codigo: g.gru_codigo || g.codigo }))]);
+      } catch (err) {
+        setCategorias([{ nome: 'Todas', codigo: 'todas' }]);
+        console.error('Erro ao buscar grupos:', err);
+      }
+    };
+    fetchGrupos();
+  }, [empresaSelecionada]);
+
+  useEffect(() => {
+    // Busca real dos produtos da API
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const empresaCodigo = empresaSelecionada?.cli_codigo || empresaSelecionada?.codigo;
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'x-empresa-codigo': empresaCodigo,
+          'Content-Type': 'application/json',
+        };
+        const apiUrl = process.env.REACT_APP_API_URL || '';
+        const url = `${apiUrl}/relatorios/produtos?q=`;
+        const response = await fetch(url, { headers });
+        if (!response.ok) throw new Error('Erro ao buscar produtos');
+        const data = await response.json();
+        // Adicionar imagens fictícias
+        const imagensFicticias = [
+          'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+          'https://images.unsplash.com/photo-1605001011156-cbf0b0f67a51?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+          'https://images.unsplash.com/photo-1635273051839-003250536b68?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+          'https://images.unsplash.com/photo-1600861195091-690de43c4106?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+          'https://images.unsplash.com/photo-1620714223084-8fcacc6dfd8d?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+          'https://images.unsplash.com/photo-1600345957894-4854e82910ac?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+          'https://images.unsplash.com/photo-1616712134411-6b6ae89bc3ba?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+          'https://images.unsplash.com/photo-1600861194942-7f2ff2f5e2c3?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+          'https://images.unsplash.com/photo-1582516217413-6a0d6d8083e2?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+          'https://images.unsplash.com/photo-1559348349-86d1b6b0a795?ixlib=rb-1.2.1&auto=format&fit=crop&w=300&q=80',
+        ];
+        const produtosComImagens = data.map((p, idx) => ({
+          id: idx + 1,
+          codigo: p.pro_codigo,
+          descricao: p.pro_descricao,
+          preco: p.pro_venda,
+          aprazo: p.pro_vendapz,
+          estoque: p.pro_quantidade,
+          unidade: p.uni_codigo,
+          imagem: imagensFicticias[idx % imagensFicticias.length],
+          grupo: p.gru_codigo || p.grupo || '', // Adiciona o grupo do produto
+        }));
+        setProdutos(produtosComImagens);
+        // Categorias podem ser derivadas dos produtos, se necessário
       } catch (error) {
-        console.error('Erro ao carregar dados:', error);
+        setProdutos([]);
+        console.error('Erro ao carregar produtos:', error);
+      } finally {
         setLoading(false);
       }
     };
-
     fetchData();
-  }, []);
+    // eslint-disable-next-line
+  }, [empresaSelecionada]);
 
-  // Filtrar produtos por categoria e termo de busca
-  const filteredProdutos = produtos.filter(produto => {
-    const matchesCategoria = categoriaAtiva === 'todas' || produto.categoria === categoriaAtiva;
-    const matchesSearch = produto.descricao.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         produto.codigo.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategoria && matchesSearch;
-  });
+  // Função para filtrar produtos explicitamente
+  const handleBuscar = () => {
+    let lista = produtos;
+    // Filtrar por grupo/categoria
+    if (categoriaAtiva !== 'todas') {
+      lista = lista.filter(produto => produto.grupo === categoriaAtiva).slice(0, 50);
+    } else {
+      lista = lista.slice(0, 50);
+    }
+    // Filtrar por termo de busca (aplica sobre o resultado já limitado)
+    if (searchTerm.trim() !== '') {
+      lista = lista.filter(produto =>
+        produto.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        produto.codigo.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    setProdutosFiltrados(lista);
+  };
+
+
+  // Atualiza produtos exibidos ao mudar produtos, categoria ou busca
+  useEffect(() => {
+    handleBuscar();
+    // eslint-disable-next-line
+  }, [produtos, categoriaAtiva, searchTerm]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -352,8 +224,8 @@ const CatalogoProdutos = ({ darkMode }) => {
         </button>
       </div>
 
-      {/* Barra de pesquisa e filtros */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+      {/* Barra de pesquisa */}
+      <div className="mb-4 flex flex-col sm:flex-row gap-4">
         <div className="relative flex-grow">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FiSearch className={darkMode ? "text-gray-400" : "text-gray-500"} />
@@ -364,24 +236,34 @@ const CatalogoProdutos = ({ darkMode }) => {
             className={`pl-10 w-full p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "bg-white border-gray-300 text-gray-700"}`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleBuscar(); }}
           />
         </div>
-        
-        <div className="relative sm:w-64">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FiFilter className={darkMode ? "text-gray-400" : "text-gray-500"} />
-          </div>
-          <select
-            className={`pl-10 w-full p-2 border rounded appearance-none ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"}`}
-            value={categoriaAtiva}
-            onChange={(e) => setCategoriaAtiva(e.target.value)}
-          >
-            {categorias.map((categoria) => (
-              <option key={categoria} value={categoria}>
-                {categoria.charAt(0).toUpperCase() + categoria.slice(1)}
-              </option>
-            ))}
-          </select>
+        <button
+          className={`flex items-center px-4 py-2 rounded ${darkMode ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'} ml-0 sm:ml-2`}
+          style={{ minWidth: 120 }}
+          onClick={handleBuscar}
+        >
+          <FiSearch className="mr-2" />Buscar
+        </button>
+      </div>
+      {/* Lista horizontal de categorias (estilo e-commerce) */}
+      <div className="mb-6 overflow-x-auto">
+        <div className="flex space-x-2 pb-2">
+          {categorias.map((cat) => (
+            <button
+              key={cat.codigo}
+              className={
+                `px-5 py-2 rounded-full border-2 font-medium transition-all whitespace-nowrap text-base ` +
+                (categoriaAtiva === cat.codigo
+                  ? (darkMode ? 'bg-blue-700 border-blue-400 text-white shadow' : 'bg-blue-100 border-blue-500 text-blue-900 shadow')
+                  : (darkMode ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-blue-900 hover:border-blue-400' : 'bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400'))
+              }
+              onClick={() => setCategoriaAtiva(cat.codigo)}
+            >
+              {cat.nome}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -490,9 +372,9 @@ const CatalogoProdutos = ({ darkMode }) => {
       )}
 
       {/* Lista de produtos */}
-      {filteredProdutos.length > 0 ? (
+      {produtosFiltrados.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {filteredProdutos.map((produto) => (
+          {produtosFiltrados.map((produto) => (
             <div 
               key={produto.id} 
               className={`rounded-lg overflow-hidden shadow-lg ${darkMode ? "bg-gray-800" : "bg-white"} flex flex-col`}

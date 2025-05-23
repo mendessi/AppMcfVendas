@@ -6,7 +6,17 @@ Principais libs: tailwindcss, react-icons, react-router-dom, recharts.
 
 ---
 
-# 🚀 Guia Rápido de Instalação e Deploy (Produção)
+# 🚀 Guia Rápido de Instalação
+
+### Dependências obrigatórias do frontend
+
+O projeto AppMendes depende do pacote `react-icons` para exibir ícones como a lupa (FiSearch), carrinho (FiShoppingCart), filtro (FiFilter) e fechar (FiX) no catálogo de produtos e outros componentes.
+
+Após clonar o repositório ou ao configurar o frontend, execute:
+
+```sh
+npm install react-icons
+```
 
 ## 1. Pré-requisitos
 - Node.js (recomendado: v18 ou superior)

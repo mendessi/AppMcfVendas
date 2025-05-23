@@ -1,3 +1,6 @@
+# IMPORTANTE: Para o frontend, instale também:
+# npm install react-icons
+#
 # Dependências principais (production)
 react
 react-dom

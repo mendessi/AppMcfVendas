@@ -142,6 +142,42 @@ async def listar_itens_venda(ecf_numero: int, request: Request):
             pass
 # --- FIM DOS NOVOS ENDPOINTS ---
 
+@router.get("/grupos")
+async def listar_grupos(request: Request):
+    """
+    Lista todos os grupos de produtos.
+    Retorna: gru_codigo, gru_nome
+    """
+    log.info(f"[GRUPOS] Headers recebidos: {dict(request.headers)}")
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT GRU_CODIGO, GRU_NOME
+            FROM GRUPOS
+            ORDER BY GRU_NOME
+        """)
+        rows = cursor.fetchall()
+        grupos = [
+            {"gru_codigo": row[0], "gru_nome": row[1]} for row in rows
+        ]
+        return grupos
+    except Exception as e:
+        import traceback
+        log.error(f"[GRUPOS] Erro ao listar grupos: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar grupos: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
 @router.get("/produtos")
 async def listar_produtos(request: Request):
     """
@@ -169,7 +205,7 @@ async def listar_produtos(request: Request):
                 PRODUTO.PRO_DESCRICAO,
                 PRODUTO.UNI_CODIGO,
                 PRODUTO.PRO_VENDA,
-                PRODUTO.PRO_VENDA as prazo_valor,
+                PRODUTO.PRO_VENDAPZ,
                 PRODUTO.PRO_QUANTIDADE
             FROM PRODUTO
             WHERE (UPPER(PRODUTO.PRO_DESCRICAO) LIKE UPPER(?)) 

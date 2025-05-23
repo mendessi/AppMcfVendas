@@ -435,7 +435,7 @@ function AppContent() {
           {/* Rodapé */}
           <footer className={`${darkMode ? 'bg-gray-800' : 'bg-gray-200'} text-${darkMode ? 'white' : 'gray-800'} py-3 sm:py-4 mt-auto text-xs sm:text-sm`}>
             <div className="container mx-auto px-4 text-center">
-              <p>&copy; {new Date().getFullYear()} Força de Vendas - Todos os direitos reservados</p>
+              <p>&copy; {new Date().getFullYear()} Solução Informática Todos os direitos reservados</p>
             </div>
           </footer>
         </div>

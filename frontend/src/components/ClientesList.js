@@ -248,9 +248,9 @@ const handleVerItensVenda = async (venda) => {
                 <span><span className="font-medium">Cidade/UF:</span> {cliente.cidade} / {cliente.uf}</span>
               </div>
               <div className="flex gap-2 mt-2">
-                <button className={darkMode ? "text-green-400 hover:text-green-300" : "text-green-600 hover:text-green-900"} onClick={() => handleVerVendas(cliente)}>Ver Vendas</button>
-                <button className={darkMode ? "text-purple-400 hover:text-purple-300" : "text-purple-600 hover:text-purple-900"} onClick={() => handleVerContas(cliente)}>Ver Contas</button>
-              </div>
+  <button className={darkMode ? "text-green-400 hover:text-green-300" : "text-green-600 hover:text-green-900"} onClick={() => handleVerVendas(cliente)}>Ver Vendas</button>
+  <button className={darkMode ? "text-purple-400 hover:text-purple-300" : "text-purple-600 hover:text-purple-900"} onClick={() => handleVerContas(cliente)}>Ver Contas</button>
+</div>
             </div>
           ))
         ) : (

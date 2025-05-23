@@ -161,14 +161,23 @@ async def listar_clientes(request: Request):
     try:
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
+        search = request.query_params.get('q')
         sql = '''
             SELECT CLI_CODIGO, CLI_NOME, tel_whatsapp, CNPJ, ENDERECO, NUMERO, BAIRRO, CIDADE, UF
             FROM CLIENTES
             WHERE CLIENTES.CLI_INATIVO = 'N'
               AND CLIENTES.cli_tipo = 1
-            ORDER BY CLIENTES.cli_nome
         '''
-        cursor.execute(sql)
+        params = []
+        if search:
+            sql += " AND (UPPER(CLI_NOME) LIKE UPPER(?)"
+            params.append(f"%{search}%")
+            if len(search) <= 14:
+                sql += " OR CNPJ LIKE ?"
+                params.append(f"%{search}%")
+            sql += ")"
+        sql += ' ORDER BY CLIENTES.cli_nome'
+        cursor.execute(sql, params)
         rows = cursor.fetchall()
         columns = [col[0].lower() for col in cursor.description]
         clientes = [dict(zip(columns, row)) for row in rows]
@@ -179,7 +188,7 @@ async def listar_clientes(request: Request):
     except Exception as e:
         import traceback
         log.error(f"Erro ao listar clientes: {e}\n{traceback.format_exc()}")
-        return Response(content=f"Erro ao listar clientes: {e}", status_code=500)
+        return JSONResponse(status_code=500, content={"detail": f"Erro ao listar clientes: {str(e)}"})
 
 class TopCliente(BaseModel):
     codigo: int

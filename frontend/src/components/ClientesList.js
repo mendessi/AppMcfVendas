@@ -70,8 +70,6 @@ const handleVerItensVenda = async (venda) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [errorMsg, setErrorMsg] = useState(null);
 
-  // Remover busca automática ao abrir
-  // Buscar clientes apenas quando o usuário pesquisar
 
   // Handler para busca
   const handleSearch = async (e) => {
@@ -158,7 +156,7 @@ const handleVerItensVenda = async (venda) => {
         </button>
       </div>
 
-      <div className="mb-6">
+      <form className="mb-6 flex gap-2" onSubmit={handleSearch} autoComplete="off">
         <input
           type="text"
           placeholder="Buscar por nome, CNPJ/CPF ou email..."
@@ -166,7 +164,11 @@ const handleVerItensVenda = async (venda) => {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-      </div>
+        <button
+          type="submit"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded whitespace-nowrap"
+        >Buscar</button>
+      </form>
 
       {/* Versão para desktop */}
       <div className="hidden md:block">

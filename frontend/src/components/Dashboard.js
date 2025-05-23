@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
 
 // Ícones
 import { FiUsers, FiPackage, FiShoppingCart, FiDollarSign, FiCalendar, FiAlertCircle, FiAward, FiTrendingUp } from 'react-icons/fi';
@@ -8,6 +9,9 @@ import { FiUsers, FiPackage, FiShoppingCart, FiDollarSign, FiCalendar, FiAlertCi
 import EmpresaInfo from './EmpresaInfo';
 import TopClientes from './TopClientes';
 import EmpresaAtualInfo from './EmpresaAtualInfo';
+
+// Configuração
+import { API_URL } from '../config';
 
 const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
   // Log para debug
@@ -20,82 +24,273 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     vendasDia: 0,
     vendasMes: 0,
     vendasNaoAutenticadas: 0,
+    vendasAutenticadas: 0,
     percentualCrescimento: 0
-  });
+  }); // stats.vendasMes já está correto, só garantir atualização ao filtrar
   const [loading, setLoading] = useState(true);
   const [topProdutos, setTopProdutos] = useState([]);
   const [topClientes, setTopClientes] = useState([]);
-  const [vendedores, setVendedores] = useState([]);
+  const [topVendedores, setTopVendedores] = useState([]);
+  const [loadingVendedores, setLoadingVendedores] = useState(true);
+  const [vendedoresError, setVendedoresError] = useState(null);
+  
+  // Estados para o filtro de período
+  const [dataInicial, setDataInicial] = useState('');
+  const [dataFinal, setDataFinal] = useState('');
+  const [filtrandoDados, setFiltrandoDados] = useState(false);
 
+  // Inicializar as datas para o primeiro e último dia do mês atual
   useEffect(() => {
-    // Em um ambiente real, você faria chamadas à API aqui
-    // Por enquanto, vamos simular dados
-    const fetchData = async () => {
-      try {
-        // Simular uma chamada de API
-        setTimeout(() => {
-          // Dados para os cards principais
-          setStats({
-            totalClientes: 42,
-            totalProdutos: 156,
-            totalPedidos: 78,
-            valorTotalPedidos: 45678.90,
-            vendasDia: 5890.50,
-            vendasMes: 32450.75,
-            vendasNaoAutenticadas: 8750.25,
-            percentualCrescimento: 12.5
-          });
-          
-          // Dados para Top 10 Produtos
-          const mockTopProdutos = [
-            { id: 1, codigo: 'M001', descricao: 'Pneu Dianteiro Moto 90/90-19', quantidade: 42, valor: 7978.80 },
-            { id: 2, codigo: 'M005', descricao: 'Bateria Moto 12V 6Ah', quantidade: 38, valor: 6072.40 },
-            { id: 3, codigo: 'B001', descricao: 'Pneu Bicicleta Aro 29 MTB', quantidade: 35, valor: 3132.50 },
-            { id: 4, codigo: 'M003', descricao: 'Óleo Motor 4T 20W-50 1L', quantidade: 30, valor: 1079.70 },
-            { id: 5, codigo: 'M006', descricao: 'Pastilha de Freio Dianteiro CB 300', quantidade: 28, valor: 1399.72 },
-            { id: 6, codigo: 'B002', descricao: 'Câmara de Ar Bicicleta Aro 29', quantidade: 25, valor: 569.75 },
-            { id: 7, codigo: 'M004', descricao: 'Kit Relação Moto CG 160', quantidade: 22, valor: 3209.80 },
-            { id: 8, codigo: 'M002', descricao: 'Pneu Traseiro Moto 110/90-17', quantidade: 20, valor: 4390.00 },
-            { id: 9, codigo: 'M008', descricao: 'Filtro de Ar CG 160', quantidade: 18, valor: 539.82 },
-            { id: 10, codigo: 'M007', descricao: 'Disco de Freio Dianteiro CB 300', quantidade: 15, valor: 1942.50 }
-          ];
-          setTopProdutos(mockTopProdutos);
-          
-          // Dados para Top 10 Clientes
-          const mockTopClientes = [
-            { id: 1, nome: 'Moto Peças Express', cnpj_cpf: '12.345.678/0001-90', pedidos: 15, valor: 12450.75 },
-            { id: 2, nome: 'Ciclo Bike Center', cnpj_cpf: '23.456.789/0001-01', pedidos: 12, valor: 9870.50 },
-            { id: 3, nome: 'Moto & Cia Distribuidora', cnpj_cpf: '34.567.890/0001-12', pedidos: 10, valor: 8540.30 },
-            { id: 4, nome: 'Bicicletaria do Vale', cnpj_cpf: '45.678.901/0001-23', pedidos: 8, valor: 6230.45 },
-            { id: 5, nome: 'Moto Parts Importados', cnpj_cpf: '56.789.012/0001-34', pedidos: 7, valor: 5890.20 },
-            { id: 6, nome: 'Oficina Duas Rodas', cnpj_cpf: '67.890.123/0001-45', pedidos: 6, valor: 4780.90 },
-            { id: 7, nome: 'Auto Peças Silva', cnpj_cpf: '78.901.234/0001-56', pedidos: 5, valor: 3950.75 },
-            { id: 8, nome: 'Ciclo Motos Ltda', cnpj_cpf: '89.012.345/0001-67', pedidos: 4, valor: 3120.60 },
-            { id: 9, nome: 'Bicicletas & Motos SA', cnpj_cpf: '90.123.456/0001-78', pedidos: 3, valor: 2540.30 },
-            { id: 10, nome: 'Distribuidora Veloz', cnpj_cpf: '01.234.567/0001-89', pedidos: 2, valor: 1890.15 }
-          ];
-          setTopClientes(mockTopClientes);
-          
-          // Dados para comparativo de vendedores
-          const mockVendedores = [
-            { id: 1, nome: 'Carlos Silva', vendas: 42, valor: 15780.50, meta: 15000, percentual: 105.2 },
-            { id: 2, nome: 'Ana Oliveira', vendas: 38, valor: 14320.75, meta: 15000, percentual: 95.5 },
-            { id: 3, nome: 'Roberto Santos', vendas: 35, valor: 12450.30, meta: 15000, percentual: 83.0 },
-            { id: 4, nome: 'Juliana Costa', vendas: 30, valor: 10890.45, meta: 12000, percentual: 90.8 },
-            { id: 5, nome: 'Fernando Souza', vendas: 28, valor: 9750.20, meta: 12000, percentual: 81.3 }
-          ];
-          setVendedores(mockVendedores);
-          
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error('Erro ao carregar dados do dashboard:', error);
-        setLoading(false);
-      }
+    // Definir datas padrão (primeiro e último dia do mês atual)
+    const hoje = new Date();
+    const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    let ultimoDiaMes;
+    
+    if (hoje.getMonth() === 11) { // Dezembro
+      ultimoDiaMes = new Date(hoje.getFullYear() + 1, 0, 0);
+    } else {
+      ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+    }
+    
+    const formatarData = (data) => {
+      const ano = data.getFullYear();
+      const mes = String(data.getMonth() + 1).padStart(2, '0');
+      const dia = String(data.getDate()).padStart(2, '0');
+      return `${ano}-${mes}-${dia}`;
     };
-
-    fetchData();
+    
+    setDataInicial(formatarData(primeiroDiaMes));
+    setDataFinal(formatarData(ultimoDiaMes));
   }, []);
+
+  // Função para buscar todos os dados com base no filtro de período
+  const fetchAllData = async () => {
+    setFiltrandoDados(true);
+    
+    // Buscar dados reais para cards principais do Dashboard
+    await fetchDashboardStats();
+    
+    // Buscar dados reais para top vendedores
+    await fetchTopVendedores();
+    
+    setFiltrandoDados(false);
+  };
+
+  // Buscar dados quando as datas estiverem definidas
+  useEffect(() => {
+    if (dataInicial && dataFinal) {
+      fetchAllData();
+    }
+  }, [dataInicial, dataFinal]);
+
+  // Handler para o botão de filtrar
+  const handleFilterSubmit = (e) => {
+    e.preventDefault();
+    fetchAllData(); // já recarrega vendasMes do backend com o novo período
+  };
+
+
+  // Função para buscar dados reais do Dashboard do backend
+  const fetchDashboardStats = async () => {
+    try {
+      console.log('Iniciando busca de dados do dashboard');
+      setLoading(true);
+      
+      // Configurar o token de autenticação
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('Token não encontrado');
+        setLoading(false);
+        return;
+      }
+      
+      // Configurar o cabeçalho com o token e empresa selecionada
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      
+      // Adicionar o código da empresa, se disponível
+      if (empresaSelecionada && empresaSelecionada.codigo) {
+        headers['x-empresa-codigo'] = empresaSelecionada.codigo.toString();
+        console.log(`Usando empresa código: ${empresaSelecionada.codigo}`);
+      } else {
+        console.warn('Nenhuma empresa selecionada ou código não disponível');
+      }
+      
+      // Preparar parâmetros de consulta para as datas
+      const params = {};
+      if (dataInicial) params.data_inicial = dataInicial;
+      if (dataFinal) params.data_final = dataFinal;
+      
+      // Construir a URL com os parâmetros
+      const queryString = new URLSearchParams(params).toString();
+      const url = `${API_URL}/relatorios/dashboard-stats${queryString ? `?${queryString}` : ''}`;
+      
+      console.log('Buscando estatísticas do dashboard:', url, 'com cabeçalhos:', headers);
+      
+      // Fazer a requisição para o backend
+      const response = await axios.get(url, { headers });
+      
+      if (response.status === 200) {
+        const dashboardData = response.data;
+        console.log('===== DADOS DO DASHBOARD RECEBIDOS =====');
+        console.log('Vendas do dia:', dashboardData.vendas_dia);
+        console.log('Vendas do mês:', dashboardData.vendas_mes);
+        console.log('Total clientes:', dashboardData.total_clientes);
+        console.log('Total produtos:', dashboardData.total_produtos);
+        console.log('Total pedidos:', dashboardData.total_pedidos);
+        console.log('Dados completos:', dashboardData);
+        
+        // Verificar se os dados estão vindo como números válidos
+        const vendasDia = parseFloat(dashboardData.vendas_dia) || 0;
+        const vendasMes = parseFloat(dashboardData.vendas_mes) || 0;
+        
+        console.log('Vendas do dia após parse:', vendasDia);
+        console.log('Vendas do mês após parse:', vendasMes);
+        
+        // Atualizar os estados com os dados reais
+        const novoStats = {
+          totalClientes: parseInt(dashboardData.total_clientes) || 0,
+          totalProdutos: parseInt(dashboardData.total_produtos) || 0,
+          totalPedidos: parseInt(dashboardData.total_pedidos) || 0,
+          valorTotalPedidos: parseFloat(dashboardData.valor_total_pedidos) || 0,
+          vendasDia: vendasDia,
+          vendasMes: vendasMes,
+          vendasNaoAutenticadas: parseFloat(dashboardData.vendas_nao_autenticadas) || 0,
+          percentualCrescimento: parseFloat(dashboardData.percentual_crescimento) || 0,
+          vendasAutenticadas: parseFloat(dashboardData.vendas_autenticadas) || 0
+        };
+        
+        console.log('Atualizando stats com:', novoStats);
+        setStats(novoStats);
+        
+        // Removido uso de dados mock para produtos. Aguarda implementação do endpoint real para TopProdutos.
+        setTopProdutos([]); // ou mantenha vazio até implementar a busca real
+      } else {
+        console.error('Erro ao buscar dados do dashboard:', response.statusText);
+      }
+      
+      setLoading(false);
+    } catch (error) {
+      console.error('Erro ao buscar dados do dashboard:', error);
+      if (error.response) {
+        console.error('Resposta de erro:', error.response.data);
+        console.error('Status:', error.response.status);
+      }
+      setLoading(false);
+    }
+  };
+  
+  // Função para buscar top vendedores da API real com o período selecionado
+  const fetchTopVendedores = async () => {
+    console.log('===== INÍCIO fetchTopVendedores =====');
+    setLoadingVendedores(true);
+    setVendedoresError(null);
+    
+    try {
+      // Verificar token de autenticação
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Autenticação necessária');
+      }
+      
+      // Verificar empresa selecionada
+      let empresaAtual = null;
+      if (empresaSelecionada && empresaSelecionada.cli_codigo) {
+        empresaAtual = empresaSelecionada;
+        console.log(`Dashboard - Usando empresa da prop: ${empresaSelecionada.cli_nome} (${empresaSelecionada.cli_codigo})`);
+      } else {
+        // Verificar localStorage
+        const empresaData = localStorage.getItem('empresa') || 
+                         localStorage.getItem('empresa_atual') || 
+                         localStorage.getItem('empresa_selecionada');
+        
+        if (empresaData) {
+          empresaAtual = JSON.parse(empresaData);
+          console.log(`Dashboard - Usando empresa do localStorage: ${empresaAtual.cli_nome} (${empresaAtual.cli_codigo})`);
+        }
+      }
+      
+      if (!empresaAtual || !empresaAtual.cli_codigo) {
+        console.error('Dashboard - ERRO: Nenhuma empresa selecionada!');
+        throw new Error('Nenhuma empresa selecionada');
+      }
+      
+      console.log('Dashboard - Empresa selecionada para busca de vendedores:', empresaAtual.cli_nome, '(código:', empresaAtual.cli_codigo, ')');
+      
+      // Configurar cabeçalhos para a requisição
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-empresa-codigo': empresaAtual.cli_codigo
+        }
+      };
+      
+      const url = `${API_URL}/relatorios/top-vendedores?data_inicial=${dataInicial}&data_final=${dataFinal}`;
+      console.log(`Dashboard - Buscando top vendedores no endpoint: ${url}`);
+      console.log('Dashboard - Headers da requisição:', JSON.stringify(config.headers));
+      
+      // Fazer a requisição à API para obter os top vendedores com o período selecionado
+      console.log('Dashboard - Enviando requisição...');
+      const response = await axios.get(url, config);
+      console.log('Dashboard - Requisição concluída!');
+      
+      console.log('Dashboard - Resposta da API de top vendedores:', response.data);
+      
+      console.log('Dashboard - Resposta completa:', response);
+      console.log('Dashboard - Status da resposta:', response.status);
+      
+      if (response.data && response.data.top_vendedores) {
+        console.log('Dashboard - Dados de vendedores recebidos:', response.data.top_vendedores.length, 'registros');
+        // Mapear os dados recebidos para o formato que usamos no componente
+        const vendedores = response.data.top_vendedores.map((vendedor, index) => {
+          // Garantir que a meta nunca seja zero (usar 50.000,00 como padrão)
+          const meta = vendedor.meta > 0 ? vendedor.meta : 50000.00;
+          
+          // Calcular o percentual de atingimento da meta e arredondar para 1 casa decimal
+          const percentualBruto = (vendedor.total / meta) * 100;
+          const percentual = Math.round(percentualBruto * 10) / 10; // Arredonda para 1 casa decimal
+          
+          return {
+            id: index + 1,
+            codigo: vendedor.codigo,
+            nome: vendedor.nome,
+            meta: meta, // Garantir meta mínima de 50.000,00
+            total: vendedor.total, // Valor total de vendas
+            vendas: vendedor.qtde_vendas, // Quantidade de vendas (novo campo)
+            percentual: percentual,
+            status: percentual >= 100 ? 'acima' : 'abaixo'
+          };
+        });
+        
+        console.log('Dashboard - Dados processados dos vendedores:', vendedores);
+        
+        setTopVendedores(vendedores);
+        console.log(`Dashboard - ${vendedores.length} vendedores processados`);
+      } else {
+        console.warn('Dashboard - Resposta da API não contém dados de vendedores');
+        console.log('Dashboard - Conteúdo da resposta:', response.data);
+        setTopVendedores([]);
+      }
+      
+      setLoadingVendedores(false);
+    } catch (error) {
+      console.error('Dashboard - Erro ao buscar top vendedores:', error);
+      console.error('Dashboard - Mensagem de erro:', error.message);
+      if (error.response) {
+        console.error('Dashboard - Dados da resposta de erro:', error.response.data);
+        console.error('Dashboard - Status de erro:', error.response.status);
+        console.error('Dashboard - Headers de erro:', error.response.headers);
+      } else if (error.request) {
+        console.error('Dashboard - Erro na requisição:', error.request);
+      }
+      setVendedoresError(error.message || 'Erro ao buscar dados de vendedores');
+      setTopVendedores([]);
+      setLoadingVendedores(false);
+    }
+    console.log('===== FIM fetchTopVendedores =====');
+  }; // Recarregar quando a empresa selecionada mudar
 
   if (loading) {
     return (
@@ -140,6 +335,71 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
           <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Dashboard</h1>
           <EmpresaInfo darkMode={darkMode} />
         </div>
+      </div>
+      
+      {/* Filtro de período unificado */}
+      <div className={`mb-6 p-4 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-4">
+          <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+            <FiCalendar className="inline-block mr-2" />
+            Período do Dashboard
+          </h2>
+          
+          <form onSubmit={handleFilterSubmit} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+            <div className="flex-1 sm:flex-none">
+              <label htmlFor="dashboardDataInicial" className={`text-xs block mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Data Inicial
+              </label>
+              <input
+                type="date"
+                id="dashboardDataInicial"
+                value={dataInicial}
+                onChange={(e) => setDataInicial(e.target.value)}
+                className={`w-full text-sm px-2 py-1 rounded border ${
+                  darkMode 
+                    ? 'bg-gray-700 text-white border-gray-600' 
+                    : 'bg-white text-gray-800 border-gray-300'
+                }`}
+              />
+            </div>
+            
+            <div className="flex-1 sm:flex-none">
+              <label htmlFor="dashboardDataFinal" className={`text-xs block mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Data Final
+              </label>
+              <input
+                type="date"
+                id="dashboardDataFinal"
+                value={dataFinal}
+                onChange={(e) => setDataFinal(e.target.value)}
+                className={`w-full text-sm px-2 py-1 rounded border ${
+                  darkMode 
+                    ? 'bg-gray-700 text-white border-gray-600' 
+                    : 'bg-white text-gray-800 border-gray-300'
+                }`}
+              />
+            </div>
+            
+            <div className="self-end">
+              <button
+                type="submit"
+                disabled={filtrandoDados}
+                className={`w-full sm:w-auto text-sm px-4 py-2 rounded ${filtrandoDados ? 'bg-gray-400 cursor-not-allowed' : darkMode 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                {filtrandoDados ? 'Atualizando...' : 'Atualizar Dashboard'}
+              </button>
+            </div>
+          </form>
+        </div>
+        <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          <p>Os dados exibidos abaixo se referem ao período selecionado.</p>
+        </div>
+      </div>  
+
+      <div className="mb-6">
         <p className={darkMode ? "text-gray-300" : "text-gray-600"}>Bem-vindo, {user?.name || 'master'}!</p>
       </div>
 
@@ -174,6 +434,10 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
               <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
                 {formatCurrency(stats.vendasMes)}
               </p>
+              {/* DEBUG: Mostrar valor bruto recebido do backend */}
+              <p style={{ fontSize: '10px', color: darkMode ? '#90cdf4' : '#3182ce' }}>
+                <b>DEBUG vendas_mes:</b> {stats.vendasMes}
+              </p>
               <p className={`text-xs ${stats.percentualCrescimento >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {stats.percentualCrescimento >= 0 ? '+' : ''}{stats.percentualCrescimento}% em relação ao mês anterior
               </p>
@@ -202,29 +466,49 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
           </div>
         </div>
 
-        {/* Card - Total de Pedidos */}
+        {/* Card - Vendas Autenticadas */}
         <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6`}>
           <div className="flex items-center">
-            <div className={`p-2 sm:p-3 rounded-full ${darkMode ? "bg-purple-900 text-purple-400" : "bg-purple-100 text-purple-600"}`}>
-              <FiShoppingCart className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className={`p-2 sm:p-3 rounded-full ${darkMode ? "bg-blue-900 text-blue-400" : "bg-blue-100 text-blue-600"}`}>
+              <FiAward className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <div className="ml-3 sm:ml-4">
-              <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Total de Pedidos</p>
-              <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>{stats.totalPedidos}</p>
+              <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas Autenticadas</p>
+              <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                {formatCurrency(stats.vendasAutenticadas)}
+              </p>
             </div>
           </div>
           <div className="mt-3 sm:mt-4">
-            <Link to="/pedidos" className={`text-xs sm:text-sm ${darkMode ? "text-purple-400 hover:text-purple-300" : "text-purple-600 hover:text-purple-800"}`}>Ver todos os pedidos →</Link>
+            <Link to="/vendas-autenticadas" className={`text-xs sm:text-sm ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"}`}>Ver autenticadas →</Link>
           </div>
         </div>
+
       </div>
 
       {/* Tabela de Vendedores */}
       <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6 mb-8`}>
         <h2 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"} mb-4`}>
           <FiAward className="inline-block mr-2" />
-          Vendedores
+          Vendedores {loadingVendedores ? '(Carregando...)' : `(${topVendedores.length} registros)`}
         </h2>
+        
+        {/* Mensagem de estado e debug */}
+        <div className="mb-4">
+          {vendedoresError && (
+            <div className={`p-3 rounded ${darkMode ? 'bg-red-900/30 text-red-200' : 'bg-red-50 text-red-800'}`}>
+              <FiAlertCircle className="inline-block mr-2" />
+              Erro: {vendedoresError}
+            </div>
+          )}
+          
+          {!loadingVendedores && topVendedores.length === 0 && !vendedoresError && (
+            <div className={`p-3 rounded ${darkMode ? 'bg-yellow-900/30 text-yellow-200' : 'bg-yellow-50 text-yellow-800'}`}>
+              <FiAlertCircle className="inline-block mr-2" />
+              Nenhum vendedor encontrado no período selecionado.
+            </div>
+          )}
+        </div>
         
         {/* Versão para desktop */}
         <div className="hidden sm:block overflow-x-auto">
@@ -239,7 +523,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
               </tr>
             </thead>
             <tbody>
-              {vendedores.map((vendedor, index) => (
+              {topVendedores.map((vendedor, index) => (
                 <tr key={vendedor.id} className={index % 2 === 0 ? (darkMode ? "bg-gray-800" : "bg-white") : (darkMode ? "bg-gray-700" : "bg-gray-50")}>
                   <td className="px-4 py-3">
                     <div className="flex items-center">
@@ -257,7 +541,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">{vendedor.vendas}</td>
-                  <td className="px-4 py-3 text-right">{formatCurrency(vendedor.valor)}</td>
+                  <td className="px-4 py-3 text-right">{formatCurrency(vendedor.total)}</td>
                   <td className="px-4 py-3 text-right">{formatCurrency(vendedor.meta)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center">
@@ -268,7 +552,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
                         ></div>
                       </div>
                       <span className={`text-xs font-medium ${getTextColor(vendedor.percentual, darkMode)}`}>
-                        {vendedor.percentual}%
+                        {vendedor.percentual.toFixed(1)}%
                       </span>
                     </div>
                   </td>
@@ -278,54 +562,59 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
           </table>
         </div>
         
-        {/* Versão para celular */}
+        {/* Versão para celular - NOVA IMPLEMENTAÇÃO COMPLETA */}
         <div className="sm:hidden space-y-4">
-          {vendedores.slice(0, 5).map((vendedor, index) => (
-            <div key={vendedor.id} className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
-              <div className="flex items-center mb-2">
-                {index < 3 && (
-                  <span className="mr-2">
-                    {index === 0 ? <FiAward className="text-yellow-400" /> : 
-                     index === 1 ? <FiAward className="text-gray-400" /> : 
-                     <FiAward className="text-yellow-700" />}
-                  </span>
-                )}
-                <div className="flex-grow">
-                  <div className="font-medium">{vendedor.nome}</div>
-                  <div className="text-xs text-gray-500">{vendedor.email}</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-medium">{formatCurrency(vendedor.valor)}</div>
-                  <div className="text-xs text-gray-500">{vendedor.vendas} vendas</div>
-                </div>
-              </div>
-              
-              <div className="flex items-center mt-2">
-                <div className="text-xs mr-2">
-                  Meta: {formatCurrency(vendedor.meta)}
-                </div>
-                <div className="flex-grow">
-                  <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className={`h-2.5 rounded-full ${getProgressColor(vendedor.percentual, darkMode)}`} 
-                      style={{ width: `${Math.min(vendedor.percentual, 100)}%` }}
-                    ></div>
+          {/* Titulo mobile com contador */}
+          <div className={`px-3 py-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-md`}>
+            <p className="text-sm font-semibold">
+              {topVendedores.length} vendedores encontrados
+            </p>
+          </div>
+          
+          {/* Lista COMPLETA de vendedores (sem slice/limite) */}
+          {topVendedores.length === 0 ? (
+            <div className={`p-4 text-center ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-50 text-gray-700'} rounded-lg`}>
+              <p>Nenhum vendedor encontrado no período selecionado.</p>
+            </div>
+          ) : (
+            topVendedores.map((vendedor, index) => (
+              <div key={vendedor.id} className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                <div className="flex items-center mb-2">
+                  {index < 3 && (
+                    <span className="mr-2">
+                      {index === 0 ? <FiAward className="text-yellow-400" /> : 
+                       index === 1 ? <FiAward className="text-gray-400" /> : 
+                       <FiAward className="text-yellow-700" />}
+                    </span>
+                  )}
+                  <div className="flex-grow">
+                    <div className="font-medium">{vendedor.nome}</div>
+                    <div className="text-xs text-gray-500">{vendedor.codigo ? `Código: ${vendedor.codigo}` : ''}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-medium">{formatCurrency(vendedor.total)}</div>
+                    <div className="text-xs text-gray-500">{vendedor.vendas} vendas</div>
                   </div>
                 </div>
-                <span className={`text-xs font-medium ml-2 ${getTextColor(vendedor.percentual, darkMode)}`}>
-                  {vendedor.percentual}%
-                </span>
+                
+                <div className="flex items-center mt-2">
+                  <div className="text-xs mr-2">
+                    Meta: {formatCurrency(vendedor.meta)}
+                  </div>
+                  <div className="flex-grow">
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div 
+                        className={`h-2.5 rounded-full ${getProgressColor(vendedor.percentual, darkMode)}`} 
+                        style={{ width: `${Math.min(vendedor.percentual, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-medium ml-2 ${getTextColor(vendedor.percentual, darkMode)}`}>
+                    {vendedor.percentual.toFixed(1)}%
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
-          
-          {vendedores.length > 5 && (
-            <button 
-              className={`w-full py-2 text-sm text-center rounded-md ${darkMode ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-              onClick={() => alert('Funcionalidade para ver todos os vendedores em desenvolvimento')}
-            >
-              Ver todos os vendedores
-            </button>
+            ))
           )}
         </div>
       </div>
@@ -334,156 +623,12 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       <div className="grid grid-cols-1 gap-8 mb-8">
         {/* Top Clientes */}
         <div className="mb-8">
-          <TopClientes darkMode={darkMode} empresaSelecionada={empresaSelecionada} />
-          
-          {/* Versão para desktop */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className={`min-w-full ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-              <thead>
-                <tr className={darkMode ? "bg-gray-700" : "bg-gray-100"}>
-                  <th className="px-4 py-2 text-left">#</th>
-                  <th className="px-4 py-2 text-left">Produto</th>
-                  <th className="px-4 py-2 text-center">Qtd</th>
-                  <th className="px-4 py-2 text-right">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topProdutos.map((produto, index) => (
-                  <tr key={produto.id} className={index % 2 === 0 ? (darkMode ? "bg-gray-800" : "bg-white") : (darkMode ? "bg-gray-700" : "bg-gray-50")}>
-                    <td className="px-4 py-3">
-                      {index < 3 ? (
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${index === 0 ? 'bg-yellow-400' : index === 1 ? 'bg-gray-400' : 'bg-yellow-700'} text-white font-bold`}>
-                          {index + 1}
-                        </span>
-                      ) : (
-                        <span className="px-2">{index + 1}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <div className="font-medium">{produto.descricao}</div>
-                        <div className="text-xs text-gray-500">{produto.codigo}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">{produto.quantidade}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(produto.valor)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Versão para celular */}
-          <div className="sm:hidden">
-            <div className="space-y-3">
-              {topProdutos.slice(0, 5).map((produto, index) => (
-                <div key={produto.id} className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} flex items-center`}>
-                  <div className="mr-3">
-                    {index < 3 ? (
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${index === 0 ? 'bg-yellow-400' : index === 1 ? 'bg-gray-400' : 'bg-yellow-700'} text-white font-bold`}>
-                        {index + 1}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-300 text-gray-700 font-bold">{index + 1}</span>
-                    )}
-                  </div>
-                  <div className="flex-grow">
-                    <div className="font-medium truncate">{produto.descricao}</div>
-                    <div className="text-xs text-gray-500">{produto.codigo}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">{formatCurrency(produto.valor)}</div>
-                    <div className="text-xs text-gray-500">{produto.quantidade} un.</div>
-                  </div>
-                </div>
-              ))}
-              {topProdutos.length > 5 && (
-                <button 
-                  className={`w-full py-2 text-sm text-center rounded-md ${darkMode ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-                  onClick={() => alert('Funcionalidade para ver todos os produtos em desenvolvimento')}
-                >
-                  Ver mais produtos
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Top 10 Clientes */}
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6`}>
-          <h2 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"} mb-4`}>Top 10 Clientes</h2>
-          
-          {/* Versão para desktop */}
-          <div className="hidden sm:block overflow-x-auto">
-            <table className={`min-w-full ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-              <thead>
-                <tr className={darkMode ? "bg-gray-700" : "bg-gray-100"}>
-                  <th className="px-4 py-2 text-left">#</th>
-                  <th className="px-4 py-2 text-left">Cliente</th>
-                  <th className="px-4 py-2 text-center">Pedidos</th>
-                  <th className="px-4 py-2 text-right">Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topClientes.map((cliente, index) => (
-                  <tr key={cliente.id} className={index % 2 === 0 ? (darkMode ? "bg-gray-800" : "bg-white") : (darkMode ? "bg-gray-700" : "bg-gray-50")}>
-                    <td className="px-4 py-3">
-                      {index < 3 ? (
-                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${index === 0 ? 'bg-yellow-400' : index === 1 ? 'bg-gray-400' : 'bg-yellow-700'} text-white font-bold`}>
-                          {index + 1}
-                        </span>
-                      ) : (
-                        <span className="px-2">{index + 1}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div>
-                        <div className="font-medium">{cliente.nome}</div>
-                        <div className="text-xs text-gray-500">{cliente.cnpj_cpf}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">{cliente.pedidos}</td>
-                    <td className="px-4 py-3 text-right">{formatCurrency(cliente.valor)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Versão para celular */}
-          <div className="sm:hidden">
-            <div className="space-y-3">
-              {topClientes.slice(0, 5).map((cliente, index) => (
-                <div key={cliente.id} className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} flex items-center`}>
-                  <div className="mr-3">
-                    {index < 3 ? (
-                      <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${index === 0 ? 'bg-yellow-400' : index === 1 ? 'bg-gray-400' : 'bg-yellow-700'} text-white font-bold`}>
-                        {index + 1}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-300 text-gray-700 font-bold">{index + 1}</span>
-                    )}
-                  </div>
-                  <div className="flex-grow">
-                    <div className="font-medium truncate">{cliente.nome}</div>
-                    <div className="text-xs text-gray-500">{cliente.cnpj_cpf}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-medium">{formatCurrency(cliente.valor)}</div>
-                    <div className="text-xs text-gray-500">{cliente.pedidos} pedidos</div>
-                  </div>
-                </div>
-              ))}
-              {topClientes.length > 5 && (
-                <button 
-                  className={`w-full py-2 text-sm text-center rounded-md ${darkMode ? "bg-gray-700 text-gray-300 hover:bg-gray-600" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-                  onClick={() => alert('Funcionalidade para ver todos os clientes em desenvolvimento')}
-                >
-                  Ver mais clientes
-                </button>
-              )}
-            </div>
-          </div>
+          <TopClientes 
+            darkMode={darkMode} 
+            empresaSelecionada={empresaSelecionada} 
+            dataInicial={dataInicial}
+            dataFinal={dataFinal}
+          />
         </div>
       </div>
 

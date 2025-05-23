@@ -347,21 +347,6 @@ function AppContent() {
                   <div className="font-medium">{empresaSelecionada?.cli_nome}</div>
                   <div className="text-sm text-gray-500">Código: {empresaSelecionada?.cli_codigo}</div>
                 </div>
-                
-                <div className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-2">Usuário</div>
-                <div className={`px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                  <div className="font-medium">{user?.name}</div>
-                  <div className="text-sm text-gray-500">
-                    Nível: <span className="capitalize">{user?.nivel || 'Não definido'}</span>
-                    {user?.nivel?.toUpperCase() === 'VENDEDOR' && user?.codigo_vendedor && (
-                      <div className="mt-1">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-800'}`}>
-                          Cód. Vendedor: {user.codigo_vendedor}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
               </div>
               
               <div>

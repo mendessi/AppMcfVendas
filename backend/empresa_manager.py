@@ -128,6 +128,9 @@ async def obter_empresas_usuario(email: str) -> List[Dict[str, Any]]:
         for row in rows:
             try:
                 logging.info(f"[EMPRESAS] Processando linha: {row}")
+                # Garantir que a porta seja uma string válida
+                porta = str(row[7]) if row[7] is not None else '3050'
+                
                 empresa = {
                     "cli_codigo": int(row[0]),
                     "cli_nome": str(row[1]),
@@ -136,7 +139,7 @@ async def obter_empresas_usuario(email: str) -> List[Dict[str, Any]]:
                     "cli_caminho_base": str(row[4]),
                     "cli_ip_servidor": str(row[5]),
                     "cli_nome_base": str(row[6]),
-                    "cli_porta": str(row[7]),
+                    "cli_porta": porta,
                     "id": int(row[8]),  # VINCULO_ID
                     "usuario_id": int(row[9]),
                     "nivel_acesso": str(row[10]),
@@ -176,7 +179,7 @@ async def obter_empresa_controladora(usuario_id: int):
                 C.CLI_CAMINHO_BASE, 
                 C.CLI_IP_SERVIDOR,
                 C.CLI_NOME_BASE,
-                C.CLI_PORTA,
+                CAST(C.CLI_PORTA AS VARCHAR(10)) as CLI_PORTA,
                 C.CLI_MENSAGEM,
                 C.CLI_BLOQUEADOAPP
             FROM CONFIG_APP
@@ -195,7 +198,7 @@ async def obter_empresa_controladora(usuario_id: int):
             "cli_caminho_base": row[2],
             "cli_ip_servidor": row[3],
             "cli_nome_base": row[4],
-            "cli_porta": row[5],
+            "cli_porta": str(row[5]) if row[5] else '3050',
             "cli_mensagem": row[6],
             "cli_bloqueadoapp": row[7]
         }
@@ -219,7 +222,7 @@ async def obter_empresa_por_codigo(cli_codigo: int):
                 CLI_CAMINHO_BASE, 
                 CLI_IP_SERVIDOR,
                 CLI_NOME_BASE,
-                CLI_PORTA,
+                CAST(CLI_PORTA AS VARCHAR(10)) as CLI_PORTA,
                 CLI_MENSAGEM,
                 CLI_BLOQUEADOAPP
             FROM CLIENTES
@@ -238,7 +241,7 @@ async def obter_empresa_por_codigo(cli_codigo: int):
             "cli_caminho_base": row[2],
             "cli_ip_servidor": row[3],
             "cli_nome_base": row[4],
-            "cli_porta": row[5],
+            "cli_porta": str(row[5]) if row[5] else '3050',
             "cli_mensagem": row[6],
             "cli_bloqueadoapp": row[7]
         }
@@ -499,7 +502,17 @@ def get_empresa_atual(request: Request):
                     
                     # Buscar diretamente a empresa especificada sem listar todas
                     log.info(f"Buscando empresa com código {empresa_codigo}...")
-                    cursor.execute("SELECT CLI_CODIGO, CLI_NOME, CLI_CAMINHO_BASE, CLI_IP_SERVIDOR, CLI_NOME_BASE, CLI_PORTA FROM CLIENTES WHERE CLI_CODIGO = ?", (empresa_codigo,))
+                    cursor.execute("""
+                        SELECT 
+                            CLI_CODIGO, 
+                            CLI_NOME, 
+                            CLI_CAMINHO_BASE, 
+                            CLI_IP_SERVIDOR, 
+                            CLI_NOME_BASE, 
+                            CAST(CLI_PORTA AS VARCHAR(10)) as CLI_PORTA 
+                        FROM CLIENTES 
+                        WHERE CLI_CODIGO = ?
+                    """, (empresa_codigo,))
                     empresa_db = cursor.fetchone()
                 
                     if empresa_db:
@@ -511,7 +524,7 @@ def get_empresa_atual(request: Request):
                             "cli_caminho_base": empresa_db[2] or '',
                             "cli_ip_servidor": empresa_db[3] or '127.0.0.1',
                             "cli_nome_base": empresa_db[4] or '',
-                            "cli_porta": str(empresa_db[5]) if empresa_db[5] else "3050",
+                            "cli_porta": str(empresa_db[5]) if empresa_db[5] is not None else '3050',
                         }
                         conn.close()
                         return empresa
@@ -550,6 +563,12 @@ def get_empresa_atual(request: Request):
                 "cli_cnpj": "Nenhuma empresa selecionada",
                 "empresa_nao_selecionada": True
             }
+        
+        # Garantir que a porta seja uma string válida
+        if 'cli_porta' not in empresa or empresa['cli_porta'] is None:
+            empresa['cli_porta'] = '3050'
+        else:
+            empresa['cli_porta'] = str(empresa['cli_porta'])
         
         log.info(f"Empresa encontrada na sessão: {empresa['cli_nome']} (ID: {empresa['cli_codigo']})")
         

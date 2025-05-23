@@ -142,13 +142,11 @@ const EmpresaAtualInfo = ({ darkMode = false }) => {
                   <FaUser className={`mr-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} size={14} />
                   <span className={`font-medium ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>Vendedor</span>
                 </div>
-                
                 <div className="text-sm">
                   <div className="flex items-center">
                     <span className="font-medium mr-1">Nome:</span>
                     <span>{userInfo.nome || 'Não informado'}</span>
                   </div>
-                  
                   {userInfo.codigo_vendedor && (
                     <div className="flex items-center mt-1">
                       <FaTag className={`mr-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} size={12} />

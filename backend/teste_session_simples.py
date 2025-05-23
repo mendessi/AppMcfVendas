@@ -13,7 +13,7 @@ router = APIRouter(tags=["Teste Session Simples"])
 
 class EmpresaSimples(BaseModel):
     codigo: int
-    nome: str = "SANTOS INDUSTRIA"
+    nome: str = "SANTOS INDUSTRIA x"
     ip: str = "149.56.77.81"
     porta: str = "3050"
     caminho_base: str = "C:\\ERP_MACFIN\\Banco\\Santos"

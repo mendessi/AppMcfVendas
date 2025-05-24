@@ -2,15 +2,10 @@ import React, { useState, useEffect } from 'react';
 
 const ProdutosList = ({ darkMode, empresaSelecionada }) => {
   const [produtos, setProdutos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProdutos, setFilteredProdutos] = useState([]);
 
-  useEffect(() => {
-    // Busca inicial vazia
-    fetchProdutos('');
-    // eslint-disable-next-line
-  }, []);
 
   const handleBuscar = () => {
     if (searchTerm.length >= 2 || searchTerm.length === 0) {

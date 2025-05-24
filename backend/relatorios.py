@@ -16,6 +16,138 @@ router = APIRouter(prefix="/relatorios", tags=["Relatórios"])
 from fastapi import Response
 
 # --- NOVOS ENDPOINTS PARA VENDAS E ITENS DE VENDA ---
+
+@router.get("/vendas")
+async def listar_vendas(request: Request):
+    """
+    Lista todas as vendas, com filtros opcionais por cliente, data_inicial e data_final.
+    Parâmetros query:
+      - cli_codigo: filtra por cliente
+      - data_inicial, data_final: período (padrão: mês atual)
+    """
+    from datetime import date, timedelta
+    log.info(f"[VENDAS] Listando vendas. Headers: {dict(request.headers)}")
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        # Descobrir coluna de data válida
+        cursor.execute("SELECT FIRST 1 * FROM VENDAS")
+        colunas_vendas = [col[0].lower() for col in cursor.description]
+        date_column = "ecf_data" if "ecf_data" in colunas_vendas else ("ecf_cx_data" if "ecf_cx_data" in colunas_vendas else None)
+        if not date_column:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
+        hoje = date.today()
+        data_inicial = request.query_params.get('data_inicial')
+        data_final = request.query_params.get('data_final')
+        if not data_inicial:
+            data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+        if not data_final:
+            if hoje.month == 12:
+                proximo_mes = date(hoje.year + 1, 1, 1)
+            else:
+                proximo_mes = date(hoje.year, hoje.month + 1, 1)
+            data_final = (proximo_mes - timedelta(days=1)).isoformat()
+        cli_codigo = request.query_params.get('cli_codigo')
+        log.info(f"Filtro de data: {date_column} entre {data_inicial} e {data_final}. Cliente: {cli_codigo}")
+        sql = f'''
+            SELECT
+              VENDAS.ECF_NUMERO,         -- ID da Venda
+              VENDAS.ECF_DATA,           -- Data da Venda
+              VENDEDOR.VEN_NOME,         -- Nome do Vendedor
+              VENDAS.CLI_CODIGO,         -- Código do Cliente
+              VENDAS.NOME,               -- Nome do Cliente
+              VENDAS.ECF_TOTAL,          -- Total da Venda
+              TABPRECO.TAB_NOME,         -- Nome da Tabela de Preço
+              FORMAPAG.FPG_NOME,         -- Nome da Forma de Pagamento
+              VENDAS.ECF_CAIXA,          -- Caixa que autenticou
+              VENDAS.ECF_DESCONTO        -- Valor do Desconto
+            FROM
+              VENDAS
+            LEFT JOIN
+              VENDEDOR ON VENDAS.VEN_CODIGO = VENDEDOR.VEN_CODIGO
+            LEFT JOIN
+              TABPRECO ON VENDAS.ECF_TAB_COD = TABPRECO.TAB_COD
+            LEFT JOIN
+              FORMAPAG ON VENDAS.ECF_FPG_COD = FORMAPAG.FPG_COD
+            WHERE
+              VENDAS.ECF_CANCELADA = 'N'
+              AND VENDAS.ECF_CONCLUIDA = 'S'
+              AND VENDAS.{date_column} IS NOT NULL
+              AND CAST(VENDAS.{date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+        '''
+        params = [data_inicial, data_final]
+        if cli_codigo:
+            sql += " AND VENDAS.CLI_CODIGO = ?"
+            params.append(cli_codigo)
+        sql += " ORDER BY VENDAS.ECF_NUMERO DESC"
+        cursor.execute(sql, tuple(params))
+        columns = [col[0].lower() for col in cursor.description]
+        vendas = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return vendas
+    except Exception as e:
+        import traceback
+        log.error(f"Erro ao listar vendas: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar vendas: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
+@router.get("/vendas/{ecf_numero}/itens")
+async def listar_itens_venda(ecf_numero: int, request: Request):
+    log.info(f"[ITENS VENDA] Listando itens para venda {ecf_numero}. Headers: {dict(request.headers)}")
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        sql = '''
+            SELECT
+              ITVENDA.ECF_NUMERO,           -- Número da venda
+              ITVENDA.PRO_CODIGO,           -- Código do produto (VARCHAR)
+              ITVENDA.PRO_DESCRICAO,        -- Descrição do produto
+              ITVENDA.PRO_QUANTIDADE,       -- Quantidade vendida
+              ITVENDA.PRO_VENDA,            -- Preço de venda no momento
+              PRODUTO.PRO_MARCA,            -- Marca do produto
+              PRODUTO.UNI_CODIGO,           -- Unidade do produto
+              PRODUTO.PRO_QUANTIDADE AS ESTOQUE_ATUAL  -- Estoque atual
+            FROM
+              ITVENDA
+            INNER JOIN
+              PRODUTO ON ITVENDA.PRO_CODIGO = PRODUTO.PRO_CODIGO
+            INNER JOIN
+              VENDAS ON ITVENDA.ECF_NUMERO = VENDAS.ECF_NUMERO
+            WHERE
+              ITVENDA.ECF_NUMERO = ?
+            ORDER BY
+              ITVENDA.IEC_SEQUENCIA
+        '''
+        cursor.execute(sql, (ecf_numero,))
+        columns = [col[0].lower() for col in cursor.description]
+        itens = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return itens
+    except Exception as e:
+        import traceback
+        log.error(f"Erro ao listar itens da venda {ecf_numero}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar itens da venda: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
 @router.get("/clientes/{cli_codigo}/vendas")
 async def listar_vendas_cliente(cli_codigo: int, request: Request):
     from datetime import date, datetime, timedelta
@@ -158,25 +290,31 @@ async def listar_grupos(request: Request):
     try:
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT GRU_CODIGO, GRU_NOME
-            FROM GRUPOS
-            ORDER BY GRU_NOME
-        """)
-        rows = cursor.fetchall()
-        grupos = [
-            {"gru_codigo": row[0], "gru_nome": row[1]} for row in rows
-        ]
-        return grupos
+        try:
+            cursor.execute("""
+                SELECT GRU_CODIGO, GRU_DESCRICAO
+                FROM GRUPOS
+                ORDER BY GRU_DESCRICAO
+            """)
+            rows = cursor.fetchall()
+            grupos = [
+                {"gru_codigo": row[0], "gru_nome": row[1]} for row in rows
+            ]
+            return grupos
+        except Exception as e:
+            # Se a tabela não existir, retorna lista vazia e loga
+            import traceback
+            log.error(f"[GRUPOS] Tabela GRUPOS não encontrada ou erro SQL: {e}\n{traceback.format_exc()}")
+            return []
     except Exception as e:
         import traceback
-        log.error(f"[GRUPOS] Erro ao listar grupos: {e}\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Erro ao listar grupos: {e}")
+        log.error(f"[GRUPOS] Erro ao listar grupos (conexão): {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar grupos (conexão): {e}")
     finally:
         try:
             conn.close()
-        except:
-            pass
+        except Exception as e:
+            log.warning(f"[GRUPOS] Falha ao fechar conexão: {e}")
 
 @router.get("/produtos")
 async def listar_produtos(request: Request):
@@ -187,8 +325,68 @@ async def listar_produtos(request: Request):
     """
     log.info(f"[PRODUTOS] Headers recebidos: {dict(request.headers)}")
     busca = request.query_params.get('q', '').strip()
-    if not busca or len(busca) < 2:
-        return []
+    # Se não houver busca, retorna todos os produtos ativos
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        if not busca or len(busca) < 2:
+            cursor.execute(
+                """
+                SELECT 
+                    PRODUTO.PRO_CODIGO,
+                    PRODUTO.PRO_DESCRICAO,
+                    PRODUTO.UNI_CODIGO,
+                    PRODUTO.PRO_VENDA,
+                    PRODUTO.PRO_VENDAPZ,
+                    PRODUTO.PRO_QUANTIDADE
+                FROM PRODUTO
+                WHERE PRODUTO.ITEM_TABLET = 'S'   
+                  AND PRODUTO.PRO_INATIVO = 'N'
+                ORDER BY PRODUTO.PRO_DESCRICAO
+                """
+            )
+            rows = cursor.fetchall()
+            columns = [col[0].lower() for col in cursor.description]
+            produtos = [dict(zip(columns, row)) for row in rows]
+            return produtos
+        # Busca com filtro
+        cursor.execute(
+            """
+            SELECT 
+                PRODUTO.PRO_CODIGO,
+                PRODUTO.PRO_DESCRICAO,
+                PRODUTO.UNI_CODIGO,
+                PRODUTO.PRO_VENDA,
+                PRODUTO.PRO_VENDAPZ,
+                PRODUTO.PRO_QUANTIDADE
+            FROM PRODUTO
+            WHERE (UPPER(PRODUTO.PRO_DESCRICAO) LIKE UPPER(?)) 
+              AND PRODUTO.ITEM_TABLET = 'S'   
+              AND PRODUTO.PRO_INATIVO = 'N'
+            ORDER BY PRODUTO.PRO_DESCRICAO
+            """,
+            (f"%{busca}%",)
+        )
+        rows = cursor.fetchall()
+        columns = [col[0].lower() for col in cursor.description]
+        produtos = [dict(zip(columns, row)) for row in rows]
+        return produtos
+    except Exception as e:
+        import traceback
+        log.error(f"[PRODUTOS] Erro ao listar produtos: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar produtos: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
     authorization = request.headers.get("Authorization")
     empresa_codigo = request.headers.get("x-empresa-codigo")
     if not authorization or not authorization.startswith("Bearer "):

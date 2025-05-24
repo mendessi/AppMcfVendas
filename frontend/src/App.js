@@ -13,7 +13,7 @@ import ClientesList from './components/ClientesList';
 import ProdutosList from './components/ProdutosList';
 import PedidosList from './components/PedidosList';
 import NovoPedido from './components/NovoPedido';
-import CatalogoProdutos from './components/CatalogoProdutos';
+
 import EmpresaSelector from './components/EmpresaSelector';
 
 // Componente principal da aplicação
@@ -427,7 +427,7 @@ function AppContent() {
               <Route path="/produtos" element={<ProdutosList darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="/pedidos" element={<PedidosList darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="/novo-pedido" element={<NovoPedido darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
-              <Route path="/catalogo" element={<CatalogoProdutos darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
+              
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>

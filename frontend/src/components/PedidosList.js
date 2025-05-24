@@ -7,95 +7,69 @@ const PedidosList = ({ darkMode }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredPedidos, setFilteredPedidos] = useState([]);
   const [expandedPedido, setExpandedPedido] = useState(null);
+  const [dataInicial, setDataInicial] = useState(() => {
+    const hoje = new Date();
+    return hoje.toISOString().slice(0, 10);
+  });
+  const [dataFinal, setDataFinal] = useState(() => {
+    const hoje = new Date();
+    return hoje.toISOString().slice(0, 10);
+  });
 
   useEffect(() => {
-    // Em um ambiente real, você faria uma chamada à API aqui
-    // Por enquanto, vamos simular dados
-    const fetchPedidos = async () => {
-      try {
-        // Simular uma chamada de API
-        setTimeout(() => {
-          const mockPedidos = [
-            {
-              id: 1,
-              cliente_id: 1,
-              cliente_nome: 'Supermercado Silva',
-              data: '2025-05-18T10:30:00',
-              status: 'CONCLUÍDO',
-              valor_total: 1250.75,
-              observacao: 'Entrega agendada para segunda-feira',
-              itens: [
-                { produto_id: 1, produto_descricao: 'Arroz Branco 5kg', quantidade: 10, preco_unitario: 24.90, valor_total: 249.00 },
-                { produto_id: 2, produto_descricao: 'Feijão Carioca 1kg', quantidade: 15, preco_unitario: 8.50, valor_total: 127.50 },
-                { produto_id: 5, produto_descricao: 'Óleo de Soja 900ml', quantidade: 20, preco_unitario: 7.80, valor_total: 156.00 },
-              ]
-            },
-            {
-              id: 2,
-              cliente_id: 3,
-              cliente_nome: 'Padaria Pão Quente',
-              data: '2025-05-18T14:45:00',
-              status: 'PENDENTE',
-              valor_total: 875.20,
-              observacao: '',
-              itens: [
-                { produto_id: 9, produto_descricao: 'Farinha de Trigo 1kg', quantidade: 50, preco_unitario: 4.50, valor_total: 225.00 },
-                { produto_id: 3, produto_descricao: 'Açúcar Refinado 1kg', quantidade: 30, preco_unitario: 5.99, valor_total: 179.70 },
-                { produto_id: 4, produto_descricao: 'Café Torrado 500g', quantidade: 15, preco_unitario: 15.90, valor_total: 238.50 },
-              ]
-            },
-            {
-              id: 3,
-              cliente_id: 2,
-              cliente_nome: 'Farmácia Saúde',
-              data: '2025-05-17T09:15:00',
-              status: 'CANCELADO',
-              valor_total: 0,
-              observacao: 'Cliente solicitou cancelamento',
-              itens: []
-            },
-            {
-              id: 4,
-              cliente_id: 5,
-              cliente_nome: 'Mercado Central',
-              data: '2025-05-16T16:20:00',
-              status: 'CONCLUÍDO',
-              valor_total: 2345.60,
-              observacao: '',
-              itens: [
-                { produto_id: 1, produto_descricao: 'Arroz Branco 5kg', quantidade: 20, preco_unitario: 24.90, valor_total: 498.00 },
-                { produto_id: 2, produto_descricao: 'Feijão Carioca 1kg', quantidade: 25, preco_unitario: 8.50, valor_total: 212.50 },
-                { produto_id: 6, produto_descricao: 'Leite Integral 1L', quantidade: 100, preco_unitario: 4.99, valor_total: 499.00 },
-                { produto_id: 7, produto_descricao: 'Macarrão Espaguete 500g', quantidade: 50, preco_unitario: 3.50, valor_total: 175.00 },
-              ]
-            },
-            {
-              id: 5,
-              cliente_id: 4,
-              cliente_nome: 'Açougue Boi Feliz',
-              data: '2025-05-15T11:10:00',
-              status: 'CONCLUÍDO',
-              valor_total: 567.80,
-              observacao: 'Cliente pagou em dinheiro',
-              itens: [
-                { produto_id: 3, produto_descricao: 'Açúcar Refinado 1kg', quantidade: 20, preco_unitario: 5.99, valor_total: 119.80 },
-                { produto_id: 8, produto_descricao: 'Sal Refinado 1kg', quantidade: 15, preco_unitario: 2.99, valor_total: 44.85 },
-                { produto_id: 10, produto_descricao: 'Molho de Tomate 340g', quantidade: 30, preco_unitario: 2.79, valor_total: 83.70 },
-              ]
-            },
-          ];
-          setPedidos(mockPedidos);
-          setFilteredPedidos(mockPedidos);
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error('Erro ao carregar pedidos:', error);
-        setLoading(false);
-      }
-    };
-
-    fetchPedidos();
+    buscarPedidos();
+    // eslint-disable-next-line
   }, []);
+
+  const buscarPedidos = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada');
+      let empresaCodigo = null;
+      if (empresaSelecionada) {
+        try {
+          const empObj = JSON.parse(empresaSelecionada);
+          empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
+        } catch {
+          empresaCodigo = empresaSelecionada;
+        }
+      }
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+      if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      // Montar query string de datas
+      let url = `${apiUrl}/relatorios/vendas`;
+      if (dataInicial && dataFinal) {
+        url += `?data_inicial=${dataInicial}&data_final=${dataFinal}`;
+      }
+      const response = await fetch(url, { headers });
+      if (!response.ok) throw new Error('Erro ao buscar pedidos');
+      const data = await response.json();
+      // Mapear os dados para o formato esperado pelo front
+      const pedidosFormatados = data.map(venda => ({
+        id: venda.ecf_numero,
+        cliente_id: venda.cli_codigo,
+        cliente_nome: venda.nome,
+        data: venda.ecf_data,
+        status: venda.ecf_total > 0 ? 'CONCLUÍDO' : 'PENDENTE',
+        valor_total: venda.ecf_total,
+        observacao: venda.observacao || '',
+        itens: [], // será preenchido ao expandir
+      }));
+      setPedidos(pedidosFormatados);
+      setFilteredPedidos(pedidosFormatados);
+    } catch (error) {
+      setPedidos([]);
+      setFilteredPedidos([]);
+      console.error('Erro ao buscar pedidos:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     // Filtrar pedidos com base no termo de pesquisa
@@ -156,6 +130,32 @@ const PedidosList = ({ darkMode }) => {
 
   return (
     <div>
+      <div className="mb-6 flex flex-col sm:flex-row gap-2 items-start sm:items-end">
+        <div>
+          <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Data inicial</label>
+          <input
+            type="date"
+            className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"}`}
+            value={dataInicial}
+            onChange={e => setDataInicial(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Data final</label>
+          <input
+            type="date"
+            className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"}`}
+            value={dataFinal}
+            onChange={e => setDataFinal(e.target.value)}
+          />
+        </div>
+        <button
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-5"
+          onClick={buscarPedidos}
+          disabled={loading}
+        >Buscar</button>
+      </div>
+
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
         <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Pedidos</h1>
         <Link to="/novo-pedido" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full sm:w-auto">

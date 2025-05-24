@@ -15,18 +15,18 @@ const PedidosList = ({ darkMode }) => {
     const hoje = new Date();
     return hoje.toISOString().slice(0, 10);
   });
+  const [errorMsg, setErrorMsg] = useState(null);
 
   // Remover busca automática ao abrir no mobile
   useEffect(() => {
-    if (window.innerWidth >= 768) {
-      buscarPedidos();
-    }
+    buscarPedidos(); // Sempre busca pedidos ao abrir a tela, independente do tamanho da tela
     // eslint-disable-next-line
   }, []);
 
   // Busca só será feita ao clicar em "Buscar" no mobile
   const buscarPedidos = async () => {
     setLoading(true);
+    setErrorMsg(null);
     try {
       const token = localStorage.getItem('token');
       const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada');
@@ -75,6 +75,7 @@ const PedidosList = ({ darkMode }) => {
     } catch (error) {
       setPedidos([]);
       setFilteredPedidos([]);
+      setErrorMsg('Erro ao buscar pedidos. Tente novamente.');
       console.error('Erro ao buscar pedidos:', error);
     } finally {
       setLoading(false);
@@ -103,11 +104,40 @@ const PedidosList = ({ darkMode }) => {
     return (str || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   };
 
-  const togglePedidoDetails = (pedidoId) => {
+  const togglePedidoDetails = async (pedidoId) => {
     if (expandedPedido === pedidoId) {
       setExpandedPedido(null);
     } else {
       setExpandedPedido(pedidoId);
+      // Buscar itens do pedido se ainda não carregou
+      const pedido = pedidos.find(p => p.id === pedidoId);
+      if (pedido && (!pedido.itens || pedido.itens.length === 0)) {
+        try {
+          const token = localStorage.getItem('token');
+          const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada');
+          let empresaCodigo = null;
+          if (empresaSelecionada) {
+            try {
+              const empObj = JSON.parse(empresaSelecionada);
+              empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
+            } catch {
+              empresaCodigo = empresaSelecionada;
+            }
+          }
+          const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          };
+          if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
+          const apiUrl = process.env.REACT_APP_API_URL || '';
+          const response = await fetch(`${apiUrl}/relatorios/vendas/${pedidoId}/itens`, { headers });
+          if (!response.ok) throw new Error('Erro ao buscar itens do pedido');
+          const itens = await response.json();
+          setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, itens } : p));
+        } catch (e) {
+          // Tratar erro se necessário
+        }
+      }
     }
   };
 
@@ -128,6 +158,14 @@ const PedidosList = ({ darkMode }) => {
     return (
       <div className="flex justify-center items-center h-64">
         <div className={darkMode ? "text-blue-400" : "text-blue-600"}>Carregando pedidos...</div>
+      </div>
+    );
+  }
+
+  if (errorMsg) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className={darkMode ? "text-red-400" : "text-red-600"}>{errorMsg}</div>
       </div>
     );
   }
@@ -251,39 +289,48 @@ const PedidosList = ({ darkMode }) => {
                     </tr>
                     {expandedPedido === pedido.id && (
                       <tr>
-                        <td colSpan="9" className={`px-6 py-4 ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                        <td colSpan="10" className={`px-6 py-4 ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                           <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
-                            <h3 className="font-bold mb-2">Detalhes do Pedido #{pedido.id}</h3>
-                            {pedido.observacao && (
-                              <div className="mb-3">
-                                <p className="font-semibold">Observação:</p>
-                                <p>{pedido.observacao}</p>
-                              </div>
+                            <h3 className="font-bold mb-2">Itens do Pedido #{pedido.id}</h3>
+                            {pedido.itens && pedido.itens.length > 0 ? (
+                              <table className="w-full text-xs mt-2">
+                                <thead>
+                                  <tr>
+                                    <th>Código</th>
+                                    <th>Descrição</th>
+                                    <th>Marca</th>
+                                    <th>Unidade</th>
+                                    <th>Qtd</th>
+                                    <th>Preço</th>
+                                    <th>Estoque</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {pedido.itens.map((item, idx) => {
+                                    // Normaliza as chaves para garantir compatibilidade maiúsculo/minúsculo
+                                    const norm = (obj) => {
+                                      const novo = {};
+                                      Object.keys(obj).forEach(k => novo[k.toUpperCase()] = obj[k]);
+                                      return novo;
+                                    };
+                                    const nitem = norm(item);
+                                    return (
+                                      <tr key={idx}>
+                                        <td>{nitem.PRO_CODIGO}</td>
+                                        <td>{nitem.PRO_DESCRICAO}</td>
+                                        <td>{nitem.PRO_MARCA}</td>
+                                        <td>{nitem.UNI_CODIGO}</td>
+                                        <td>{nitem.PRO_QUANTIDADE}</td>
+                                        <td>{formatCurrency(nitem.PRO_VENDA)}</td>
+                                        <td>{nitem.ESTOQUE_ATUAL}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <span>Nenhum item encontrado.</span>
                             )}
-                            <div className="mt-3">
-                              <p className={`font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>Itens do Pedido:</p>
-                              {pedido.itens.length > 0 ? (
-                                <div className="space-y-2">
-                                  {pedido.itens.map((item, index) => (
-                                    <div key={index} className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
-                                      <div className="flex justify-between">
-                                        <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{item.produto_descricao}</span>
-                                        <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(item.valor_total)}</span>
-                                      </div>
-                                      <div className="flex justify-between text-sm mt-1">
-                                        <span className={darkMode ? "text-gray-400" : "text-gray-500"}>{item.quantidade} x {formatCurrency(item.preco_unitario)}</span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                  <div className="flex justify-between font-bold mt-2 pt-2 border-t border-dashed border-gray-300">
-                                    <span className={darkMode ? "text-white" : "text-gray-900"}>Total:</span>
-                                    <span className={darkMode ? "text-white" : "text-gray-900"}>{formatCurrency(pedido.valor_total)}</span>
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className={darkMode ? "text-gray-400 italic" : "text-gray-500 italic"}>Nenhum item no pedido</p>
-                              )}
-                            </div>
                           </div>
                         </td>
                       </tr>

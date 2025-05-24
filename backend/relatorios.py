@@ -1425,7 +1425,8 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
                     AND ECF_CX_DATA IS NOT NULL
                     AND CAST(VENDAS.ecf_data AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
                     {filtro_vendedor}
-                """
+                """  # ecf_data is always used for date filtering of authenticated sales
+
                 log.info(f"Executando SQL vendas AUTENTICADAS: {sql_vendas_autenticadas}")
                 cursor.execute(sql_vendas_autenticadas, (data_inicial, data_final))
                 row = cursor.fetchone()

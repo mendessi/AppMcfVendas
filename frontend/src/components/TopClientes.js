@@ -460,13 +460,13 @@ const TopClientes = ({ darkMode, empresaSelecionada, dataInicial, dataFinal }) =
                 <tbody>
                   {modalItens.itens.map((item, idx) => (
                     <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-2 py-1">{item.pro_codigo}</td>
-                      <td className="px-2 py-1">{item.pro_descricao}</td>
-                      <td className="px-2 py-1">{item.pro_marca}</td>
-                      <td className="px-2 py-1">{item.uni_codigo}</td>
-                      <td className="px-2 py-1">{Number(item.pro_quantidade)}</td>
-                      <td className="px-2 py-1">R$ {Number(item.pro_venda).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
-                      <td className={`px-2 py-1 ${Number(item.estoque_atual) <= 0 ? 'text-red-600 font-bold' : ''}`}>{Number(item.estoque_atual)}</td>
+                      <td className="px-2 py-1">{item.PRO_CODIGO}</td>
+                      <td className="px-2 py-1">{item.PRO_DESCRICAO}</td>
+                      <td className="px-2 py-1">{item.PRO_MARCA}</td>
+                      <td className="px-2 py-1">{item.UNI_CODIGO}</td>
+                      <td className="px-2 py-1">{Number(item.PRO_QUANTIDADE)}</td>
+                      <td className="px-2 py-1">R$ {Number(item.PRO_VENDA).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                      <td className={`px-2 py-1 ${Number(item.ESTOQUE_ATUAL) <= 0 ? 'text-red-600 font-bold' : ''}`}>{Number(item.ESTOQUE_ATUAL)}</td>
                     </tr>
                   ))}
                 </tbody>

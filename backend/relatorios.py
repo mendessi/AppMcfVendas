@@ -446,37 +446,43 @@ async def listar_clientes(request: Request):
     try:
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
-        search = request.query_params.get('q')
-        sql = '''
-            SELECT CLI_CODIGO, CLI_NOME, tel_whatsapp, CNPJ, ENDERECO, NUMERO, BAIRRO, CIDADE, UF
-            FROM CLIENTES
-            WHERE CLIENTES.CLI_INATIVO = 'N'
-              AND CLIENTES.cli_tipo = 1
-        '''
-        params = []
-        if search and len(search.strip()) >= 2:
-            like = f"%{search.strip()}%"
-            # Tenta converter para inteiro para busca por código
+        try:
+            search = request.query_params.get('q')
+            sql = '''
+                SELECT CLI_CODIGO, CLI_NOME, tel_whatsapp, CNPJ, ENDERECO, NUMERO, BAIRRO, CIDADE, UF, CLI_BLOQUEADO
+                FROM CLIENTES
+                WHERE (CLIENTES.CLI_INATIVO = 'N' OR CLIENTES.CLI_INATIVO IS NULL)
+                  AND CLIENTES.cli_tipo = 1
+            '''
+            params = []
+            if search and len(search.strip()) >= 2:
+                busca = search.strip()
+                sql += ''' AND (
+                    UPPER(CLI_NOME) LIKE UPPER(?)
+                    OR UPPER(CLI_NOME) LIKE UPPER(?)
+                )'''
+                params = [f"{busca}%", f"%{busca}%"]
+            elif search:
+                # Menos de 2 caracteres, retorna vazio
+                return []
+            sql += ' ORDER BY CLIENTES.cli_nome'
+            cursor.execute(sql, params)
+            rows = cursor.fetchall()
+            columns = [col[0].lower() for col in cursor.description]
+            clientes = []
+            for row in rows:
+                cliente = dict(zip(columns, row))
+                # Indicativo de bloqueado
+                cliente['bloqueado'] = ((cliente.get('cli_bloqueado') or '').upper() == 'S')
+                clientes.append(cliente)
+            log.info(f"[CLIENTES] Total encontrados: {len(clientes)}")
+            log.info(f"[CLIENTES] Exemplos: {[c['cli_nome'] for c in clientes[:10]]}")
+            return clientes
+        finally:
             try:
-                codigo_int = int(search.strip())
-            except:
-                codigo_int = -1
-            sql += ''' AND (
-                UPPER(CLI_NOME) LIKE UPPER(?)
-                OR (CNPJ IS NOT NULL AND CNPJ LIKE ?)
-                OR (tel_whatsapp IS NOT NULL AND tel_whatsapp LIKE ?)
-                OR CLI_CODIGO = ?
-            )'''
-            params = [like, like, like, codigo_int]
-        elif search:
-            # Menos de 2 caracteres, retorna vazio
-            return []
-        sql += ' ORDER BY CLIENTES.cli_nome'
-        cursor.execute(sql, params)
-        rows = cursor.fetchall()
-        columns = [col[0].lower() for col in cursor.description]
-        clientes = [dict(zip(columns, row)) for row in rows]
-        return clientes
+                conn.close()
+            except Exception as close_err:
+                log.warning(f"[CLIENTES] Falha ao fechar conexão: {close_err}")
     except HTTPException as e:
         log.error(f"[CLIENTES] HTTPException: {e.detail if hasattr(e, 'detail') else str(e)}")
         raise e

@@ -70,6 +70,8 @@ const PedidosList = ({ darkMode }) => {
       }));
       setPedidos(pedidosFormatados);
       setFilteredPedidos(pedidosFormatados);
+      // Diagnóstico: mostrar todos os nomes de clientes carregados
+      console.log('Clientes carregados:', pedidosFormatados.map(p => p.cliente_nome));
     } catch (error) {
       setPedidos([]);
       setFilteredPedidos([]);
@@ -95,6 +97,10 @@ const PedidosList = ({ darkMode }) => {
       minute: '2-digit'
     };
     return new Date(dateString).toLocaleDateString('pt-BR', options);
+  };
+
+  const normalize = (str) => {
+    return (str || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   };
 
   const togglePedidoDetails = (pedidoId) => {

@@ -194,7 +194,7 @@ const handleVerItensVenda = async (venda) => {
                       <div className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cli_codigo}</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cli_nome}</div>
+                      <div className={`text-sm font-medium flex items-center gap-2 ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cli_nome}{cliente.bloqueado && (<span className="ml-2 px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-bold border border-red-300">BLOQUEADO</span>)}</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.tel_whatsapp || '-'}</div>
@@ -235,7 +235,7 @@ const handleVerItensVenda = async (venda) => {
           clientes.map((cliente) => (
             <div key={cliente.cli_codigo} className={`${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"} rounded-lg shadow border p-3 flex flex-col justify-between min-w-0 w-full max-w-full overflow-x-auto`} style={{wordBreak:'break-word'}}>
               <div className="flex flex-col gap-1">
-                <div className="text-lg font-semibold truncate">{cliente.cli_nome}</div>
+                <div className="text-lg font-semibold truncate flex items-center gap-2">{cliente.cli_nome}{cliente.bloqueado && (<span className="ml-2 px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-bold border border-red-300">BLOQUEADO</span>)}</div>
                 <div className="flex flex-row gap-2 items-center text-xs text-gray-500">
                   <span className="font-bold">Cód:</span> <span>{cliente.cli_codigo}</span>
                   <span className="font-bold ml-2">CNPJ:</span> <span>{cliente.cnpj || '-'}</span>

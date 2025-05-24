@@ -16,11 +16,15 @@ const PedidosList = ({ darkMode }) => {
     return hoje.toISOString().slice(0, 10);
   });
 
+  // Remover busca automática ao abrir no mobile
   useEffect(() => {
-    buscarPedidos();
+    if (window.innerWidth >= 768) {
+      buscarPedidos();
+    }
     // eslint-disable-next-line
   }, []);
 
+  // Busca só será feita ao clicar em "Buscar" no mobile
   const buscarPedidos = async () => {
     setLoading(true);
     try {
@@ -58,6 +62,10 @@ const PedidosList = ({ darkMode }) => {
         status: venda.ecf_total > 0 ? 'CONCLUÍDO' : 'PENDENTE',
         valor_total: venda.ecf_total,
         observacao: venda.observacao || '',
+        autenticacao_data: venda.ecf_cx_data || null,
+        autenticada: !!venda.ecf_cx_data,
+        forma_pagamento: venda.fpg_nome || '',
+        vendedor: venda.ven_nome || '',
         itens: [], // será preenchido ao expandir
       }));
       setPedidos(pedidosFormatados);
@@ -70,16 +78,6 @@ const PedidosList = ({ darkMode }) => {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    // Filtrar pedidos com base no termo de pesquisa
-    const results = pedidos.filter(pedido =>
-      pedido.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pedido.id.toString().includes(searchTerm) ||
-      pedido.status.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredPedidos(results);
-  }, [searchTerm, pedidos]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -189,13 +187,19 @@ const PedidosList = ({ darkMode }) => {
                   Data
                 </th>
                 <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Status
+                  Autenticação
+                </th>
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
+                  Status Autenticação
+                </th>
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
+                  Forma Pgto
+                </th>
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
+                  Vendedor
                 </th>
                 <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
                   Valor Total
-                </th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Ações
                 </th>
               </tr>
             </thead>
@@ -214,9 +218,18 @@ const PedidosList = ({ darkMode }) => {
                         <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{formatDate(pedido.data)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(pedido.status)}`}>
-                          {pedido.status}
+                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.autenticacao_data ? formatDate(pedido.autenticacao_data) : '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${pedido.autenticada ? (darkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-800') : (darkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800')}`}>
+                          {pedido.autenticada ? 'Autenticada' : 'Não Autenticada'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.forma_pagamento || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.vendedor || '-'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(pedido.valor_total)}</div>
@@ -228,51 +241,38 @@ const PedidosList = ({ darkMode }) => {
                         >
                           {expandedPedido === pedido.id ? 'Ocultar' : 'Detalhes'}
                         </button>
-                        <button className={darkMode ? "text-green-400 hover:text-green-300 mr-3" : "text-green-600 hover:text-green-900 mr-3"}>Editar</button>
-                        <button className={darkMode ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-900"}>Cancelar</button>
                       </td>
                     </tr>
                     {expandedPedido === pedido.id && (
                       <tr>
-                        <td colSpan="6" className={`px-6 py-4 ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                        <td colSpan="9" className={`px-6 py-4 ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
                           <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
                             <h3 className="font-bold mb-2">Detalhes do Pedido #{pedido.id}</h3>
-                            
                             {pedido.observacao && (
                               <div className="mb-3">
                                 <p className="font-semibold">Observação:</p>
                                 <p>{pedido.observacao}</p>
                               </div>
                             )}
-                            
                             <div className="mt-3">
-                              <p className="font-semibold mb-2">Itens do Pedido:</p>
+                              <p className={`font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>Itens do Pedido:</p>
                               {pedido.itens.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                  <table className={`min-w-full divide-y ${darkMode ? "divide-gray-600 border-gray-600" : "divide-gray-200 border-gray-200"} border`}>
-                                    <thead className={darkMode ? "bg-gray-800" : "bg-gray-100"}>
-                                      <tr>
-                                        <th className={`px-4 py-2 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Produto</th>
-                                        <th className={`px-4 py-2 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Quantidade</th>
-                                        <th className={`px-4 py-2 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Preço Unit.</th>
-                                        <th className={`px-4 py-2 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Subtotal</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className={`${darkMode ? "divide-gray-700" : "divide-gray-200"} divide-y`}>
-                                      {pedido.itens.map((item, index) => (
-                                        <tr key={index} className={darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
-                                          <td className={`px-4 py-2 text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{item.produto_descricao}</td>
-                                          <td className={`px-4 py-2 text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{item.quantidade}</td>
-                                          <td className={`px-4 py-2 text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(item.preco_unitario)}</td>
-                                          <td className={`px-4 py-2 text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(item.valor_total)}</td>
-                                        </tr>
-                                      ))}
-                                      <tr className={darkMode ? "bg-gray-800" : "bg-gray-100"}>
-                                        <td colSpan="3" className={`px-4 py-2 text-sm font-bold text-right ${darkMode ? "text-white" : "text-gray-900"}`}>Total:</td>
-                                        <td className={`px-4 py-2 text-sm font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(pedido.valor_total)}</td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
+                                <div className="space-y-2">
+                                  {pedido.itens.map((item, index) => (
+                                    <div key={index} className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                                      <div className="flex justify-between">
+                                        <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{item.produto_descricao}</span>
+                                        <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(item.valor_total)}</span>
+                                      </div>
+                                      <div className="flex justify-between text-sm mt-1">
+                                        <span className={darkMode ? "text-gray-400" : "text-gray-500"}>{item.quantidade} x {formatCurrency(item.preco_unitario)}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                  <div className="flex justify-between font-bold mt-2 pt-2 border-t border-dashed border-gray-300">
+                                    <span className={darkMode ? "text-white" : "text-gray-900"}>Total:</span>
+                                    <span className={darkMode ? "text-white" : "text-gray-900"}>{formatCurrency(pedido.valor_total)}</span>
+                                  </div>
                                 </div>
                               ) : (
                                 <p className={darkMode ? "text-gray-400 italic" : "text-gray-500 italic"}>Nenhum item no pedido</p>
@@ -286,7 +286,7 @@ const PedidosList = ({ darkMode }) => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className={`px-6 py-4 text-center text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                  <td colSpan="9" className={`px-6 py-4 text-center text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                     Nenhum pedido encontrado
                   </td>
                 </tr>
@@ -295,7 +295,6 @@ const PedidosList = ({ darkMode }) => {
           </table>
         </div>
       </div>
-      
       {/* Versão para dispositivos móveis - cards */}
       <div className="md:hidden">
         {filteredPedidos.length > 0 ? (
@@ -306,30 +305,30 @@ const PedidosList = ({ darkMode }) => {
                   <div>
                     <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>Pedido #{pedido.id}</h3>
                     <p className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"} mt-1`}>{pedido.cliente_nome}</p>
-                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"} mt-1`}>{formatDate(pedido.data)}</p>
+                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"} mt-1`}>Data: {formatDate(pedido.data)}</p>
+                    <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Autenticação: {pedido.autenticacao_data ? formatDate(pedido.autenticacao_data) : '-'}</p>
+                    <p className={`text-xs ${pedido.autenticada ? (darkMode ? 'text-green-300' : 'text-green-800') : (darkMode ? 'text-red-300' : 'text-red-800')}`}>Status: {pedido.autenticada ? 'Autenticada' : 'Não Autenticada'}</p>
+                    <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Forma Pgto: {pedido.forma_pagamento || '-'}</p>
+                    <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendedor: {pedido.vendedor || '-'}</p>
                   </div>
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(pedido.status)}`}>
                     {pedido.status}
                   </span>
                 </div>
-                
                 <div className="mt-4 flex justify-between items-center">
                   <div>
                     <span className={`text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase`}>Valor Total:</span>
                     <p className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(pedido.valor_total)}</p>
                   </div>
                   <div className="flex space-x-2">
-                    <button 
+                    <button
                       className={`px-3 py-1 rounded ${darkMode ? "bg-blue-900 text-blue-300 hover:bg-blue-800" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}
                       onClick={() => togglePedidoDetails(pedido.id)}
                     >
                       {expandedPedido === pedido.id ? 'Ocultar' : 'Detalhes'}
                     </button>
-                    <button className={`px-3 py-1 rounded ${darkMode ? "bg-green-900 text-green-300 hover:bg-green-800" : "bg-green-100 text-green-700 hover:bg-green-200"}`}>Editar</button>
-                    <button className={`px-3 py-1 rounded ${darkMode ? "bg-red-900 text-red-300 hover:bg-red-800" : "bg-red-100 text-red-700 hover:bg-red-200"}`}>Cancelar</button>
                   </div>
                 </div>
-                
                 {expandedPedido === pedido.id && (
                   <div className={`mt-4 pt-4 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
                     {pedido.observacao && (

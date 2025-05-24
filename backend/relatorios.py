@@ -137,7 +137,18 @@ async def listar_itens_venda(ecf_numero: int, request: Request):
         cursor.execute(sql, (ecf_numero,))
         columns = [col[0].lower() for col in cursor.description]
         itens = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        return itens
+        mapped_itens = []
+        for item in itens:
+            mapped_itens.append({
+                'PRO_CODIGO': item.get('pro_codigo'),
+                'PRO_DESCRICAO': item.get('pro_descricao'),
+                'PRO_MARCA': item.get('pro_marca'),
+                'UNI_CODIGO': item.get('uni_codigo'),
+                'PRO_QUANTIDADE': round(item.get('pro_quantidade', 0), 2) if item.get('pro_quantidade') is not None else None,
+                'PRO_VENDA': round(item.get('pro_venda', 0), 2) if item.get('pro_venda') is not None else None,
+                'ESTOQUE_ATUAL': round(item.get('estoque_atual', 0), 2) if item.get('estoque_atual') is not None else None,
+            })
+        return mapped_itens
     except Exception as e:
         import traceback
         log.error(f"Erro ao listar itens da venda {ecf_numero}: {e}\n{traceback.format_exc()}")

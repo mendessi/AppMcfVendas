@@ -212,16 +212,14 @@ const handleVerItensVenda = async (venda) => {
                       <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cidade} / {cliente.uf}</div>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                      <button className={darkMode ? "text-blue-400 hover:text-blue-300 mr-3" : "text-blue-600 hover:text-blue-900 mr-3"}>Editar</button>
-                      <button className={darkMode ? "text-green-400 hover:text-green-300 mr-3" : "text-green-600 hover:text-green-900 mr-3"} onClick={() => handleVerVendas(cliente)}>Ver Vendas</button>
-                      <button className={darkMode ? "text-purple-400 hover:text-purple-300 mr-3" : "text-purple-600 hover:text-purple-900 mr-3"} onClick={() => handleVerContas(cliente)}>Ver Contas</button>
-                      <button className={darkMode ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-900"}>Excluir</button>
-                    </td>
+  <button className={darkMode ? "text-green-400 hover:text-green-300 mr-3" : "text-green-600 hover:text-green-900 mr-3"} onClick={() => handleVerVendas(cliente)}>Ver Vendas</button>
+  <button className={darkMode ? "text-purple-400 hover:text-purple-300" : "text-purple-600 hover:text-purple-900"} onClick={() => handleVerContas(cliente)}>Ver Contas</button>
+</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className={`px-4 py-4 text-center text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Nenhum cliente encontrado.</td>
+                  <td colSpan="9" className={`px-4 py-4 text-center text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Nenhum cliente encontrado.</td>
                 </tr>
               )}
             </tbody>
@@ -229,76 +227,106 @@ const handleVerItensVenda = async (venda) => {
         </div>
       </div>
 
-      {/* Versão mobile: cards */}
-      <div className="grid grid-cols-1 gap-2 mt-4 sm:gap-3 md:gap-4">
-        {clientes.length > 0 ? (
-          clientes.map((cliente) => (
-            <div key={cliente.cli_codigo} className={`${darkMode ? "bg-gray-900 border-gray-700" : "bg-white border-gray-200"} rounded-lg shadow border p-3 flex flex-col justify-between min-w-0 w-full max-w-full overflow-x-auto`} style={{wordBreak:'break-word'}}>
-              <div className="flex flex-col gap-1">
-                <div className="text-lg font-semibold truncate flex items-center gap-2">{cliente.cli_nome}{cliente.bloqueado && (<span className="ml-2 px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-bold border border-red-300">BLOQUEADO</span>)}</div>
-                <div className="flex flex-row gap-2 items-center text-xs text-gray-500">
-                  <span className="font-bold">Cód:</span> <span>{cliente.cli_codigo}</span>
-                  <span className="font-bold ml-2">CNPJ:</span> <span>{cliente.cnpj || '-'}</span>
-                </div>
-              </div>
-              <div className="text-sm text-gray-500">{cliente.endereco}{cliente.numero ? ', ' + cliente.numero : ''}</div>
-              <div className="flex flex-col gap-1 text-xs mt-2">
-                <span><span className="font-medium">WhatsApp:</span> {cliente.tel_whatsapp || '-'}</span>
-                <span><span className="font-medium">Bairro:</span> {cliente.bairro || '-'}</span>
-                <span><span className="font-medium">Cidade/UF:</span> {cliente.cidade} / {cliente.uf}</span>
-              </div>
-              <div className="flex gap-2 mt-2">
-  <button className={darkMode ? "text-green-400 hover:text-green-300" : "text-green-600 hover:text-green-900"} onClick={() => handleVerVendas(cliente)}>Ver Vendas</button>
-  <button className={darkMode ? "text-purple-400 hover:text-purple-300" : "text-purple-600 hover:text-purple-900"} onClick={() => handleVerContas(cliente)}>Ver Contas</button>
-</div>
-            </div>
-          ))
-        ) : (
-          <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-6 text-center`}>
-            <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Nenhum cliente encontrado</p>
-          </div>
-        )}
-      </div>
+
 
       {/* Modal de Vendas */}
       {modalVendas.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-3xl w-full p-6 relative`}>
-            <button className="absolute top-3 right-3 text-gray-500 hover:text-red-500" onClick={closeModalVendas}>&times;</button>
-            <h2 className="text-xl font-bold mb-4">Vendas de {modalVendas.cliente?.cli_nome}</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className={`bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] p-2 md:p-8 relative flex flex-col border border-gray-300 dark:border-gray-700`} style={{width:'98vw', maxWidth: '700px'}}>
+            <button className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-3xl z-10" onClick={closeModalVendas}>&times;</button>
+            <h2 className="text-2xl font-extrabold mb-4 mt-10 md:mt-0 text-center tracking-tight text-gray-900 dark:text-white">Vendas de {modalVendas.cliente?.cli_nome}</h2>
             {loadingVendas ? (
-              <div className="text-blue-500">Carregando vendas...</div>
+              <div className="text-blue-500 text-center my-8">Carregando vendas...</div>
             ) : errorVendas ? (
-              <div className="text-red-500">{errorVendas}</div>
+              <div className="text-red-500 text-center my-8">{errorVendas}</div>
             ) : modalVendas.vendas.length === 0 ? (
-              <div className="text-gray-500">Nenhuma venda encontrada para este cliente.</div>
+              <div className="text-gray-500 text-center my-8">Nenhuma venda encontrada para este cliente.</div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto overflow-y-auto flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" style={{maxHeight:'65vh'}}>
                 <table className="min-w-full text-xs md:text-sm">
-                  <thead>
+                  <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
                     <tr>
-                      <th className="px-2 py-1">Venda</th>
-                      <th className="px-2 py-1">Data</th>
-                      <th className="px-2 py-1">Vendedor</th>
-                      <th className="px-2 py-1">Total</th>
-                      <th className="px-2 py-1">Desconto</th>
-                      <th className="px-2 py-1">Forma Pgto</th>
+                      <th className="px-2 py-2 text-left">Venda</th>
+                      <th className="px-2 py-2 text-left">Data</th>
+                      <th className="px-2 py-2 text-left">Vendedor</th>
+                      <th className="px-2 py-2 text-right">Total</th>
+                      <th className="px-2 py-2 text-right">Desconto</th>
+                      <th className="px-2 py-2 text-left">Forma Pgto</th>
+                      <th className="px-2 py-2 text-center">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {modalVendas.vendas.map((venda) => (
-                      <tr key={venda.ecf_numero}>
+                      <tr key={venda.ecf_numero} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-2 py-1">{venda.ecf_numero}</td>
                         <td className="px-2 py-1">{venda.ecf_data ? new Date(venda.ecf_data).toLocaleDateString() : '-'}</td>
                         <td className="px-2 py-1">{venda.ven_nome}</td>
-                        <td className="px-2 py-1">R$ {Number(venda.ecf_total).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
-                        <td className="px-2 py-1">R$ {Number(venda.ecf_desconto).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                        <td className="px-2 py-1 text-right font-semibold">R$ {Number(venda.ecf_total).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
+                        <td className="px-2 py-1 text-right">R$ {Number(venda.ecf_desconto).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
                         <td className="px-2 py-1">{venda.fpg_nome}</td>
-                        <td className="px-2 py-1">
-                          <button className="text-blue-600 hover:underline" onClick={() => handleVerItensVenda(venda)}>Ver Itens</button>
+                        <td className="px-2 py-1 text-center">
+                          <button className="text-blue-700 dark:text-blue-300 hover:underline font-bold" onClick={() => handleVerItensVenda(venda)}>Ver Itens</button>
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Itens da Venda */}
+      {modalItens.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className={`bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] p-2 md:p-6 relative flex flex-col border border-gray-300 dark:border-gray-700`} style={{width:'98vw', maxWidth: '600px'}}>
+            <button className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-3xl z-10" onClick={closeModalItens}>&times;</button>
+            <h2 className="text-xl font-bold mb-4 mt-10 md:mt-0 text-center tracking-tight text-gray-900 dark:text-white">Itens da Venda {modalItens.venda?.ecf_numero}</h2>
+            {loadingItens ? (
+              <div className="text-blue-500 text-center my-8">Carregando itens...</div>
+            ) : errorItens ? (
+              <div className="text-red-500 text-center my-8">{errorItens}</div>
+            ) : modalItens.itens.length === 0 ? (
+              <div className="text-gray-500 text-center my-8">Nenhum item encontrado para esta venda.</div>
+            ) : (
+              <div className="overflow-x-auto overflow-y-auto flex-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" style={{maxHeight:'60vh'}}>
+                <table className="min-w-full text-xs md:text-sm">
+                  <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-2 py-2 text-left">Código</th>
+                      <th className="px-2 py-2 text-left">Descrição</th>
+                      <th className="px-2 py-2 text-left">Marca</th>
+                      <th className="px-2 py-2 text-left">Unidade</th>
+                      <th className="px-2 py-2 text-right">Qtde</th>
+                      <th className="px-2 py-2 text-right">Valor Unit.</th>
+                      <th className="px-2 py-2 text-right">Total</th>
+                      <th className="px-2 py-2 text-right">Estoque Atual</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {modalItens.itens.map((item, idx) => {
+                      const codigo = item.PRO_CODIGO || '-';
+                      const descricao = item.PRO_DESCRICAO || '-';
+                      const marca = item.PRO_MARCA || '-';
+                      const unidade = item.UNI_CODIGO || '-';
+                      const qtde = item.PRO_QUANTIDADE;
+                      const valorUnit = item.PRO_VENDA;
+                      const total = qtde && valorUnit ? qtde * valorUnit : null;
+                      const estoque = item.ESTOQUE_ATUAL;
+                      return (
+                        <tr key={codigo + '-' + idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-2 py-1">{codigo}</td>
+                          <td className="px-2 py-1">{descricao}</td>
+                          <td className="px-2 py-1">{marca}</td>
+                          <td className="px-2 py-1">{unidade}</td>
+                          <td className="px-2 py-1 text-right font-semibold">{qtde !== undefined && qtde !== null && !isNaN(Number(qtde)) ? Number(qtde).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '-'}</td>
+                          <td className="px-2 py-1 text-right">{valorUnit !== undefined && valorUnit !== null && !isNaN(Number(valorUnit)) ? `R$ ${Number(valorUnit).toLocaleString('pt-BR', {minimumFractionDigits:2})}` : '-'}</td>
+                          <td className="px-2 py-1 text-right font-bold">{total !== null && !isNaN(Number(total)) ? `R$ ${Number(total).toLocaleString('pt-BR', {minimumFractionDigits:2})}` : '-'}</td>
+                          <td className={`px-2 py-1 text-right font-semibold ${estoque <= 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{estoque !== undefined && estoque !== null && !isNaN(Number(estoque)) ? Number(estoque).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '-'}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

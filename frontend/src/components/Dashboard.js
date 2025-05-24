@@ -435,10 +435,6 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
               <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
                 {formatCurrency(stats.vendasMes)}
               </p>
-              {/* DEBUG: Mostrar valor bruto recebido do backend */}
-              <p style={{ fontSize: '10px', color: darkMode ? '#90cdf4' : '#3182ce' }}>
-                <b>DEBUG vendas_mes:</b> {stats.vendasMes}
-              </p>
               <p className={`text-xs ${stats.percentualCrescimento >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                 {stats.percentualCrescimento >= 0 ? '+' : ''}{stats.percentualCrescimento}% em relação ao mês anterior
               </p>

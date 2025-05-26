@@ -5,7 +5,9 @@ import './App.css';
 import { API_URL, AUTH_CONFIG, ROUTES } from './config';
 
 // Ícones
-import { FiMenu, FiX, FiHome, FiUsers, FiPackage, FiShoppingCart, FiPlusCircle, FiLogOut, FiMoon, FiSun, FiGrid } from 'react-icons/fi';
+import { FiMenu, FiX, FiHome, FiUsers, FiPackage, FiShoppingCart, FiPlusCircle, FiLogOut, FiMoon, FiSun, FiGrid, FiClipboard } from 'react-icons/fi';
+import OrcamentoForm from './OrcamentoForm';
+import OrcamentosList from './components/OrcamentosList';
 
 // Componentes
 import Dashboard from './components/Dashboard';
@@ -404,6 +406,16 @@ function AppContent() {
                   </li>
                   <li className="mb-2">
                     <Link 
+                      to="/orcamento" 
+                      className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
+                      onClick={() => window.innerWidth < 768 && toggleSidebar()}
+                    >
+                      <FiClipboard className="mr-3 h-5 w-5" />
+                      <span>Orçamento</span>
+                    </Link>
+                  </li>
+                  <li className="mb-2">
+                    <Link 
                       to="/catalogo" 
                       className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
@@ -412,6 +424,16 @@ function AppContent() {
                       <span>Catálogo</span>
                     </Link>
                   </li>
+                <li className="mb-2">
+                  <Link 
+                    to="/orcamentos" 
+                    className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
+                    onClick={() => window.innerWidth < 768 && toggleSidebar()}
+                  >
+                    <FiClipboard className="mr-3 h-5 w-5" />
+                    <span>Listar Orçamentos</span>
+                  </Link>
+                </li>
                 </ul>
               </div>
             </div>
@@ -427,6 +449,8 @@ function AppContent() {
               <Route path="/produtos" element={<ProdutosList darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="/pedidos" element={<PedidosList darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="/novo-pedido" element={<NovoPedido darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
+              <Route path="/orcamento" element={<OrcamentoForm />} />
+              <Route path="/orcamentos" element={<OrcamentosList />} />
               
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

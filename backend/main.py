@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+import mock_response
 # Importar o router de mock para teste sem CORS
 from mock_response import mock_router
 # Importar o router de informações da empresa
@@ -34,6 +35,35 @@ from pydantic import BaseModel
 import uvicorn
 import logging
 import os
+import sys
+# Importar o router de orçamentos
+from orcamento_router import router as orcamento_router
+from fastapi import FastAPI
+
+if getattr(sys, 'frozen', False):
+    # Executável PyInstaller: arquivos extraídos em _MEIPASS
+    base_path = sys._MEIPASS
+else:
+    # Rodando do fonte: usa o diretório do script
+    base_path = os.path.dirname(os.path.abspath(__file__))
+
+# Instância FastAPI principal
+def get_app():
+    app = FastAPI()
+    # ... inclusão de outros routers ...
+    app.include_router(orcamento_router)
+    return app
+
+app = get_app()
+
+dll_path = os.path.join(base_path, "fbclient.dll")
+
+# Garante que a DLL será encontrada pelo Python
+if hasattr(os, "add_dll_directory"):
+    os.add_dll_directory(base_path)
+else:
+    # Compatibilidade para Python < 3.8
+    os.environ["PATH"] = base_path + os.pathsep + os.environ["PATH"]
 from datetime import datetime
 from starlette.responses import JSONResponse
 import jwt
@@ -159,6 +189,9 @@ app.include_router(empresa_info_detalhada_router)
 
 # Inclui as rotas de teste SQL da empresa
 app.include_router(teste_sql_empresa_router)
+
+# Inclui as rotas de orçamentos
+app.include_router(orcamento_router)
 
 # Rotas básicas para teste
 @app.get("/")

@@ -8,8 +8,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 class Settings(BaseSettings):
     # Configurações do banco de dados
-    db_host: str = "localhost"
-    db_path: str = "C:\\ERP_MACFIN\\Banco\\Erinalda\\BASE_PRI.GDB"  # Caminho padrão
+    db_host: str = "149.56.77.81"
+    db_path: str = "C:\\MACFIN\\BASE_PRI.GDB"  # Caminho padrão
     db_user: str = "SYSDBA"
     db_password: str = "masterkey"
     db_charset: str = "ISO8859_1"  # Charset usado no conexao_firebird.py

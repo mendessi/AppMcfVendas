@@ -9,7 +9,7 @@ from empresa_manager import get_empresa_connection
 router = APIRouter()
 
 @router.get("/orcamentos")
-async def listar_orcamentos(request: Request):
+async def listar_orcamentos(request: Request, data_inicial: str = None, data_final: str = None):
     logging.info("Iniciando busca de orçamentos")
     try:
         # Log dos headers para diagnóstico
@@ -42,26 +42,66 @@ async def listar_orcamentos(request: Request):
             
             # Executar a consulta principal com informações de status baseado em PAR_PARAMETRO
             logging.info("Executando SELECT na tabela ORCAMENT com status")
+            logging.info(f"Parâmetros de data: inicial={data_inicial}, final={data_final}")
+            
+            # Construir a consulta base
             query = """
                 SELECT 
-                    ECF_NUMERO as id, 
-                    ECF_NUMERO as numero,
-                    CLI_CODIGO as cliente_id,
-                    NOME as cliente_nome,
-                    ECF_DATA as data,
-                    ECF_TOTAL as valor_total,
-                    PAR_PARAMETRO,
+                    ORCAMENT.ECF_NUMERO as id, 
+                    ORCAMENT.ECF_NUMERO as numero,
+                    ORCAMENT.CLI_CODIGO as cliente_id,
+                    ORCAMENT.NOME as cliente_nome,
+                    EXTRACT(DAY FROM ORCAMENT.ECF_DATA) || '/' || EXTRACT(MONTH FROM ORCAMENT.ECF_DATA) || '/' || EXTRACT(YEAR FROM ORCAMENT.ECF_DATA) as data,
+                    ORCAMENT.ECF_TOTAL as valor_total,
+                    ORCAMENT.PAR_PARAMETRO,
                     CASE 
-                        WHEN PAR_PARAMETRO = 0 THEN 'Em análise'
-                        WHEN PAR_PARAMETRO = 1 THEN 'Autorizado'
+                        WHEN ORCAMENT.PAR_PARAMETRO = 0 THEN 'Em análise'
+                        WHEN ORCAMENT.PAR_PARAMETRO = 1 THEN 'Autorizado'
                         ELSE 'Outro'
                     END as status,
-                    ECF_OBS as observacao,
-                    DATA_VALIDADE as data_validade
+                    ORCAMENT.ECF_OBS as observacao,
+                    ORCAMENT.DATA_VALIDADE as data_validade,
+                    ORCAMENT.ECF_FPG_COD as forma_pagamento_id,
+                    FORMAPAG.FPG_NOME as forma_pagamento,
+                    ORCAMENT.ECF_TAB_COD as tabela_id,
+                    TABPRECO.TAB_NOME as tabela,
+                    ORCAMENT.VEN_CODIGO as vendedor_id,
+                    VENDEDOR.VEN_NOME as vendedor,
+                    ORCAMENT.ECF_DESCONTO as desconto,
+                    CLIENTES.CNPJ as cnpj,
+                    'N' as importado
                 FROM ORCAMENT
-                ORDER BY ECF_DATA DESC
+                LEFT JOIN CLIENTES ON ORCAMENT.CLI_CODIGO = CLIENTES.CLI_CODIGO
+                LEFT JOIN VENDEDOR ON ORCAMENT.VEN_CODIGO = VENDEDOR.VEN_CODIGO
+                LEFT JOIN FORMAPAG ON ORCAMENT.ECF_FPG_COD = FORMAPAG.FPG_COD
+                LEFT JOIN TABPRECO ON ORCAMENT.ECF_TAB_COD = TABPRECO.TAB_COD
             """
-            cursor.execute(query)
+            
+            # Adicionar filtro de data se os parâmetros forem fornecidos
+            params = []
+            where_clauses = []
+            
+            if data_inicial and data_final:
+                where_clauses.append("ECF_DATA BETWEEN ? AND ?")
+                params.append(data_inicial)
+                params.append(data_final)
+                logging.info(f"Filtrando orçamentos entre {data_inicial} e {data_final}")
+            
+            # Adicionar cláusulas WHERE se houver filtros
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+            
+            # Adicionar ordenação
+            query += " ORDER BY ECF_DATA DESC"
+            
+            logging.info(f"Query final: {query}")
+            logging.info(f"Parâmetros: {params}")
+            
+            # Executar a consulta com os parâmetros
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
             
             # Processar resultados
             columns = [desc[0].lower() for desc in cursor.description]

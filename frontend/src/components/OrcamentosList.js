@@ -1,6 +1,28 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const OrcamentosList = ({ darkMode }) => {
+  // Função para formatar valores monetários declarada mais abaixo no código
+  // Função para determinar a classe CSS do badge de status
+  const getStatusBadgeClass = (status) => {
+    if (!status) return darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800';
+    
+    const statusUpper = status.toUpperCase();
+    
+    switch (statusUpper) {
+      case 'EM ANÁLISE':
+        return darkMode ? 'bg-yellow-900 text-yellow-300 font-bold' : 'bg-yellow-100 text-yellow-800 font-bold border-2 border-yellow-400';
+      case 'AUTORIZADO':
+        return darkMode ? 'bg-green-900 text-green-300 font-bold' : 'bg-green-100 text-green-800 font-bold border-2 border-green-400';
+      case 'CONCLUÍDO':
+        return darkMode ? 'bg-blue-900 text-blue-300' : 'bg-blue-100 text-blue-700';
+      case 'PENDENTE':
+        return darkMode ? 'bg-orange-900 text-orange-300' : 'bg-orange-100 text-orange-800';
+      case 'CANCELADO':
+        return darkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800';
+      default:
+        return darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800';
+    }
+  };
   const [orcamentos, setOrcamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -12,14 +34,18 @@ const OrcamentosList = ({ darkMode }) => {
     const hoje = new Date();
     return hoje.toISOString().slice(0, 10);
   });
+  const [filtrarPorData, setFiltrarPorData] = useState(true); // Por padrão, filtrar apenas pelo dia atual
   const [expandedOrcamento, setExpandedOrcamento] = useState(null);
 
   useEffect(() => {
-    buscarOrcamentos();
+    // Ao iniciar, garantir que apenas os orçamentos do dia atual sejam carregados
+    setFiltrarPorData(true);
+    // Usar true como parâmetro para forçar o filtro na primeira carga
+    buscarOrcamentos(true);
     // eslint-disable-next-line
   }, []);
 
-  const buscarOrcamentos = async () => {
+  const buscarOrcamentos = async (forcarFiltro = false) => {
     setLoading(true);
     setErrorMsg(null);
     
@@ -51,11 +77,23 @@ const OrcamentosList = ({ darkMode }) => {
       
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
       let url = `${apiUrl}/orcamentos`;
-      if (dataInicial && dataFinal) {
-        url += `?data_inicial=${dataInicial}&data_final=${dataFinal}`;
+      
+      // Garantir que o filtro de data seja aplicado na primeira carga e quando o checkbox estiver marcado
+      if ((filtrarPorData || forcarFiltro) && dataInicial && dataFinal) {
+        // Formatar as datas no formato esperado pelo backend (YYYY-MM-DD)
+        const dataInicialFormatada = dataInicial;
+        const dataFinalFormatada = dataFinal;
+        
+        url += `?data_inicial=${dataInicialFormatada}&data_final=${dataFinalFormatada}`;
+        console.log(`Aplicando filtro de data: ${dataInicialFormatada} até ${dataFinalFormatada}`);
+      } else {
+        console.log('Não aplicando filtro de data');
       }
       
       console.log('Buscando orçamentos na URL:', url);
+      console.log('Filtro por data ativado:', filtrarPorData);
+      console.log('Data inicial:', dataInicial);
+      console.log('Data final:', dataFinal);
       
       // Usar Promise.race para implementar o timeout
       const fetchPromise = fetch(url, { headers });
@@ -169,6 +207,7 @@ const OrcamentosList = ({ darkMode }) => {
   };
 
   const formatCurrency = (value) => {
+    if (value === null || value === undefined) return 'R$ 0,00';
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -193,48 +232,112 @@ const OrcamentosList = ({ darkMode }) => {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col sm:flex-row gap-2 items-start sm:items-end">
-        <div>
-          <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Data inicial</label>
-          <input
-            type="date"
-            className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"}`}
-            value={dataInicial}
-            onChange={e => setDataInicial(e.target.value)}
-          />
+      <div className={`mb-6 bg-opacity-90 rounded-lg p-4 ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+        <h1 className={`text-2xl md:text-3xl font-bold mb-4 ${darkMode ? "text-white" : "text-gray-800"}`}>
+          <span className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Listar Orçamentos
+          </span>
+        </h1>
+        
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+          <div className="flex items-center mb-3">
+            <input
+              type="checkbox"
+              id="filtrarPorData"
+              className="mr-2 h-4 w-4"
+              checked={filtrarPorData}
+              onChange={e => setFiltrarPorData(e.target.checked)}
+            />
+            <label 
+              htmlFor="filtrarPorData" 
+              className={`font-medium ${darkMode ? "text-white" : "text-gray-700"}`}
+            >
+              Filtrar apenas pelo período selecionado
+            </label>
+          </div>
         </div>
-        <div>
-          <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Data final</label>
-          <input
-            type="date"
-            className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"}`}
-            value={dataFinal}
-            onChange={e => setDataFinal(e.target.value)}
-          />
+        
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+          <div>
+            <label className={`block text-sm font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Data inicial</label>
+            <input
+              type="date"
+              className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"}`}
+              value={dataInicial}
+              onChange={e => setDataInicial(e.target.value)}
+              disabled={!filtrarPorData}
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Data final</label>
+            <input
+              type="date"
+              className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"}`}
+              value={dataFinal}
+              onChange={e => setDataFinal(e.target.value)}
+              disabled={!filtrarPorData}
+            />
+          </div>
+          <button
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            onClick={() => buscarOrcamentos(filtrarPorData)}
+            disabled={loading}
+          >
+            {loading ? 'Carregando...' : 'Buscar'}
+          </button>
         </div>
-        <button
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-5"
-          onClick={buscarOrcamentos}
-          disabled={loading}
-        >Buscar</button>
       </div>
-
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
-        <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Orçamentos</h1>
+      
+      {/* Totalizador */}
+      <div className={`mb-6 p-4 rounded-lg shadow-md ${darkMode ? "bg-gray-700" : "bg-white"}`}>
+        <div className="flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h2 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
+              {filtrarPorData ? 'Orçamentos do Período:' : 'Todos os Orçamentos:'} <span className="font-bold">{orcamentos.length}</span>
+            </h2>
+          </div>
+          <div className="grid grid-cols-3 gap-3 md:flex md:gap-4">
+            <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+              <p className={`text-xs md:text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Em Análise</p>
+              <p className={`text-lg md:text-xl font-bold ${darkMode ? "text-yellow-300" : "text-yellow-600"}`}>
+                {orcamentos.filter(o => o.status && o.status.toUpperCase() === 'EM ANÁLISE').length}
+              </p>
+            </div>
+            <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+              <p className={`text-xs md:text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Autorizados</p>
+              <p className={`text-lg md:text-xl font-bold ${darkMode ? "text-green-300" : "text-green-600"}`}>
+                {orcamentos.filter(o => o.status && o.status.toUpperCase() === 'AUTORIZADO').length}
+              </p>
+            </div>
+            <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+              <p className={`text-xs md:text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Valor Total</p>
+              <p className={`text-lg md:text-xl font-bold ${darkMode ? "text-blue-300" : "text-blue-600"}`}>
+                {formatCurrency(orcamentos.reduce((total, orc) => total + (parseFloat(orc.valor_total || orc.total) || 0), 0))}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Exibição em tabela (desktop) */}
-      <div className="hidden md:block">
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow overflow-hidden`}>
-          <table className="min-w-full divide-y divide-gray-700">
-            <thead className={darkMode ? "bg-gray-900" : "bg-gray-50"}>
+      <div className="hidden md:block overflow-x-auto">
+        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md border ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
+            <thead className={`${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
               <tr>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Número</th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Cliente</th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Data</th>
-                <th scope="col" className={`px-6 py-3 text-right text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Valor Total</th>
-                <th scope="col" className={`px-6 py-3 text-center text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Status</th>
-                <th scope="col" className="relative px-6 py-3">
+                <th scope="col" className={`px-3 py-3 text-left text-xs font-bold ${darkMode ? "text-white" : "text-gray-700"} uppercase tracking-wider w-[8%]`}>Número</th>
+                <th scope="col" className={`px-3 py-3 text-left text-xs font-bold ${darkMode ? "text-white" : "text-gray-700"} uppercase tracking-wider w-[20%]`}>Cliente</th>
+                <th scope="col" className={`px-3 py-3 text-left text-xs font-bold ${darkMode ? "text-white" : "text-gray-700"} uppercase tracking-wider w-[8%]`}>Data</th>
+                <th scope="col" className={`px-3 py-3 text-right text-xs font-bold ${darkMode ? "text-white" : "text-gray-700"} uppercase tracking-wider w-[10%]`}>Valor Total</th>
+                <th scope="col" className={`px-3 py-3 text-center text-xs font-bold ${darkMode ? "text-white" : "text-gray-700"} uppercase tracking-wider w-[12%]`}>Forma Pag.</th>
+                <th scope="col" className={`px-3 py-3 text-center text-xs font-bold ${darkMode ? "text-white" : "text-gray-700"} uppercase tracking-wider w-[10%]`}>Tabela</th>
+                <th scope="col" className={`px-3 py-3 text-center text-xs font-bold ${darkMode ? "text-white" : "text-gray-700"} uppercase tracking-wider w-[12%]`}>Vendedor</th>
+                <th scope="col" className={`px-3 py-3 text-right text-xs font-bold ${darkMode ? "text-white" : "text-gray-700"} uppercase tracking-wider w-[8%]`}>Desconto</th>
+                <th scope="col" className={`px-3 py-3 text-center text-xs font-bold ${darkMode ? "text-white" : "text-gray-700"} uppercase tracking-wider w-[8%]`}>Status</th>
+                <th scope="col" className="relative px-3 py-3 w-[4%]">
                   <span className="sr-only">Detalhes</span>
                 </th>
               </tr>
@@ -244,49 +347,62 @@ const OrcamentosList = ({ darkMode }) => {
                 orcamentos.map((orc) => (
                   <React.Fragment key={orc.id || orc.numero}>
                     <tr className={darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium">{orc.numero || orc.id}</div>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className={`text-xs font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{orc.numero || orc.id}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium">{orc.cliente_nome || orc.nome}</div>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <div className={`text-xs font-medium ${darkMode ? "text-white" : "text-gray-900"} truncate`}>{orc.cliente_nome || orc.nome}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">{orc.data || orc.data_emissao}</div>
+                       <td className="px-3 py-3 whitespace-nowrap">
+                        <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{orc.data || orc.data_emissao}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="text-sm font-medium">{formatCurrency(orc.valor_total || orc.total)}</div>
+                      <td className="px-3 py-3 whitespace-nowrap text-right">
+                        <div className={`text-xs font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(orc.valor_total || orc.total)}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(orc.status)}`}>
+                      <td className="px-3 py-3 whitespace-nowrap text-center">
+                        <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-700"} truncate`}>{orc.forma_pagamento || orc.forma_pagamento_id || '-'}</div>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-center">
+                        <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-700"} truncate`}>{orc.tabela || orc.tabela_id || '-'}</div>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-center">
+                        <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-700"} truncate`}>{orc.vendedor || orc.vendedor_id || '-'}</div>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-right">
+                        <div className={`text-xs ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{orc.desconto ? formatCurrency(orc.desconto) : '-'}</div>
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-center">
+                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(orc.status)}`}>
                           {orc.status || '-'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <td className="px-3 py-3 whitespace-nowrap text-xs font-medium">
                         <button 
-                          className={darkMode ? "text-blue-400 hover:text-blue-300 mr-3" : "text-blue-600 hover:text-blue-900 mr-3"}
+                          className={`text-xs px-2 py-1 rounded ${darkMode ? "bg-blue-900 text-blue-300 hover:bg-blue-800" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}
                           onClick={() => toggleOrcamentoDetails(orc.id || orc.numero)}
                         >
-                          {expandedOrcamento === (orc.id || orc.numero) ? 'Ocultar' : 'Detalhes'}
+                          {expandedOrcamento === (orc.id || orc.numero) ? 'Ocultar' : 'Ver'}
                         </button>
                       </td>
                     </tr>
                     {expandedOrcamento === (orc.id || orc.numero) && (
                       <tr>
-                        <td colSpan="10" className={`px-6 py-4 ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
-                          <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
-                            <h3 className="font-bold mb-2">Itens do Orçamento #{orc.numero || orc.id}</h3>
+                        <td colSpan="10" className={`px-3 py-3 ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                          <div className={`${darkMode ? "text-white" : "text-gray-900"}`}>
+                            <h3 className="text-sm font-bold mb-2">Itens do Orçamento #{orc.numero || orc.id}</h3>
                             {orc.itens && orc.itens.length > 0 ? (
-                              <table className="w-full text-xs mt-2 border-collapse">
-                                <thead className={`${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
-                                  <tr>
-                                    <th className="px-2 py-2 text-left border-b border-r">Código</th>
-                                    <th className="px-2 py-2 text-left border-b border-r">Descrição</th>
-                                    <th className="px-2 py-2 text-center border-b border-r">Qtde</th>
-                                    <th className="px-2 py-2 text-right border-b border-r">Valor Unit.</th>
-                                    <th className="px-2 py-2 text-right border-b">Total</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
+                              <div className="overflow-x-auto">
+                                <table className="w-full mt-2 border-collapse">
+                                  <thead className={`${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+                                    <tr>
+                                      <th className={`px-2 py-2 text-left border-b border-r ${darkMode ? "text-white border-gray-600" : "text-gray-800 border-gray-300"} text-xs font-bold`}>Código</th>
+                                      <th className={`px-2 py-2 text-left border-b border-r ${darkMode ? "text-white border-gray-600" : "text-gray-800 border-gray-300"} text-xs font-bold`}>Descrição</th>
+                                      <th className={`px-2 py-2 text-center border-b border-r ${darkMode ? "text-white border-gray-600" : "text-gray-800 border-gray-300"} text-xs font-bold`}>Qtde</th>
+                                      <th className={`px-2 py-2 text-right border-b border-r ${darkMode ? "text-white border-gray-600" : "text-gray-800 border-gray-300"} text-xs font-bold`}>Valor Unit.</th>
+                                      <th className={`px-2 py-2 text-right border-b ${darkMode ? "text-white border-gray-600" : "text-gray-800 border-gray-300"} text-xs font-bold`}>Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
                                   {orc.itens.map((item, idx) => {
                                     const quantidade = item.quantidade || item.pro_quantidade || 0;
                                     const valorUnitario = item.valor || item.pro_valor || 0;
@@ -296,20 +412,21 @@ const OrcamentosList = ({ darkMode }) => {
                                       <tr key={idx} className={idx % 2 === 0 ? 
                                         (darkMode ? "bg-gray-700" : "bg-white") : 
                                         (darkMode ? "bg-gray-800" : "bg-gray-50")}>
-                                        <td className="px-2 py-2 border-b border-r font-mono">{item.codigo || item.pro_codigo}</td>
-                                        <td className="px-2 py-2 border-b border-r font-medium">{item.descricao || item.pro_descricao}</td>
-                                        <td className="px-2 py-2 border-b border-r text-center">{quantidade}</td>
-                                        <td className="px-2 py-2 border-b border-r text-right">{formatCurrency(valorUnitario)}</td>
-                                        <td className="px-2 py-2 border-b text-right font-bold">{formatCurrency(valorTotal)}</td>
+                                        <td className={`px-2 py-2 border-b border-r font-mono ${darkMode ? "text-gray-300 border-gray-600" : "text-gray-700 border-gray-300"} text-xs`}>{item.codigo || item.pro_codigo}</td>
+                                        <td className={`px-2 py-2 border-b border-r font-medium ${darkMode ? "text-white border-gray-600" : "text-gray-800 border-gray-300"} text-xs`}>{item.descricao || item.pro_descricao}</td>
+                                        <td className={`px-2 py-2 border-b border-r text-center ${darkMode ? "text-gray-300 border-gray-600" : "text-gray-700 border-gray-300"} text-xs`}>{quantidade}</td>
+                                        <td className={`px-2 py-2 border-b border-r text-right ${darkMode ? "text-gray-300 border-gray-600" : "text-gray-700 border-gray-300"} text-xs`}>{formatCurrency(valorUnitario)}</td>
+                                        <td className={`px-2 py-2 border-b text-right font-bold ${darkMode ? "text-white border-gray-600" : "text-gray-900 border-gray-300"} text-xs`}>{formatCurrency(valorTotal)}</td>
                                       </tr>
                                     );
                                   })}
-                                  <tr className={darkMode ? "bg-gray-900" : "bg-gray-200"}>
-                                    <td colSpan="4" className="px-2 py-2 text-right font-bold">Total do Orçamento:</td>
-                                    <td className="px-2 py-2 text-right font-bold">{formatCurrency(orc.valor_total || orc.total)}</td>
+                                  <tr className={darkMode ? "bg-gray-900 text-white" : "bg-gray-200 text-gray-900"}>
+                                    <td colSpan="4" className="px-2 py-2 text-right font-bold text-xs">Total:</td>
+                                    <td className="px-2 py-2 text-right font-bold text-xs">{formatCurrency(orc.valor_total || orc.total)}</td>
                                   </tr>
                                 </tbody>
-                              </table>
+                                </table>
+                              </div>
                             ) : (
                               <span>Nenhum item encontrado.</span>
                             )}
@@ -334,54 +451,82 @@ const OrcamentosList = ({ darkMode }) => {
       {/* Exibição em cards (mobile) */}
       <div className="md:hidden">
         {orcamentos.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-6">
             {orcamentos.map((orc) => (
-              <div key={orc.id || orc.numero} className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-4`}>
+              <div key={orc.id || orc.numero} className={`p-4 rounded-lg shadow-md border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>Orçamento #{orc.numero || orc.id}</h3>
-                    <p className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"} mt-1`}>{orc.cliente_nome || orc.nome}</p>
-                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"} mt-1`}>Data: {orc.data || orc.data_emissao}</p>
-                    <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Valor Total: {formatCurrency(orc.valor_total || orc.total)}</p>
-                    <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(orc.status || '-')}`}>{orc.status || '-'}</span>
-                    </p>
+                  <div className="flex items-center">
+                    <span className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>#{orc.numero || orc.id}</span>
+                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${getStatusBadgeClass(orc.status)}`}>
+                      {orc.status || '-'}
+                    </span>
                   </div>
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(orc.status || '-')}`}>
-                    {orc.status || '-'}
-                  </span>
+                  <p className={`text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{orc.data || orc.data_emissao}</p>
                 </div>
-                <div className="mt-4 flex justify-between items-center">
-                  <div>
-                    <span className={`text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase`}>Valor Total:</span>
-                    <p className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(orc.valor_total || orc.total)}</p>
+                
+                <p className={`mt-2 text-base font-medium ${darkMode ? "text-gray-300" : "text-gray-600"} truncate`}>{orc.cliente_nome || orc.nome}</p>
+                
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                    <p className={`text-xs font-bold mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Forma de Pagamento</p>
+                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-800"}`}>{orc.forma_pagamento || orc.forma_pagamento_id || '-'}</p>
                   </div>
-                  <div className="flex space-x-2">
-                    <button
-                      className={`px-3 py-1 rounded ${darkMode ? "bg-blue-900 text-blue-300 hover:bg-blue-800" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}
-                      onClick={() => toggleOrcamentoDetails(orc.id || orc.numero)}
-                    >
-                      {expandedOrcamento === (orc.id || orc.numero) ? 'Ocultar' : 'Detalhes'}
-                    </button>
+                  <div className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                    <p className={`text-xs font-bold mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Tabela</p>
+                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-800"}`}>{orc.tabela || orc.tabela_id || '-'}</p>
+                  </div>
+                  <div className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                    <p className={`text-xs font-bold mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendedor</p>
+                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-800"}`}>{orc.vendedor || orc.vendedor_id || '-'}</p>
+                  </div>
+                  <div className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+                    <p className={`text-xs font-bold mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Desconto</p>
+                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-800"}`}>{orc.desconto ? formatCurrency(orc.desconto) : '-'}</p>
                   </div>
                 </div>
+                <div className="mt-3 flex justify-end">
+                  <p className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(orc.valor_total || orc.total)}</p>
+                </div>
+                
+                <div className="mt-3 flex justify-end">
+                  <button
+                    className={`px-3 py-1 rounded ${darkMode ? "bg-blue-900 text-blue-300 hover:bg-blue-800" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}
+                    onClick={() => toggleOrcamentoDetails(orc.id || orc.numero)}
+                  >
+                    {expandedOrcamento === (orc.id || orc.numero) ? 'Ocultar Itens' : 'Ver Itens'}
+                  </button>
+                </div>
+                
                 {expandedOrcamento === (orc.id || orc.numero) && (
                   <div className={`mt-4 pt-4 border-t ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
                     <div className="mt-3">
                       <p className={`font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>Itens do Orçamento:</p>
                       {orc.itens && orc.itens.length > 0 ? (
                         <div className="space-y-2">
-                          {orc.itens.map((item, index) => (
-                            <div key={index} className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
-                              <div className="flex justify-between">
-                                <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{item.descricao || item.pro_descricao}</span>
-                                <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(item.valor || item.pro_valor)}</span>
+                          {orc.itens.map((item, index) => {
+                            const quantidade = item.quantidade || item.pro_quantidade || 0;
+                            const valorUnitario = item.valor || item.pro_valor || 0;
+                            const valorTotal = item.valor_total || item.ior_total || (quantidade * valorUnitario);
+                            
+                            return (
+                              <div key={index} className={`p-3 rounded ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                                <div className="flex justify-between items-center">
+                                  <span className={`font-mono text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{item.codigo || item.pro_codigo}</span>
+                                  <span className={`font-medium text-xs ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Qtde: {quantidade}</span>
+                                </div>
+                                <div className="mt-1">
+                                  <p className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{item.descricao || item.pro_descricao}</p>
+                                </div>
+                                <div className="flex justify-between text-sm mt-2">
+                                  <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>Unit: {formatCurrency(valorUnitario)}</span>
+                                  <span className={`font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(valorTotal)}</span>
+                                </div>
                               </div>
-                              <div className="flex justify-between text-sm mt-1">
-                                <span className={darkMode ? "text-gray-400" : "text-gray-500"}>{item.quantidade || item.pro_quantidade}</span>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
+                          <div className={`p-3 rounded font-bold text-right ${darkMode ? "bg-gray-900 text-white" : "bg-gray-200 text-gray-900"}`}>
+                            Total: {formatCurrency(orc.valor_total || orc.total)}
+                          </div>
                         </div>
                       ) : (
                         <p className={darkMode ? "text-gray-400 italic" : "text-gray-500 italic"}>Nenhum item no orçamento</p>

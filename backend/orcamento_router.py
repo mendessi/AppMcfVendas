@@ -1,12 +1,130 @@
-from fastapi import APIRouter, HTTPException, Depends, Request
-from typing import Any
-from orcamento_models import OrcamentoCreate, ProdutoOrcamento
+from fastapi import APIRouter, HTTPException, Depends, Request, Body
+from typing import Any, List, Optional, Dict
+from pydantic import BaseModel
 import database  # Seu módulo de conexão
 import logging
 from datetime import datetime
-from empresa_manager import get_empresa_connection
+# Usar a versão corrigida da função get_empresa_connection
+from empresa_manager_corrigido import get_empresa_connection
+
+logging.warning('DEBUG: orcamento_router.py carregado!')
+
+# Modelos para criação de orçamento
+class ProdutoOrcamento(BaseModel):
+    codigo: str
+    descricao: str
+    quantidade: float
+    valor_unitario: float
+    valor_total: float
+    imagem: Optional[str] = None
+
+class OrcamentoCreate(BaseModel):
+    cliente_codigo: str
+    nome_cliente: str
+    tabela_codigo: str
+    formapag_codigo: str
+    valor_total: float
+    data_orcamento: str
+    data_validade: Optional[str] = None
+    observacao: Optional[str] = None
+    vendedor_codigo: Optional[str] = None
+    especie: Optional[str] = None
+    desconto: Optional[float] = 0
+    produtos: List[ProdutoOrcamento]
 
 router = APIRouter()
+
+def vazio_para_none(valor):
+    return valor if valor not in ("", None) else None
+
+@router.post("/orcamentos")
+async def criar_orcamento(request: Request, orcamento: OrcamentoCreate):
+    logging.warning('DEBUG: Entrou na rota POST /orcamentos!')
+    logging.info("Iniciando criação de orçamento (novo fluxo Firebird)")
+    try:
+        empresa_header = request.headers.get("x-empresa-codigo")
+        logging.info(f"Header x-empresa-codigo: {empresa_header}")
+        conn = await get_empresa_connection(request)
+        if not conn:
+            logging.error("Conexão com o banco não foi estabelecida - retornou None")
+            return {"success": False, "message": "Erro de conexão com o banco de dados"}
+        cursor = conn.cursor()
+        try:
+            conn.begin()
+            # Buscar próximo número de orçamento na tabela CODIGO
+            cursor.execute("SELECT COD_PROXVALOR FROM CODIGO WHERE COD_TABELA = 'ORCAMENT' AND COD_NOMECAMPO = 'ECF_NUMERO'")
+            resultado = cursor.fetchone()
+            if not resultado:
+                raise Exception("Não foi possível obter o próximo número de orçamento na tabela CODIGO.")
+            valor_codigo = resultado[0]
+            orcamento_numero = valor_codigo + 1
+            # Atualizar a tabela CODIGO com o novo valor
+            cursor.execute(
+                "UPDATE CODIGO SET COD_PROXVALOR = ? WHERE COD_TABELA = 'ORCAMENT' AND COD_NOMECAMPO = 'ECF_NUMERO'",
+                (orcamento_numero,)
+            )
+            # Formatar datas
+            data_orcamento = None
+            if orcamento.data_orcamento and orcamento.data_orcamento.strip():
+                data_orcamento = datetime.strptime(orcamento.data_orcamento, "%Y-%m-%d").date()
+            data_validade = None
+            if orcamento.data_validade and orcamento.data_validade.strip():
+                data_validade = datetime.strptime(orcamento.data_validade, "%Y-%m-%d").date()
+            # Inserir cabeçalho do orçamento
+            cursor.execute("""
+                INSERT INTO ORCAMENT (
+                    ECF_NUMERO, CLI_CODIGO, NOME, ECF_DATA, ECF_TOTAL, 
+                    ECF_FPG_COD, ECF_TAB_COD, VEN_CODIGO, ECF_DESCONTO, 
+                    DATA_VALIDADE, ECF_OBS, PAR_PARAMETRO, EMP_CODIGO, ECF_ESPECIE
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                orcamento_numero,
+                vazio_para_none(orcamento.cliente_codigo),
+                vazio_para_none(orcamento.nome_cliente),
+                data_orcamento,
+                vazio_para_none(orcamento.valor_total),
+                vazio_para_none(orcamento.formapag_codigo),
+                vazio_para_none(orcamento.tabela_codigo),
+                vazio_para_none(orcamento.vendedor_codigo),
+                vazio_para_none(orcamento.desconto or 0),
+                data_validade,
+                vazio_para_none(orcamento.observacao),
+                0,  # PAR_PARAMETRO = 0 (Em análise)
+                1,  # EMP_CODIGO fixo como 1
+                vazio_para_none(orcamento.especie)
+            ))
+            # Inserir itens do orçamento
+            for i, produto in enumerate(orcamento.produtos, 1):
+                cursor.execute("""
+                    INSERT INTO ITORC (
+                        ECF_NUMERO, IEC_SEQUENCIA, PRO_CODIGO, PRO_DESCRICAO, 
+                        PRO_QUANTIDADE, PRO_VENDA, IOR_TOTAL
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    orcamento_numero,
+                    i,
+                    vazio_para_none(produto.codigo),
+                    vazio_para_none(produto.descricao),
+                    vazio_para_none(produto.quantidade),
+                    vazio_para_none(produto.valor_unitario),
+                    vazio_para_none(produto.valor_total)
+                ))
+            conn.commit()
+            logging.info(f"Orçamento {orcamento_numero} criado com sucesso (novo fluxo Firebird)")
+            return {
+                "success": True,
+                "message": "Orçamento criado com sucesso",
+                "numero_orcamento": orcamento_numero
+            }
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"Erro ao criar orçamento: {str(e)}")
+            return {"success": False, "message": f"Erro ao criar orçamento: {str(e)}"}
+        finally:
+            conn.close()
+    except Exception as e:
+        logging.error(f"Erro geral ao criar orçamento: {str(e)}")
+        return {"success": False, "message": f"Erro geral: {str(e)}"}
 
 @router.get("/orcamentos")
 async def listar_orcamentos(request: Request, data_inicial: str = None, data_final: str = None):

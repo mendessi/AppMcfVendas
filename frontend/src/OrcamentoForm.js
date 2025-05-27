@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import OrcamentoHeader from './components/OrcamentoHeader';
 import useIsMobile from './components/useIsMobile';
 import ProdutoAutocomplete from './components/ProdutoAutocomplete';
+import api from './services/api';
 
 const ESPECIE_OPCOES = [
   { value: '0', label: 'Dinheiro' },
@@ -47,30 +48,67 @@ function OrcamentoForm() {
   // Accordion para mobile
   const [headerOpen, setHeaderOpen] = useState(true);
 
+  const quantidadeRefs = useRef([]);
+  const precoRefs = useRef([]);
+
   // Handler para adicionar produto
   const handleAdicionarProduto = () => {
     if (!produtoSelecionado) return;
-    setProdutos([
-      ...produtos,
-      {
-        codigo: produtoSelecionado.codigo,
-        descricao: produtoSelecionado.descricao,
-        quantidade: quantidade,
-        valor_unitario: valorUnitario,
-        valor_total: quantidade * valorUnitario,
-        imagem: imagem
-      }
-    ]);
+    const valorUnit = produtoSelecionado.pro_venda || produtoSelecionado.valor_unitario || 0;
+    const novoItem = {
+      codigo: produtoSelecionado.pro_codigo || produtoSelecionado.codigo,
+      descricao: produtoSelecionado.pro_descricao || produtoSelecionado.descricao,
+      quantidade: 1,
+      valor_unitario: valorUnit,
+      valor_total: valorUnit * 1,
+      imagem: produtoSelecionado.pro_imagem || produtoSelecionado.imagem || ''
+    };
+    setProdutos([...produtos, novoItem]);
     setProdutoSelecionado(null);
     setQuantidade(1);
     setValorUnitario(0);
     setImagem('');
     setProdutoBusca('');
+    setTimeout(() => {
+      if (quantidadeRefs.current[produtos.length]) {
+        quantidadeRefs.current[produtos.length].focus();
+      }
+    }, 100);
+  };
+
+  const handleQuantidadeChange = (idx, value) => {
+    const novaQtd = parseInt(value) || 1;
+    const novosProdutos = produtos.map((p, i) =>
+      i === idx ? { ...p, quantidade: novaQtd, valor_total: novaQtd * p.valor_unitario } : p
+    );
+    setProdutos(novosProdutos);
+  };
+
+  const handleValorUnitarioChange = (idx, value) => {
+    const novoValor = parseFloat(value) || 0;
+    const novosProdutos = produtos.map((p, i) =>
+      i === idx ? { ...p, valor_unitario: novoValor, valor_total: novoValor * p.quantidade } : p
+    );
+    setProdutos(novosProdutos);
   };
 
   // Handler para remover produto
   const handleRemoverProduto = idx => {
     setProdutos(produtos.filter((_, i) => i !== idx));
+  };
+
+  const handleAdicionarProdutoDireto = (produto) => {
+    if (!produto) return;
+    const valorUnit = produto.pro_venda || produto.valor_unitario || 0;
+    const novoItem = {
+      codigo: produto.pro_codigo || produto.codigo,
+      descricao: produto.pro_descricao || produto.descricao,
+      quantidade: 1,
+      valor_unitario: valorUnit,
+      valor_total: valorUnit * 1,
+      imagem: produto.pro_imagem || produto.imagem || ''
+    };
+    setProdutos([...produtos, novoItem]);
   };
 
   // Handler para submit do orçamento
@@ -99,12 +137,8 @@ function OrcamentoForm() {
     };
     // Envia para o backend
     try {
-      const resp = await fetch('/orcamentos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await resp.json();
+      const response = await api.post('/api/orcamentos', payload);
+      const data = response.data;
       if (data.success) {
         alert('Orçamento salvo com sucesso!');
         // Limpar formulário
@@ -121,6 +155,7 @@ function OrcamentoForm() {
         alert('Erro ao salvar: ' + (data.message || 'Erro desconhecido'));
       }
     } catch (err) {
+      console.error('Erro ao salvar orçamento:', err);
       alert('Erro de conexão ao salvar orçamento.');
     }
   };
@@ -184,7 +219,7 @@ function OrcamentoForm() {
         <h3 className="text-lg font-semibold mb-4 text-white">Itens</h3>
         <div className="flex gap-2 mb-2">
           <div className="flex-1">
-            <ProdutoAutocomplete value={produtoSelecionado} onChange={setProdutoSelecionado} />
+            <ProdutoAutocomplete value={produtoSelecionado} onChange={setProdutoSelecionado} onAdd={handleAdicionarProdutoDireto} />
           </div>
           <button type="button" onClick={handleAdicionarProduto} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition">Adicionar Produto</button>
         </div>
@@ -194,7 +229,40 @@ function OrcamentoForm() {
               {p.imagem && <img src={p.imagem} alt={p.descricao} className="w-10 h-10 object-cover rounded mr-3" />}
               <div className="flex-1">
                 <div className="font-bold text-gray-200">{p.codigo} <span className="font-normal text-gray-300">- {p.descricao}</span></div>
-                <div className="text-sm text-gray-400">Qtd: {p.quantidade} | Unit: {p.valor_unitario.toFixed(2)} | Total: {p.valor_total.toFixed(2)}</div>
+                <div className="flex gap-2 items-center mt-1">
+                  <label className="text-sm text-gray-400">Qtd:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={p.quantidade}
+                    ref={el => quantidadeRefs.current[idx] = el}
+                    onChange={e => handleQuantidadeChange(idx, e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === 'Tab') {
+                        e.preventDefault();
+                        if (precoRefs.current[idx]) precoRefs.current[idx].focus();
+                      }
+                    }}
+                    className="w-16 px-2 py-1 rounded bg-gray-800 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <label className="text-sm text-gray-400 ml-2">Unit:</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={p.valor_unitario}
+                    ref={el => precoRefs.current[idx] = el}
+                    onChange={e => handleValorUnitarioChange(idx, e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        // Foca no próximo item ou sai do input
+                        if (quantidadeRefs.current[idx + 1]) quantidadeRefs.current[idx + 1].focus();
+                      }
+                    }}
+                    className="w-24 px-2 py-1 rounded bg-gray-800 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-400 ml-2">Total: <span className="text-blue-400 font-bold">{p.valor_total.toFixed(2)}</span></span>
+                </div>
               </div>
               <button type="button" onClick={() => handleRemoverProduto(idx)} className="ml-3 text-red-400 hover:text-red-600 font-bold text-sm">Remover</button>
             </div>

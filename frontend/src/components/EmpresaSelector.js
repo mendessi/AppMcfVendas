@@ -318,10 +318,9 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
             <ul className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
               {empresas.map((empresa) => (
                 <li key={empresa.cli_codigo} className="py-4">
-                  <button
+                  <div
                     onClick={() => handleEmpresaSelect(empresa)}
-                    disabled={empresa.cli_bloqueadoapp === 'S'}
-                    className={`w-full text-left px-4 py-3 rounded-lg transition-colors ${empresa.cli_bloqueadoapp === 'S' 
+                    className={`w-full text-left px-4 py-3 rounded-lg transition-colors cursor-pointer ${empresa.cli_bloqueadoapp === 'S' 
                       ? `${darkMode ? 'bg-gray-700' : 'bg-gray-100'} cursor-not-allowed` 
                       : `${darkMode ? 'hover:bg-gray-700' : 'hover:bg-blue-50'} focus:outline-none focus:ring-2 focus:ring-blue-500`}`}
                   >
@@ -382,7 +381,10 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
                         <div className="flex flex-col space-y-2">
                           {/* Botão de Testar Conexão */}
                           <button
-                            onClick={(e) => handleTestConnection(empresa, e)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Impede que o clique propague para a div pai
+                              handleTestConnection(empresa, e);
+                            }}
                             className={`px-3 py-1 text-xs rounded-md ${darkMode ? 'bg-blue-700 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-700'} text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500`}
                             disabled={testingConnection && selectedEmpresaForTest === empresa.cli_codigo}
                           >
@@ -395,7 +397,10 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
                           
                           {/* Botão de Testar SQL */}
                           <button
-                            onClick={(e) => handleTestSql(empresa, e)}
+                            onClick={(e) => {
+                              e.stopPropagation(); // Impede que o clique propague para a div pai
+                              handleTestSql(empresa, e);
+                            }}
                             className={`px-3 py-1 text-xs rounded-md ${darkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-600 hover:bg-green-700'} text-white transition-colors focus:outline-none focus:ring-2 focus:ring-green-500`}
                             disabled={testingSql && selectedEmpresaForTest === empresa.cli_codigo}
                           >
@@ -423,7 +428,7 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
                         {empresa.cli_mensagem}
                       </div>
                     )}
-                  </button>
+                  </div>
                 </li>
               ))}
             </ul>

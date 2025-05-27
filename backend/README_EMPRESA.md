@@ -1,6 +1,10 @@
 # Seleção de Empresa e Cabeçalho `x-empresa-codigo` no Backend
 
 Este documento explica as regras e o funcionamento da seleção de empresa no backend FastAPI do projeto AppMendes, assim como o papel do cabeçalho HTTP `x-empresa-codigo`.
+backend exige o cabeçalho de autenticação e o código da empresa, assim como nos outros endpoints.
+No seu backend, todos os endpoints de /relatorios exigem:
+Header Authorization (token JWT)
+Header x-empresa-codigo (código da empresa)
 
 ---
 

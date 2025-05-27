@@ -76,7 +76,7 @@ const OrcamentosList = ({ darkMode }) => {
       if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
       
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-      let url = `${apiUrl}/orcamentos`;
+      let url = `${apiUrl}/api/orcamentos`;
       
       // Garantir que o filtro de data seja aplicado na primeira carga e quando o checkbox estiver marcado
       if ((filtrarPorData || forcarFiltro) && dataInicial && dataFinal) {
@@ -163,7 +163,7 @@ const OrcamentosList = ({ darkMode }) => {
         if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
         
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-        const url = `${apiUrl}/orcamentos/${orcamentoId}/itens`;
+        const url = `${apiUrl}/api/orcamentos/${orcamentoId}/itens`;
         
         console.log(`Buscando itens do orçamento ${orcamentoId} na URL:`, url);
         
@@ -466,29 +466,30 @@ const OrcamentosList = ({ darkMode }) => {
                 
                 <p className={`mt-2 text-base font-medium ${darkMode ? "text-gray-300" : "text-gray-600"} truncate`}>{orc.cliente_nome || orc.nome}</p>
                 
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                    <p className={`text-xs font-bold mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Forma de Pagamento</p>
-                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-800"}`}>{orc.forma_pagamento || orc.forma_pagamento_id || '-'}</p>
+                <div className="mt-2">
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                    <div>
+                      <span className={`font-semibold ${darkMode ? "text-gray-400" : "text-gray-500"}`}>FPG: </span>
+                      <span className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>{orc.forma_pagamento || orc.forma_pagamento_id || '-'}</span>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Tab: </span>
+                      <span className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>{orc.tabela || orc.tabela_id || '-'}</span>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vend: </span>
+                      <span className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>{orc.vendedor || orc.vendedor_id || '-'}</span>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Desc: </span>
+                      <span className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>{orc.desconto ? formatCurrency(orc.desconto) : '-'}</span>
+                    </div>
                   </div>
-                  <div className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                    <p className={`text-xs font-bold mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Tabela</p>
-                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-800"}`}>{orc.tabela || orc.tabela_id || '-'}</p>
-                  </div>
-                  <div className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                    <p className={`text-xs font-bold mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendedor</p>
-                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-800"}`}>{orc.vendedor || orc.vendedor_id || '-'}</p>
-                  </div>
-                  <div className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
-                    <p className={`text-xs font-bold mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Desconto</p>
-                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-800"}`}>{orc.desconto ? formatCurrency(orc.desconto) : '-'}</p>
-                  </div>
-                </div>
-                <div className="mt-3 flex justify-end">
-                  <p className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(orc.valor_total || orc.total)}</p>
                 </div>
                 
-                <div className="mt-3 flex justify-end">
+                <div className="mt-3 flex justify-between items-center">                  
+                  <p className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(orc.valor_total || orc.total)}</p>
+                  
                   <button
                     className={`px-3 py-1 rounded ${darkMode ? "bg-blue-900 text-blue-300 hover:bg-blue-800" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}
                     onClick={() => toggleOrcamentoDetails(orc.id || orc.numero)}

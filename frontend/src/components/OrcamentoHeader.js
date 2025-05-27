@@ -1,7 +1,7 @@
 import React from 'react';
 import ClienteAutocomplete from './ClienteAutocomplete';
 import SelectDinamico from './SelectDinamico';
-import apiService from '../services/api';
+import api from '../services/api';
 
 function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagamento, setFormaPagamento, vendedor, setVendedor, dataOrcamento, validade, setValidade, especie, setEspecie, desconto, setDesconto, observacao, setObservacao, ESPECIE_OPCOES }) {
   return (
@@ -16,8 +16,7 @@ function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagament
           value={tabela}
           onChange={setTabela}
           fetchOptions={async () => {
-            const res = await apiService.api.get('/tabelas');
-            // Ajuste para o formato [{value, label}]
+            const res = await api.get('/relatorios/tabelas');
             return (res.data || []).map(t => ({ value: t.codigo || t.TAB_CODIGO, label: t.nome || t.TAB_NOME }));
           }}
           placeholder="Selecione a tabela"
@@ -29,7 +28,7 @@ function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagament
           value={formaPagamento}
           onChange={setFormaPagamento}
           fetchOptions={async () => {
-            const res = await apiService.api.get('/formapag');
+            const res = await api.get('/relatorios/formapag');
             return (res.data || []).map(f => ({ value: f.codigo || f.FPG_CODIGO, label: f.nome || f.FPG_NOME }));
           }}
           placeholder="Selecione a forma de pagamento"
@@ -41,7 +40,7 @@ function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagament
           value={vendedor}
           onChange={setVendedor}
           fetchOptions={async () => {
-            const res = await apiService.api.get('/vendedores');
+            const res = await api.get('/relatorios/vendedores');
             return (res.data || []).map(v => ({ value: v.codigo || v.VEN_CODIGO, label: v.nome || v.VEN_NOME }));
           }}
           placeholder="Selecione o vendedor"

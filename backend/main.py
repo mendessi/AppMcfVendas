@@ -48,13 +48,13 @@ else:
     base_path = os.path.dirname(os.path.abspath(__file__))
 
 # Instância FastAPI principal
-def get_app():
-    app = FastAPI()
-    # ... inclusão de outros routers ...
-    app.include_router(orcamento_router)
-    return app
+# def get_app():
+#     app = FastAPI()
+#     # ... inclusão de outros routers ...
+#     app.include_router(orcamento_router, prefix="/api", tags=["Orçamentos"])
+#     return app
 
-app = get_app()
+app = FastAPI(title="API Força de Vendas", description="API para aplicativo de força de vendas")
 
 dll_path = os.path.join(base_path, "fbclient.dll")
 
@@ -91,8 +91,6 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
-
-app = FastAPI(title="API Força de Vendas", description="API para aplicativo de força de vendas")
 
 # Configurar CORS - permitir origens específicas para credenciais
 origins = [
@@ -190,8 +188,8 @@ app.include_router(empresa_info_detalhada_router)
 # Inclui as rotas de teste SQL da empresa
 app.include_router(teste_sql_empresa_router)
 
-# Inclui as rotas de orçamentos
-app.include_router(orcamento_router)
+# Incluir o router de orçamentos na instância principal
+app.include_router(orcamento_router, prefix="/api", tags=["Orçamentos"])
 
 # Rotas básicas para teste
 @app.get("/")
@@ -593,5 +591,12 @@ async def get_pedidos(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    print("Iniciando servidor na porta 8000...")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import argparse
+    
+    # Configurar argumentos de linha de comando
+    parser = argparse.ArgumentParser(description="Servidor API Força de Vendas")
+    parser.add_argument("--port", type=int, default=8000, help="Porta para executar o servidor (padrão: 8000)")
+    args = parser.parse_args()
+    
+    print(f"Iniciando servidor na porta {args.port}...")
+    uvicorn.run(app, host="0.0.0.0", port=args.port)

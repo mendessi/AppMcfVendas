@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import api from '../services/api';
 
 function ProdutoAutocomplete({ value, onChange, onAdd }) {
@@ -7,7 +7,10 @@ function ProdutoAutocomplete({ value, onChange, onAdd }) {
   const [loading, setLoading] = useState(false);
   const [showList, setShowList] = useState(false);
   const [error, setError] = useState(null);
+  const [isFocused, setIsFocused] = useState(false);
   const timeoutRef = useRef(null);
+  const previousValueRef = useRef('');
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     if (value) {
@@ -15,48 +18,99 @@ function ProdutoAutocomplete({ value, onChange, onAdd }) {
     }
   }, [value]);
 
+  // Função de busca memoizada para evitar recriações desnecessárias
+  const buscarProdutos = useCallback(async (termo) => {
+    // Cancelar requisição anterior se existir
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Criar novo controller para esta requisição
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const token = localStorage.getItem('token');
+      const empresaAtual = JSON.parse(localStorage.getItem('empresa_atual'));
+      
+      const response = await api.get(`/relatorios/produtos?q=${encodeURIComponent(termo)}`, {
+        signal: abortControllerRef.current.signal
+      });
+
+      if (!response.data || !Array.isArray(response.data)) {
+        throw new Error('Resposta inválida da API');
+      }
+
+      setProdutos(response.data);
+      setError(null);
+    } catch (err) {
+      // Ignorar erros de cancelamento
+      if (err.name === 'AbortError') return;
+      
+      console.error('Erro ao buscar produtos:', err);
+      let msg = err.message || 'Erro ao buscar produtos';
+      if (err.response) {
+        msg = `Erro ${err.response.status}: ${err.response.data?.detail || msg}`;
+      }
+      setError(msg);
+      setProdutos([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const handleInput = async (e) => {
     const val = e.target.value;
     setInput(val);
     setShowList(true);
     setError(null);
 
-    // Limpar timeout anterior
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
-    if (val.length < 2) {
+    if (val.length < 2 || !isFocused || val === previousValueRef.current) {
       setProdutos([]);
       return;
     }
 
-    // Adicionar debounce de 500ms
+    previousValueRef.current = val;
+
     timeoutRef.current = setTimeout(async () => {
+      if (!isFocused || val.length < 2) {
+        return;
+      }
       setLoading(true);
       try {
         const token = localStorage.getItem('token');
         const empresaAtual = JSON.parse(localStorage.getItem('empresa_atual'));
-        console.log('Buscando produtos com termo:', val);
-        console.log('Headers da requisição:', {
+        const headers = {
           Authorization: token,
-          'x-empresa-codigo': empresaAtual?.cli_codigo
-        });
-
-        const response = await api.get(`/relatorios/produtos?q=${encodeURIComponent(val)}`);
-        console.log('Resposta da API:', response.data);
-
+          'x-empresa-codigo': empresaAtual?.cli_codigo?.toString() || empresaAtual?.codigo?.toString() || '',
+        };
+        const response = await api.get(`/relatorios/produtos?q=${encodeURIComponent(val)}`, { headers });
         if (!response.data || !Array.isArray(response.data)) {
-          console.error('Resposta inválida da API:', response.data);
-          setError('Erro ao buscar produtos: resposta inválida');
-          setProdutos([]);
-          return;
+          throw new Error('Resposta inválida da API');
         }
-
-        setProdutos(response.data);
+        // Aceitar tanto campos padronizados quanto legados
+        const produtosPadronizados = response.data.map((p, idx) => ({
+          pro_codigo: p.pro_codigo || p.codigo,
+          pro_descricao: p.pro_descricao || p.descricao,
+          pro_venda: p.pro_venda || p.valor,
+          pro_vendapz: p.pro_vendapz || p.valor_prazo,
+          pro_quantidade: p.pro_quantidade || p.estoque,
+          uni_codigo: p.uni_codigo || p.unidade,
+          pro_imagem: p.pro_imagem || p.imagem || '',
+        }));
+        setProdutos(produtosPadronizados);
+        if (produtosPadronizados.length === 0) {
+          setError('Nenhum produto encontrado para este termo.');
+        }
       } catch (err) {
-        console.error('Erro ao buscar produtos:', err);
-        setError(err.message || 'Erro ao buscar produtos');
+        let msg = err.message || 'Erro ao buscar produtos';
+        if (err.response) {
+          msg = `Erro ${err.response.status}: ${err.response.data?.detail || msg}`;
+        }
+        setError(msg);
         setProdutos([]);
       } finally {
         setLoading(false);
@@ -64,19 +118,34 @@ function ProdutoAutocomplete({ value, onChange, onAdd }) {
     }, 500);
   };
 
-  // Limpar timeout ao desmontar
+  // Limpar recursos ao desmontar
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
 
   const handleSelect = (produto) => {
-    // NÃO limpar o input para permitir seleção rápida de vários produtos
     setShowList(false);
     onChange(produto);
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    if (input.length >= 2) {
+      setShowList(true);
+    }
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    // Pequeno delay para permitir clicar nos itens da lista
+    setTimeout(() => setShowList(false), 150);
   };
 
   return (
@@ -87,8 +156,8 @@ function ProdutoAutocomplete({ value, onChange, onAdd }) {
         placeholder="Buscar produto..."
         value={input}
         onChange={handleInput}
-        onFocus={() => setShowList(true)}
-        onBlur={() => setTimeout(() => setShowList(false), 150)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         autoComplete="off"
       />
       {loading && <div className="absolute right-3 top-3 spinner-border animate-spin w-4 h-4 border-2 border-blue-400 rounded-full"></div>}

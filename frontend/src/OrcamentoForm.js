@@ -3,6 +3,8 @@ import OrcamentoHeader from './components/OrcamentoHeader';
 import useIsMobile from './components/useIsMobile';
 import ProdutoAutocomplete from './components/ProdutoAutocomplete';
 import api from './services/api';
+import { FaPlus, FaSave, FaTrash } from 'react-icons/fa';
+import ClienteAutocomplete from './components/ClienteAutocomplete';
 
 const ESPECIE_OPCOES = [
   { value: '0', label: 'Dinheiro' },
@@ -26,8 +28,8 @@ function OrcamentoForm() {
   const [tabela, setTabela] = useState('');
   const [formaPagamento, setFormaPagamento] = useState('');
   const [vendedor, setVendedor] = useState('');
-  const [dataOrcamento] = useState(new Date().toISOString().slice(0, 10));
-  const [validade, setValidade] = useState('');
+  const [dataOrcamento] = useState(new Date().toISOString().split('T')[0]);
+  const [validade, setValidade] = useState(new Date().toISOString().split('T')[0]);
   const [especie, setEspecie] = useState('0');
   const [desconto, setDesconto] = useState(0);
   const [observacao, setObservacao] = useState('');
@@ -50,6 +52,58 @@ function OrcamentoForm() {
 
   const quantidadeRefs = useRef([]);
   const precoRefs = useRef([]);
+  const quantidadeInputRef = useRef(null);
+
+  // Novos estados para os dados iniciais
+  const [vendedores, setVendedores] = useState([]);
+  const [tabelas, setTabelas] = useState([]);
+  const [formasPagamento, setFormasPagamento] = useState([]);
+
+  const [ultimoItemIndex, setUltimoItemIndex] = useState(null);
+
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+    async function fetchDadosIniciais() {
+      try {
+        console.log('Buscando dados iniciais...');
+        const [respVendedores, respTabelas, respFormas] = await Promise.all([
+          api.get('/relatorios/vendedores'),
+          api.get('/relatorios/tabelas'),
+          api.get('/relatorios/formapag')
+        ]);
+
+        console.log('Dados recebidos:', {
+          vendedores: respVendedores.data,
+          tabelas: respTabelas.data,
+          formas: respFormas.data
+        });
+
+        if (Array.isArray(respVendedores.data)) {
+          setVendedores(respVendedores.data);
+        } else {
+          console.error('Dados de vendedores inválidos:', respVendedores.data);
+        }
+
+        if (Array.isArray(respTabelas.data)) {
+          setTabelas(respTabelas.data);
+        } else {
+          console.error('Dados de tabelas inválidos:', respTabelas.data);
+        }
+
+        if (Array.isArray(respFormas.data)) {
+          setFormasPagamento(respFormas.data);
+        } else {
+          console.error('Dados de formas de pagamento inválidos:', respFormas.data);
+        }
+      } catch (err) {
+        console.error('Erro ao carregar dados iniciais:', err);
+        // Adicionar tratamento de erro visual aqui se necessário
+      }
+    }
+
+    fetchDadosIniciais();
+  }, []);
 
   // Handler para adicionar produto
   const handleAdicionarProduto = () => {
@@ -76,18 +130,35 @@ function OrcamentoForm() {
     }, 100);
   };
 
+  const formatarNumero = (valor) => {
+    return valor.toString().replace('.', ',');
+  };
+
+  const parseNumero = (valor) => {
+    return parseFloat(valor.toString().replace(',', '.')) || 0;
+  };
+
   const handleQuantidadeChange = (idx, value) => {
-    const novaQtd = parseInt(value) || 1;
+    // Converter vírgula para ponto e garantir número válido
+    const novaQtd = parseFloat(value.replace(',', '.')) || 0;
     const novosProdutos = produtos.map((p, i) =>
-      i === idx ? { ...p, quantidade: novaQtd, valor_total: novaQtd * p.valor_unitario } : p
+      i === idx ? { 
+        ...p, 
+        quantidade: novaQtd,
+        valor_total: novaQtd * p.valor_unitario 
+      } : p
     );
     setProdutos(novosProdutos);
   };
 
   const handleValorUnitarioChange = (idx, value) => {
-    const novoValor = parseFloat(value) || 0;
+    const novoValor = parseNumero(value);
     const novosProdutos = produtos.map((p, i) =>
-      i === idx ? { ...p, valor_unitario: novoValor, valor_total: novoValor * p.quantidade } : p
+      i === idx ? { 
+        ...p, 
+        valor_unitario: novoValor, 
+        valor_total: novoValor * p.quantidade 
+      } : p
     );
     setProdutos(novosProdutos);
   };
@@ -95,6 +166,7 @@ function OrcamentoForm() {
   // Handler para remover produto
   const handleRemoverProduto = idx => {
     setProdutos(produtos.filter((_, i) => i !== idx));
+    setUltimoItemIndex(null);
   };
 
   const handleAdicionarProdutoDireto = (produto) => {
@@ -106,37 +178,65 @@ function OrcamentoForm() {
       quantidade: 1,
       valor_unitario: valorUnit,
       valor_total: valorUnit * 1,
-      imagem: produto.pro_imagem || produto.imagem || ''
+      imagem: produto.pro_imagem || produto.imagem || '',
+      timestamp: Date.now()
     };
-    setProdutos([...produtos, novoItem]);
+    
+    const novosProdutos = [novoItem, ...produtos];
+    setProdutos(novosProdutos);
+    setProdutoSelecionado(null);
+    setQuantidade(1);
+    setValorUnitario(0);
+    setImagem('');
+    setProdutoBusca('');
+    
+    setUltimoItemIndex(0);
+    
+    setTimeout(() => {
+      if (quantidadeRefs.current[0]) {
+        quantidadeRefs.current[0].focus();
+      }
+    }, 100);
   };
 
   // Handler para submit do orçamento
   const handleSalvar = async () => {
-    // Monta o JSON conforme backend
-    const payload = {
-      cliente_codigo: cliente?.codigo || '',
-      nome_cliente: cliente?.nome || '',
-      tabela_codigo: tabela,
-      formapag_codigo: formaPagamento,
-      valor_total: total,
-      data_orcamento: dataOrcamento,
-      data_validade: validade,
-      observacao,
-      vendedor_codigo: vendedor,
-      especie,
-      desconto,
-      produtos: produtos.map(p => ({
-        codigo: p.codigo,
-        descricao: p.descricao,
-        quantidade: p.quantidade,
-        valor_unitario: p.valor_unitario,
-        valor_total: p.valor_total,
-        imagem: p.imagem
-      }))
-    };
-    // Envia para o backend
+    if (!cliente?.nome) {
+      alert('Por favor, selecione um cliente.');
+      return;
+    }
+    if (produtos.length === 0) {
+      alert('Adicione pelo menos um produto ao orçamento.');
+      return;
+    }
+    setShowModal(true);
+  };
+
+  const confirmarSalvar = async () => {
+    setShowModal(false);
     try {
+      const payload = {
+        cliente_codigo: cliente?.codigo || '',
+        nome_cliente: cliente?.nome || '',
+        tabela_codigo: tabela,
+        formapag_codigo: formaPagamento,
+        valor_total: total,
+        data_orcamento: dataOrcamento,
+        data_validade: validade,
+        observacao,
+        vendedor_codigo: vendedor,
+        especie,
+        desconto,
+        produtos: produtos.map(p => ({
+          codigo: p.codigo,
+          descricao: p.descricao,
+          quantidade: p.quantidade,
+          valor_unitario: p.valor_unitario,
+          valor_total: p.valor_total,
+          imagem: p.imagem
+        }))
+      };
+
       const response = await api.post('/api/orcamentos', payload);
       const data = response.data;
       if (data.success) {
@@ -164,25 +264,15 @@ function OrcamentoForm() {
   // TODO: Implementar autocomplete e selects reais
 
   return (
-    <div className={
-      isMobile
-        ? 'orcamento-form w-full bg-gray-800 rounded-xl shadow-lg p-2 mt-2 mb-4'
-        : 'orcamento-form w-full max-w-7xl mx-auto bg-gray-800 rounded-xl shadow-lg p-8 mt-8 mb-8 flex flex-col min-h-[80vh]'
-    }>
-      <h2 className="text-2xl font-bold mb-6 text-center text-white">Novo Orçamento</h2>
-      {/* Cabeçalho do orçamento: accordion no mobile, aberto no desktop */}
-      {isMobile ? (
-        <div className="mb-4">
-          <button
-            className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-gray-900 text-gray-200 font-semibold border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-            onClick={() => setHeaderOpen(v => !v)}
-            aria-expanded={headerOpen}
-          >
-            <span>Dados do Orçamento</span>
-            <svg className={`w-5 h-5 transition-transform ${headerOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-          </button>
-          <div className={`transition-all duration-300 overflow-hidden ${headerOpen ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
-            <div className="p-2">
+    <div className="min-h-screen w-full bg-gray-900">
+      <div className="container mx-auto px-4 py-6">
+        <div className="bg-gray-800 rounded-xl shadow-lg border border-gray-700 max-w-full sm:max-w-xl md:max-w-3xl lg:max-w-5xl xl:max-w-7xl mx-auto">
+          {/* Cabeçalho */}
+          <div className="p-6 border-b border-gray-700">
+            <h2 className="text-2xl md:text-3xl font-bold text-center text-white mb-8">Novo Orçamento</h2>
+            
+            {/* Grid de campos do cabeçalho */}
+            <div className="grid grid-cols-1 gap-6">
               <OrcamentoHeader
                 cliente={cliente} setCliente={setCliente}
                 tabela={tabela} setTabela={setTabela}
@@ -194,89 +284,187 @@ function OrcamentoForm() {
                 desconto={desconto} setDesconto={setDesconto}
                 observacao={observacao} setObservacao={setObservacao}
                 ESPECIE_OPCOES={ESPECIE_OPCOES}
+                vendedores={vendedores}
+                tabelas={tabelas}
+                formasPagamento={formasPagamento}
+                inputClassName="p-3 rounded-lg border border-gray-600 bg-gray-900 text-gray-100 text-lg"
+                selectClassName="p-3 rounded-lg border border-gray-600 bg-gray-900 text-gray-100 text-lg"
               />
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="mb-8">
-          <OrcamentoHeader
-            cliente={cliente} setCliente={setCliente}
-            tabela={tabela} setTabela={setTabela}
-            formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento}
-            vendedor={vendedor} setVendedor={setVendedor}
-            dataOrcamento={dataOrcamento}
-            validade={validade} setValidade={setValidade}
-            especie={especie} setEspecie={setEspecie}
-            desconto={desconto} setDesconto={setDesconto}
-            observacao={observacao} setObservacao={setObservacao}
-            ESPECIE_OPCOES={ESPECIE_OPCOES}
-          />
-        </div>
-      )}
-      {/* Itens do orçamento */}
-      <div className="mb-8 flex-1">
-        <h3 className="text-lg font-semibold mb-4 text-white">Itens</h3>
-        <div className="flex gap-2 mb-2">
-          <div className="flex-1">
-            <ProdutoAutocomplete value={produtoSelecionado} onChange={setProdutoSelecionado} onAdd={handleAdicionarProdutoDireto} />
-          </div>
-          <button type="button" onClick={handleAdicionarProduto} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition">Adicionar Produto</button>
-        </div>
-        <div className="space-y-2">
-          {produtos.map((p, idx) => (
-            <div key={idx} className="flex items-center bg-gray-900 border border-gray-700 rounded-lg p-3">
-              {p.imagem && <img src={p.imagem} alt={p.descricao} className="w-10 h-10 object-cover rounded mr-3" />}
+
+          {/* Área de Produtos */}
+          <div className="p-6">
+            {/* Busca de Produtos */}
+            <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="flex-1">
-                <div className="font-bold text-gray-200">{p.codigo} <span className="font-normal text-gray-300">- {p.descricao}</span></div>
-                <div className="flex gap-2 items-center mt-1">
-                  <label className="text-sm text-gray-400">Qtd:</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={p.quantidade}
-                    ref={el => quantidadeRefs.current[idx] = el}
-                    onChange={e => handleQuantidadeChange(idx, e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === 'Tab') {
-                        e.preventDefault();
-                        if (precoRefs.current[idx]) precoRefs.current[idx].focus();
-                      }
-                    }}
-                    className="w-16 px-2 py-1 rounded bg-gray-800 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <label className="text-sm text-gray-400 ml-2">Unit:</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={p.valor_unitario}
-                    ref={el => precoRefs.current[idx] = el}
-                    onChange={e => handleValorUnitarioChange(idx, e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        // Foca no próximo item ou sai do input
-                        if (quantidadeRefs.current[idx + 1]) quantidadeRefs.current[idx + 1].focus();
-                      }
-                    }}
-                    className="w-24 px-2 py-1 rounded bg-gray-800 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-400 ml-2">Total: <span className="text-blue-400 font-bold">{p.valor_total.toFixed(2)}</span></span>
+                <ProdutoAutocomplete
+                  value={produtoSelecionado}
+                  onChange={setProdutoSelecionado}
+                  onAdd={handleAdicionarProdutoDireto}
+                />
+              </div>
+              <button
+                className="w-full md:w-auto px-6 py-3 bg-green-600 hover:bg-green-700 text-white text-lg font-bold rounded-lg shadow transition-colors flex items-center justify-center gap-2 min-w-[200px]"
+                onClick={handleAdicionarProduto}
+                type="button"
+              >
+                <FaPlus /> Adicionar Produto
+              </button>
+            </div>
+
+            {/* Lista de Produtos */}
+            <div className="space-y-4 mb-6">
+              {produtos.map((item, idx) => (
+                <div
+                  key={idx}
+                  className={`bg-gray-900 rounded-lg p-4 border ${
+                    idx === ultimoItemIndex 
+                      ? 'border-blue-500 shadow-lg shadow-blue-500/20' 
+                      : 'border-gray-700'
+                  } transition-all duration-300`}
+                >
+                  <div className="flex flex-col lg:flex-row items-start lg:items-center gap-4">
+                    <div className="flex-1">
+                      <div className="font-mono text-blue-400 text-lg font-bold mb-1">{item.codigo}</div>
+                      <div className="text-gray-100 text-lg font-semibold">{item.descricao}</div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400 whitespace-nowrap">Qtd:</span>
+                        <input
+                          type="text"
+                          pattern="[0-9]*[.,]?[0-9]*"
+                          inputMode="decimal"
+                          className="w-24 p-2 rounded border border-gray-600 bg-gray-900 text-gray-100 text-lg text-right"
+                          value={typeof item.quantidade === 'number' ? item.quantidade.toString().replace('.', ',') : item.quantidade}
+                          onChange={e => {
+                            const value = e.target.value.replace(',', '.');
+                            const quantidade = parseFloat(value);
+                            if (!isNaN(quantidade) || value === '' || value === '.') {
+                              handleQuantidadeChange(idx, value);
+                            }
+                          }}
+                          onFocus={e => e.target.select()}
+                          ref={el => quantidadeRefs.current[idx] = el}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400 whitespace-nowrap">Valor:</span>
+                        <input
+                          type="text"
+                          pattern="[0-9]*[.,]?[0-9]*"
+                          inputMode="decimal"
+                          className="w-28 p-2 rounded border border-gray-600 bg-gray-900 text-gray-100 text-lg text-right"
+                          value={typeof item.valor_unitario === 'number' ? item.valor_unitario.toString().replace('.', ',') : item.valor_unitario}
+                          onChange={e => handleValorUnitarioChange(idx, e.target.value)}
+                          onFocus={e => e.target.select()}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400 whitespace-nowrap">Total:</span>
+                        <span className="text-blue-400 font-bold text-lg min-w-[120px] text-right">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.valor_total)}
+                        </span>
+                      </div>
+                      <button
+                        className="w-full sm:w-auto px-4 py-2 bg-red-700 hover:bg-red-800 text-white rounded shadow transition-colors flex items-center justify-center gap-2"
+                        onClick={() => handleRemoverProduto(idx)}
+                        type="button"
+                      >
+                        <FaTrash /> Remover
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Totalizador */}
+            <div className="bg-gray-900 rounded-lg p-6 border border-gray-700">
+              <div className="flex flex-col items-end gap-2">
+                <div className="text-lg text-gray-300">
+                  Subtotal: <span className="font-bold text-white">{subtotal.toFixed(2)}</span>
+                </div>
+                <div className="text-lg text-gray-300">
+                  Desconto: <span className="font-bold text-yellow-400">{desconto.toFixed(2)}</span>
+                </div>
+                <div className="text-2xl font-bold text-blue-400">
+                  TOTAL: {total.toFixed(2)}
                 </div>
               </div>
-              <button type="button" onClick={() => handleRemoverProduto(idx)} className="ml-3 text-red-400 hover:text-red-600 font-bold text-sm">Remover</button>
             </div>
-          ))}
+
+            {/* Botão Salvar */}
+            <button
+              className="w-full mt-6 py-4 bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold rounded-lg shadow transition-colors flex items-center justify-center gap-3"
+              onClick={handleSalvar}
+              type="button"
+            >
+              <FaSave /> Salvar Orçamento
+            </button>
+          </div>
         </div>
       </div>
-      {/* Totais */}
-      <div className="bg-gray-900 rounded-lg p-4 mb-6 flex flex-col gap-1 text-gray-200 font-semibold text-lg">
-        <div className="flex justify-between"><span>Subtotal:</span> <span>{subtotal.toFixed(2)}</span></div>
-        <div className="flex justify-between"><span>Desconto:</span> <span>{desconto.toFixed(2)}</span></div>
-        <div className="flex justify-between text-blue-400"><span>TOTAL:</span> <span>{total.toFixed(2)}</span></div>
-      </div>
-      {/* Ações */}
-      <button type="button" onClick={handleSalvar} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-xl transition">Salvar Orçamento</button>
+
+      {/* Modal de Confirmação */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-800 rounded-xl shadow-2xl border border-gray-700 p-6 max-w-lg w-full animate-fade-in">
+            <h3 className="text-2xl font-bold text-white mb-6 text-center">Confirmar Orçamento</h3>
+            
+            <div className="space-y-4 mb-8">
+              <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                <div className="text-gray-400 mb-1">Cliente</div>
+                <div className="text-white text-lg font-semibold">{cliente?.nome}</div>
+              </div>
+
+              <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                <div className="text-gray-400 mb-1">Produtos</div>
+                <div className="text-white text-lg font-semibold">{produtos.length} itens</div>
+              </div>
+
+              <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-gray-400 mb-1">Subtotal</div>
+                    <div className="text-white font-semibold">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(subtotal)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-gray-400 mb-1">Desconto</div>
+                    <div className="text-yellow-400 font-semibold">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(desconto)}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 text-right">
+                  <div className="text-gray-400 mb-1">Total</div>
+                  <div className="text-blue-400 text-2xl font-bold">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white text-lg font-semibold rounded-lg transition-colors"
+                onClick={() => setShowModal(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
+                onClick={confirmarSalvar}
+              >
+                <FaSave /> Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

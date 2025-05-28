@@ -1,16 +1,40 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
-function SelectDinamico({ label, value, onChange, fetchOptions, optionLabel = 'label', optionValue = 'value', placeholder = 'Selecione', disabled = false }) {
+function SelectDinamico({ 
+  label, 
+  value, 
+  onChange, 
+  fetchOptions, 
+  optionLabel = 'label', 
+  optionValue = 'value', 
+  placeholder = 'Selecione', 
+  disabled = false 
+}) {
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const optionsFetched = useRef(false);
 
-  useEffect(() => {
+  // Função para carregar as opções
+  const carregarOpcoes = useCallback(async () => {
+    if (optionsFetched.current) return;
+    
     setLoading(true);
-    fetchOptions()
-      .then((opts) => setOptions(opts))
-      .catch(() => setOptions([]))
-      .finally(() => setLoading(false));
+    try {
+      const opts = await fetchOptions();
+      setOptions(opts);
+      optionsFetched.current = true;
+    } catch (error) {
+      console.error('Erro ao carregar opções:', error);
+      setOptions([]);
+    } finally {
+      setLoading(false);
+    }
   }, [fetchOptions]);
+
+  // Carrega as opções apenas uma vez
+  useEffect(() => {
+    carregarOpcoes();
+  }, [carregarOpcoes]);
 
   return (
     <div>

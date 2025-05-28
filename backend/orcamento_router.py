@@ -1,3 +1,14 @@
+"""
+ATENÇÃO: ESTE ARQUIVO ESTÁ FUNCIONANDO CORRETAMENTE PARA GRAVAÇÃO DE ORÇAMENTOS.
+NÃO MODIFICAR A LÓGICA DE GRAVAÇÃO A MENOS QUE SEJA ABSOLUTAMENTE NECESSÁRIO.
+
+Se precisar fazer alterações:
+1. Teste em ambiente de homologação
+2. Faça backup do banco
+3. Documente as alterações
+4. Atualize esta mensagem
+"""
+
 from fastapi import APIRouter, HTTPException, Depends, Request, Body
 from typing import Any, List, Optional, Dict
 from pydantic import BaseModel
@@ -361,7 +372,6 @@ async def obter_itens_orcamento(numero: int, request: Request):
 
 from fastapi import Request
 from empresa_manager import get_empresa_connection
-
 
 @router.post("/orcamentos")
 def criar_orcamento(orcamento: OrcamentoCreate):

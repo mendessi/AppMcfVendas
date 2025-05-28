@@ -84,13 +84,17 @@ from empresa_manager import (
 
 # Configuração de logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,  # Alterado de INFO para WARNING para reduzir logs
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler("app.log"),
         logging.StreamHandler()
     ]
 )
+
+# Configurar logs específicos para serem mais silenciosos
+logging.getLogger('empresa_manager').setLevel(logging.WARNING)
+logging.getLogger('root').setLevel(logging.WARNING)
 
 # Configurar CORS - permitir origens específicas para credenciais
 origins = [
@@ -188,7 +192,7 @@ app.include_router(empresa_info_detalhada_router)
 # Inclui as rotas de teste SQL da empresa
 app.include_router(teste_sql_empresa_router)
 
-# Incluir o router de orçamentos na instância principal
+# Inclui as rotas de orçamentos
 app.include_router(orcamento_router, prefix="/api", tags=["Orçamentos"])
 
 # Rotas básicas para teste

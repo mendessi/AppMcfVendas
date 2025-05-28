@@ -1,9 +1,24 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import ClienteAutocomplete from './ClienteAutocomplete';
 import SelectDinamico from './SelectDinamico';
 import api from '../services/api';
 
 function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagamento, setFormaPagamento, vendedor, setVendedor, dataOrcamento, validade, setValidade, especie, setEspecie, desconto, setDesconto, observacao, setObservacao, ESPECIE_OPCOES }) {
+  // Funções de busca memorizadas
+  const fetchTabelas = useCallback(async () => {
+    const res = await api.get('/relatorios/tabelas');
+    return (res.data || []).map(t => ({ value: t.codigo || t.TAB_CODIGO, label: t.nome || t.TAB_NOME }));
+  }, []);
+
+  const fetchFormasPagamento = useCallback(async () => {
+    const res = await api.get('/relatorios/formapag');
+    return (res.data || []).map(f => ({ value: f.codigo || f.FPG_CODIGO, label: f.nome || f.FPG_NOME }));
+  }, []);
+
+  const fetchVendedores = useCallback(async () => {
+    const res = await api.get('/relatorios/vendedores');
+    return (res.data || []).map(v => ({ value: v.codigo || v.VEN_CODIGO, label: v.nome || v.VEN_NOME }));
+  }, []);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
@@ -15,10 +30,7 @@ function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagament
           label="Tabela de Preço"
           value={tabela}
           onChange={setTabela}
-          fetchOptions={async () => {
-            const res = await api.get('/relatorios/tabelas');
-            return (res.data || []).map(t => ({ value: t.codigo || t.TAB_CODIGO, label: t.nome || t.TAB_NOME }));
-          }}
+          fetchOptions={fetchTabelas}
           placeholder="Selecione a tabela"
         />
       </div>
@@ -27,10 +39,7 @@ function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagament
           label="Forma de Pagamento"
           value={formaPagamento}
           onChange={setFormaPagamento}
-          fetchOptions={async () => {
-            const res = await api.get('/relatorios/formapag');
-            return (res.data || []).map(f => ({ value: f.codigo || f.FPG_CODIGO, label: f.nome || f.FPG_NOME }));
-          }}
+          fetchOptions={fetchFormasPagamento}
           placeholder="Selecione a forma de pagamento"
         />
       </div>
@@ -39,10 +48,7 @@ function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagament
           label="Vendedor"
           value={vendedor}
           onChange={setVendedor}
-          fetchOptions={async () => {
-            const res = await api.get('/relatorios/vendedores');
-            return (res.data || []).map(v => ({ value: v.codigo || v.VEN_CODIGO, label: v.nome || v.VEN_NOME }));
-          }}
+          fetchOptions={fetchVendedores}
           placeholder="Selecione o vendedor"
         />
       </div>

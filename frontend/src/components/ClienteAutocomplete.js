@@ -74,9 +74,27 @@ function ClienteAutocomplete({ value, onChange }) {
   }, []);
 
   const handleSelect = (cliente) => {
-    setInput(cliente.cli_nome || '');
+    console.log('=== CLIENTE SELECIONADO NO AUTOCOMPLETE ===');
+    console.log('Cliente selecionado (objeto bruto):', cliente);
+    console.log('Tipo do objeto:', typeof cliente);
+    console.log('Campos disponíveis:', Object.keys(cliente));
+    console.log('cli_nome:', cliente.cli_nome);
+    console.log('CLI_NOME:', cliente.CLI_NOME);
+    console.log('nome:', cliente.nome);
+    console.log('label:', cliente.label);
+    
+    // Garante que o cliente tenha pelo menos o campo cli_nome
+    const clienteFormatado = {
+      ...cliente,
+      cli_nome: cliente.cli_nome || cliente.CLI_NOME || cliente.nome || cliente.label || 'Cliente não informado',
+      cli_codigo: cliente.cli_codigo || cliente.CLI_CODIGO || cliente.codigo || null
+    };
+    
+    console.log('Cliente formatado para envio:', clienteFormatado);
+    
+    setInput(clienteFormatado.cli_nome);
     setShowList(false);
-    onChange(cliente);
+    onChange(clienteFormatado);
   };
 
   return (

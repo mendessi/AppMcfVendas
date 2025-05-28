@@ -448,7 +448,7 @@ async def listar_clientes(request: Request):
     log.info(f"[CLIENTES] Valor de x-empresa-codigo recebido: {x_empresa_codigo}")
     
     try:
-        empresa = await get_empresa_atual(request)
+        empresa = get_empresa_atual(request)  # Removido o await
         log.info(f"[CLIENTES] Empresa resolvida: {empresa}")
     except Exception as e:
         log.error(f"[CLIENTES] Erro ao resolver empresa: {e}")

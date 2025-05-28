@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import api from '../services/api';
 
-function ProdutoAutocomplete({ value, onChange, onAdd }) {
+function ProdutoAutocomplete({ value, onChange, onAdd, produtosNoOrcamento = [] }) {
   const [input, setInput] = useState(value?.descricao || '');
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -98,29 +98,82 @@ function ProdutoAutocomplete({ value, onChange, onAdd }) {
           {produtos.map((p, idx) => (
             <div
               key={p.pro_codigo || p.codigo || idx}
-              className="flex items-center gap-4 p-2 bg-gray-800 rounded-lg shadow hover:bg-blue-700 hover:shadow-lg border border-gray-700 hover:border-blue-500 mb-1"
+              className={`flex items-center gap-4 p-2 rounded-lg shadow border mb-1 ${
+                produtosNoOrcamento.some(prod =>
+                  (prod.codigo === (p.pro_codigo || p.codigo)) ||
+                  (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                )
+                  ? 'bg-yellow-100 border-yellow-500 hover:bg-yellow-200'
+                  : 'bg-gray-800 border-gray-700 hover:bg-blue-700 hover:border-blue-500'
+              }`}
             >
               <img
                 src={p.pro_imagem || '/img/produto-vazio.png'}
                 alt="img"
-                className="w-16 h-16 object-contain rounded bg-white border border-gray-300 shadow-sm"
+                className="w-16 h-16 object-contain rounded bg-white border border-gray-300 shadow-sm flex-shrink-0"
                 style={{ minWidth: 64, minHeight: 64 }}
               />
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-gray-100 truncate text-base">{p.pro_descricao}</div>
-                <div className="text-xs text-gray-400 truncate">Cód: {p.pro_codigo}</div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className={`font-bold truncate text-base ${
+                    produtosNoOrcamento.some(prod => 
+                      (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                      (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                    ) ? 'text-gray-900' : 'text-gray-100'
+                  }`}>
+                    {p.pro_descricao}
+                    {produtosNoOrcamento.some(prod => 
+                      (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                      (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                    ) && (
+                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-yellow-500 text-yellow-900 border border-yellow-600">
+                        ADICIONADO
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className={`text-xs truncate ${
+                  produtosNoOrcamento.some(prod => 
+                    (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                    (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                  ) ? 'text-gray-700' : 'text-gray-400'
+                }`}>Cód: {p.pro_codigo}</div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-green-400 font-bold text-lg">{Number(p.pro_venda).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                  <span className="text-xs text-gray-400 ml-2">Estoque: {p.pro_quantidade ?? '-'}</span>
+                  <span className={`font-bold text-lg ${
+                    produtosNoOrcamento.some(prod => 
+                      (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                      (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                    ) ? 'text-green-700' : 'text-green-400'
+                  }`}>
+                    {Number(p.pro_venda).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                  <span className={`text-xs ${
+                    produtosNoOrcamento.some(prod => 
+                      (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                      (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                    ) ? 'text-gray-600' : 'text-gray-400'
+                  }`}>Estoque: {p.pro_quantidade ?? '-'}</span>
                 </div>
               </div>
-              <button
-                className="ml-2 px-3 py-1 bg-blue-600 hover:bg-blue-800 text-white rounded shadow text-sm"
-                onClick={() => onAdd && onAdd(p)}
-                type="button"
-              >
-                Adicionar
-              </button>
+              {!produtosNoOrcamento.some(prod =>
+                (prod.codigo === (p.pro_codigo || p.codigo)) ||
+                (prod.pro_codigo === (p.pro_codigo || p.codigo))
+              ) ? (
+                <button
+                  className="ml-2 px-3 py-1 bg-blue-600 hover:bg-blue-800 text-white rounded shadow text-sm whitespace-nowrap"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAdd && onAdd(p);
+                  }}
+                  type="button"
+                >
+                  Adicionar
+                </button>
+              ) : (
+                <span className="ml-2 px-3 py-1 bg-yellow-500 text-yellow-900 font-bold rounded shadow text-sm whitespace-nowrap border border-yellow-600">
+                  JÁ ADICIONADO
+                </span>
+              )}
             </div>
           ))}
         </div>

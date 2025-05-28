@@ -362,7 +362,12 @@ function OrcamentoForm() {
         <h3 className="text-lg font-semibold mb-4 text-white">Itens</h3>
         <div className="flex gap-2 mb-2">
           <div className="flex-1">
-            <ProdutoAutocomplete value={produtoSelecionado} onChange={setProdutoSelecionado} onAdd={handleAdicionarProdutoDireto} />
+            <ProdutoAutocomplete 
+              value={produtoSelecionado} 
+              onChange={setProdutoSelecionado} 
+              onAdd={handleAdicionarProdutoDireto}
+              produtosNoOrcamento={produtos}
+            />
           </div>
           <button type="button" onClick={handleAdicionarProduto} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition">Adicionar Produto</button>
         </div>

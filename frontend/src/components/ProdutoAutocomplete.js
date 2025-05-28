@@ -98,14 +98,28 @@ function ProdutoAutocomplete({ value, onChange, onAdd, produtosNoOrcamento = [] 
           {produtos.map((p, idx) => (
             <div
               key={p.pro_codigo || p.codigo || idx}
-              className={`flex items-center gap-4 p-2 rounded-lg shadow border mb-1 ${
-                produtosNoOrcamento.some(prod =>
-                  (prod.codigo === (p.pro_codigo || p.codigo)) ||
+              className={`flex items-center gap-4 p-2 rounded-lg shadow border mb-1 transition-all duration-200 ${
+                produtosNoOrcamento.some(prod => 
+                  (prod.codigo === (p.pro_codigo || p.codigo)) || 
                   (prod.pro_codigo === (p.pro_codigo || p.codigo))
                 )
-                  ? 'bg-yellow-100 border-yellow-500 hover:bg-yellow-200'
+                  ? 'bg-yellow-100 border-yellow-500 hover:bg-yellow-200 cursor-pointer' 
                   : 'bg-gray-800 border-gray-700 hover:bg-blue-700 hover:border-blue-500'
               }`}
+              onClick={(e) => {
+                // Se o item já está na lista, rola até ele e seleciona a quantidade
+                const produtoExistente = produtosNoOrcamento.find(prod => 
+                  (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                  (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                );
+                
+                if (produtoExistente && onAdd) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Chama a função de scrollToProduto passando o produto
+                  onAdd(p, { scrollToExisting: true });
+                }
+              }}
             >
               <img
                 src={p.pro_imagem || '/img/produto-vazio.png'}
@@ -126,7 +140,7 @@ function ProdutoAutocomplete({ value, onChange, onAdd, produtosNoOrcamento = [] 
                       (prod.codigo === (p.pro_codigo || p.codigo)) || 
                       (prod.pro_codigo === (p.pro_codigo || p.codigo))
                     ) && (
-                      <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-yellow-500 text-yellow-900 border border-yellow-600">
+                      <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-500 text-yellow-900 border border-yellow-600">
                         ADICIONADO
                       </span>
                     )}
@@ -138,21 +152,66 @@ function ProdutoAutocomplete({ value, onChange, onAdd, produtosNoOrcamento = [] 
                     (prod.pro_codigo === (p.pro_codigo || p.codigo))
                   ) ? 'text-gray-700' : 'text-gray-400'
                 }`}>Cód: {p.pro_codigo}</div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`font-bold text-lg ${
-                    produtosNoOrcamento.some(prod => 
-                      (prod.codigo === (p.pro_codigo || p.codigo)) || 
-                      (prod.pro_codigo === (p.pro_codigo || p.codigo))
-                    ) ? 'text-green-700' : 'text-green-400'
-                  }`}>
-                    {Number(p.pro_venda).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </span>
-                  <span className={`text-xs ${
-                    produtosNoOrcamento.some(prod => 
-                      (prod.codigo === (p.pro_codigo || p.codigo)) || 
-                      (prod.pro_codigo === (p.pro_codigo || p.codigo))
-                    ) ? 'text-gray-600' : 'text-gray-400'
-                  }`}>Estoque: {p.pro_quantidade ?? '-'}</span>
+                <div className="space-y-1 mt-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-bold text-lg ${
+                      produtosNoOrcamento.some(prod => 
+                        (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                        (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                      ) ? 'text-green-700' : 'text-green-400'
+                    }`}>
+                      {Number(p.pro_venda).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      <span className="text-xs font-normal ml-1">(à vista)</span>
+                    </span>
+                    <span className={`text-sm font-medium ${
+                        (p.pro_quantidade <= 0) 
+                          ? 'text-red-500' 
+                          : produtosNoOrcamento.some(prod => 
+                              (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                              (prod.pro_codigo === (p.pro_codigo || p.pro_codigo))
+                            ) 
+                              ? 'text-gray-600' 
+                              : 'text-gray-400'
+                      }`}>
+                        Estoque: {p.pro_quantidade ?? '0'}
+                      </span>
+                  </div>
+                  
+                  {/* Linha adicional para preço a prazo, marca e unidade */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    {p.pro_vendapz && p.pro_vendapz > 0 && (
+                      <span className={`${
+                        produtosNoOrcamento.some(prod => 
+                          (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                          (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                        ) ? 'text-amber-700' : 'text-amber-400'
+                      }`}>
+                        A prazo: {Number(p.pro_vendapz).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    )}
+                    
+                    {p.pro_marca && (
+                      <span className={`${
+                        produtosNoOrcamento.some(prod => 
+                          (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                          (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                        ) ? 'text-gray-700' : 'text-gray-400'
+                      }`}>
+                        Marca: {p.pro_marca}
+                      </span>
+                    )}
+                    
+                    {p.UNI_CODIGO && (
+                      <span className={`${
+                        produtosNoOrcamento.some(prod => 
+                          (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                          (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                        ) ? 'text-gray-700' : 'text-gray-400'
+                      }`}>
+                        Unid: {p.UNI_CODIGO}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               {!produtosNoOrcamento.some(prod =>
@@ -170,8 +229,11 @@ function ProdutoAutocomplete({ value, onChange, onAdd, produtosNoOrcamento = [] 
                   Adicionar
                 </button>
               ) : (
-                <span className="ml-2 px-3 py-1 bg-yellow-500 text-yellow-900 font-bold rounded shadow text-sm whitespace-nowrap border border-yellow-600">
-                  JÁ ADICIONADO
+                <span 
+                  className="ml-2 px-2 py-0.5 bg-yellow-500 text-yellow-900 font-bold rounded shadow text-xs whitespace-nowrap border border-yellow-600"
+                  title="Clique para editar a quantidade"
+                >
+                  ADICIONADO
                 </span>
               )}
             </div>

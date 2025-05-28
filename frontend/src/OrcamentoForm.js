@@ -106,8 +106,57 @@ function OrcamentoForm() {
   // Accordion para mobile
   const [headerOpen, setHeaderOpen] = useState(true);
 
+  // Refs para os campos de quantidade e preço
   const quantidadeRefs = useRef([]);
   const precoRefs = useRef([]);
+  const produtoRefs = useRef([]); // Referência para os itens da lista
+  
+  // Estado para controle do modal de confirmação
+  const [confirmacaoVisivel, setConfirmacaoVisivel] = useState(false);
+  const [produtoSelecionadoConfirmacao, setProdutoSelecionadoConfirmacao] = useState(null);
+  const [indiceProduto, setIndiceProduto] = useState(-1);
+  
+  // Função para rolar até o produto e focar na quantidade
+  const scrollToProduto = (index) => {
+    if (produtoRefs.current[index]) {
+      produtoRefs.current[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Destaque visual temporário
+      produtoRefs.current[index].classList.add('ring-2', 'ring-blue-500');
+      setTimeout(() => {
+        if (produtoRefs.current[index]) {
+          produtoRefs.current[index].classList.remove('ring-2', 'ring-blue-500');
+        }
+      }, 2000);
+      
+      // Foca e seleciona o texto do campo de quantidade
+      if (quantidadeRefs.current[index]) {
+        quantidadeRefs.current[index].focus();
+        quantidadeRefs.current[index].select();
+      }
+    }
+  };
+  
+  // Função para confirmar navegação para produto existente
+  const confirmarNavegacaoProduto = (produto, index) => {
+    setProdutoSelecionadoConfirmacao(produto);
+    setIndiceProduto(index);
+    setConfirmacaoVisivel(true);
+  };
+  
+  // Função chamada quando o usuário confirma a navegação
+  const handleConfirmarNavegacao = () => {
+    setConfirmacaoVisivel(false);
+    if (indiceProduto !== -1) {
+      scrollToProduto(indiceProduto);
+    }
+  };
+  
+  // Função chamada quando o usuário cancela a navegação
+  const handleCancelarNavegacao = () => {
+    setConfirmacaoVisivel(false);
+    setProdutoSelecionadoConfirmacao(null);
+    setIndiceProduto(-1);
+  };
 
   // Handler para adicionar produto
   const handleAdicionarProduto = () => {
@@ -155,32 +204,70 @@ function OrcamentoForm() {
     setProdutos(novosProdutos);
   };
 
+  // Handler para adicionar produto direto (sem precisar clicar em Adicionar Produto)
+  const handleAdicionarProdutoDireto = (produto, options = {}) => {
+    // Verifica se o produto já está na lista
+    const produtoExistente = produtos.find(p => 
+      p.codigo === (produto.pro_codigo || produto.codigo) ||
+      p.pro_codigo === (produto.pro_codigo || produto.codigo)
+    );
+    
+    if (options.scrollToExisting && produtoExistente) {
+      // Se for apenas para navegar até o item existente
+      const index = produtos.findIndex(p => 
+        p.codigo === (produto.pro_codigo || produto.codigo) ||
+        p.pro_codigo === (produto.pro_codigo || produto.codigo)
+      );
+      
+      if (index !== -1) {
+        // Mostra o modal de confirmação em vez de navegar diretamente
+        confirmarNavegacaoProduto(produto, index);
+      }
+      return;
+    }
+    
+    if (!produtoExistente) {
+      // Adiciona um novo produto
+      const valorUnit = produto.pro_venda || produto.valor_unitario || 0;
+      const novoItem = {
+        codigo: produto.pro_codigo || produto.codigo,
+        pro_codigo: produto.pro_codigo || produto.codigo, // Garantir que pro_codigo está definido
+        descricao: produto.pro_descricao || produto.descricao,
+        quantidade: 1,
+        valor_unitario: valorUnit,
+        valor_total: valorUnit * 1,
+        imagem: produto.pro_imagem || produto.imagem || ''
+      };
+      const novosProdutos = [novoItem, ...produtos];
+      setProdutos(novosProdutos);
+      
+      // Foca no novo item após a atualização do estado
+      setTimeout(() => {
+        scrollToProduto(0); // Novo item sempre estará no índice 0
+      }, 100);
+    } else if (!options.scrollToExisting) {
+      // Se o produto já existe e não é apenas para navegar, aumenta a quantidade
+      const novosProdutos = [...produtos];
+      const index = produtos.findIndex(p => 
+        p.codigo === (produto.pro_codigo || produto.codigo) ||
+        p.pro_codigo === (produto.pro_codigo || produto.codigo)
+      );
+      
+      if (index !== -1) {
+        novosProdutos[index] = {
+          ...novosProdutos[index],
+          quantidade: (novosProdutos[index].quantidade || 1) + 1,
+          valor_total: novosProdutos[index].valor_unitario * ((novosProdutos[index].quantidade || 1) + 1)
+        };
+        setProdutos(novosProdutos);
+        scrollToProduto(index);
+      }
+    }
+  };
+
   // Handler para remover produto
   const handleRemoverProduto = idx => {
     setProdutos(produtos.filter((_, i) => i !== idx));
-  };
-
-  const handleAdicionarProdutoDireto = (produto) => {
-    if (!produto) return;
-    const valorUnit = produto.pro_venda || produto.valor_unitario || 0;
-    const novoItem = {
-      codigo: produto.pro_codigo || produto.codigo,
-      descricao: produto.pro_descricao || produto.descricao,
-      quantidade: 1,
-      valor_unitario: valorUnit,
-      valor_total: valorUnit * 1,
-      imagem: produto.pro_imagem || produto.imagem || ''
-    };
-    
-    // Adiciona o novo item no início do array para aparecer acima dos existentes
-    setProdutos([novoItem, ...produtos]);
-    
-    // Foca no campo de quantidade do novo item (que está na posição 0)
-    setTimeout(() => {
-      if (quantidadeRefs.current[0]) {
-        quantidadeRefs.current[0].focus();
-      }
-    }, 100);
   };
 
   // Handler para abrir confirmação
@@ -216,9 +303,8 @@ function OrcamentoForm() {
     window.print();
   };
 
-  // Handler para novo orçamento
-  const handleNovoOrcamento = () => {
-    // Limpar formulário
+  // Função para limpar todos os campos do formulário
+  const limparFormulario = () => {
     setProdutos([]);
     setCliente(null);
     setTabela('');
@@ -228,8 +314,27 @@ function OrcamentoForm() {
     setEspecie('0');
     setDesconto(0);
     setObservacao('');
+    setProdutoSelecionado(null);
+    setQuantidade(1);
     setOrcamentoSalvo(null);
     setShowConfirmation(false);
+    
+    // Limpa os campos de busca
+    const buscaInputs = document.querySelectorAll('input[type="text"]');
+    buscaInputs.forEach(input => {
+      if (input.placeholder.includes('Buscar')) {
+        input.value = '';
+      }
+    });
+    
+    // Foca no campo de busca de cliente
+    const clienteInput = document.querySelector('input[placeholder*="cliente" i]');
+    if (clienteInput) clienteInput.focus();
+  };
+
+  // Handler para novo orçamento
+  const handleNovoOrcamento = () => {
+    limparFormulario();
   };
 
   // Handler para submit do orçamento
@@ -291,6 +396,9 @@ function OrcamentoForm() {
           cliente: nomeCliente,
           valor_total: total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
         });
+        
+        // Limpa o formulário após salvar com sucesso
+        limparFormulario();
       } else {
         console.error('Erro ao salvar orçamento:', data.message || 'Erro desconhecido');
         alert('Erro ao salvar: ' + (data.message || 'Erro desconhecido'));
@@ -373,7 +481,7 @@ function OrcamentoForm() {
         </div>
         <div className="space-y-3">
           {produtos.map((p, idx) => (
-            <div key={idx} className="bg-gray-900 border border-gray-700 rounded-lg p-3">
+            <div key={idx} ref={el => produtoRefs.current[idx] = el} className="bg-gray-900 border border-gray-700 rounded-lg p-3">
               <div className="flex flex-col sm:flex-row gap-3">
                 {/* Imagem do produto (se existir) */}
                 {p.imagem && (
@@ -649,6 +757,33 @@ function OrcamentoForm() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Modal de confirmação para itens já adicionados */}
+      {confirmacaoVisivel && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Produto já adicionado</h3>
+            <p className="mb-4 text-gray-700">
+              O produto <strong>{produtoSelecionadoConfirmacao?.pro_descricao || produtoSelecionadoConfirmacao?.descricao}</strong> já está no orçamento.
+              Deseja editar a quantidade?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancelarNavegacao}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarNavegacao}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Sim, editar quantidade
+              </button>
             </div>
           </div>
         </div>

@@ -76,7 +76,7 @@ const OrcamentosList = ({ darkMode }) => {
       if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
       
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-      let url = `${apiUrl}/api/orcamentos`;
+      let url = `${apiUrl}/orcamentos`;
       
       // Garantir que o filtro de data seja aplicado na primeira carga e quando o checkbox estiver marcado
       if ((filtrarPorData || forcarFiltro) && dataInicial && dataFinal) {
@@ -171,7 +171,7 @@ const OrcamentosList = ({ darkMode }) => {
         if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
         
         const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
-        const url = `${apiUrl}/api/orcamentos/${orcamentoId}/itens`;
+        const url = `${apiUrl}/orcamentos/${orcamentoId}/itens`;
         
         console.log(`Buscando itens do orçamento ${orcamentoId} na URL:`, url);
         

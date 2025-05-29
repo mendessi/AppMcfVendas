@@ -785,42 +785,20 @@ async def get_itens_venda(request: Request, ecf_numero: str):
 
 @router.get("/listar_tabelas")
 async def listar_tabelas(request: Request):
-    """
-    Endpoint para listar todas as tabelas de preço.
-    """
     try:
+        # Obter conexão com o banco da empresa
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
-        
-        sql = """
-            SELECT 
-                TAB_COD as codigo,
-                TAB_NOME as nome
-            FROM TABPRECO
-            ORDER BY TAB_NOME
-        """
-        
-        cursor.execute(sql)
-        rows = cursor.fetchall()
-        
-        tabelas = []
-        for row in rows:
-            tabela = {
-                "codigo": row[0],
-                "nome": row[1] or ""
-            }
-            tabelas.append(tabela)
-            
-        return tabelas
-        
+        # Buscar tabelas de preço
+        cursor.execute("SELECT TAB_COD, TAB_NOME FROM TABPRECO ORDER BY TAB_COD")
+        tabelas = [
+            {"codigo": row[0], "nome": row[1]} for row in cursor.fetchall()
+        ]
+        cursor.close()
+        conn.close()
+        return JSONResponse(content=tabelas)
     except Exception as e:
-        log.error(f"Erro ao listar tabelas: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro ao listar tabelas: {str(e)}")
-    finally:
-        try:
-            conn.close()
-        except:
-            pass
+        return JSONResponse(content=[], status_code=200)
 
 @router.get("/listar_formas_pagamento")
 async def listar_formas_pagamento(request: Request):

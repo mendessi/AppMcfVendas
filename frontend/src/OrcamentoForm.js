@@ -384,7 +384,7 @@ function OrcamentoForm() {
       console.log('Payload do orçamento:', JSON.stringify(payload, null, 2));
 
       // Envia para o backend
-      const response = await api.post('/api/orcamentos', payload);
+      const response = await api.post('/orcamentos', payload);
       const data = response.data;
       
       if (data.success) {

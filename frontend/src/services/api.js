@@ -13,22 +13,17 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
 // Determinar a URL base da API baseado no ambiente
 let API_URL;
 
-// Se estiver acessando externamente, ajustar a URL para usar o mesmo domínio
+// Se estiver acessando externamente, SEMPRE usar o domínio da API
 if (isExternalAccess) {
-  // Usar o mesmo hostname, mas sem caminho adicional
-  const protocol = window.location.protocol;
-  const hostname = window.location.hostname;
-  API_URL = `${protocol}//${hostname}`;
-  console.log('Acesso externo detectado, ajustando URL da API para:', API_URL);
+  // Forçar para o domínio da API em produção
+  API_URL = 'https://api.mendessolucao.site';
+  console.log('Acesso externo detectado, usando API em:', API_URL);
 }
 // Caso contrário, usar a URL padrão para desenvolvimento local
 else {
   // Forçar sempre a porta 8000 para desenvolvimento local
   API_URL = 'http://localhost:8000';
-  if (window.location.port && window.location.port !== '8000' && window.location.port !== '3000') {
-    console.warn('Atenção: O frontend está rodando na porta ' + window.location.port + ', mas a API deve ser acessada em http://localhost:8000');
-  }
-  console.log('Ambiente de desenvolvimento detectado, usando URL:', API_URL);
+  console.log('Ambiente de desenvolvimento detectado, usando API em:', API_URL);
 }
 
 // Log para debugging

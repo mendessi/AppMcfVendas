@@ -193,7 +193,7 @@ app.include_router(empresa_info_detalhada_router)
 app.include_router(teste_sql_empresa_router)
 
 # Inclui as rotas de orçamentos
-app.include_router(orcamento_router, prefix="/api", tags=["Orçamentos"])
+app.include_router(orcamento_router, tags=["Orçamentos"])
 
 # Rotas básicas para teste
 @app.get("/")

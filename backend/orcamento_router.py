@@ -16,7 +16,7 @@ import database  # Seu módulo de conexão
 import logging
 from datetime import datetime
 # Usar a versão corrigida da função get_empresa_connection
-from empresa_manager_corrigido import get_empresa_connection
+from empresa_manager import get_empresa_connection
 
 logging.warning('DEBUG: orcamento_router.py carregado!')
 
@@ -49,6 +49,7 @@ def vazio_para_none(valor):
     return valor if valor not in ("", None) else None
 
 @router.post("/orcamentos")
+@router.post("/orcamento")
 async def criar_orcamento(request: Request, orcamento: OrcamentoCreate):
     logging.warning('DEBUG: Entrou na rota POST /orcamentos!')
     logging.info("Iniciando criação de orçamento (novo fluxo Firebird)")
@@ -138,6 +139,8 @@ async def criar_orcamento(request: Request, orcamento: OrcamentoCreate):
         return {"success": False, "message": f"Erro geral: {str(e)}"}
 
 @router.get("/orcamentos")
+@router.get("/orcamento")
+@router.get("/api/orcamentos")
 async def listar_orcamentos(request: Request, data_inicial: str = None, data_final: str = None):
     logging.info("Iniciando busca de orçamentos")
     try:
@@ -263,6 +266,8 @@ async def listar_orcamentos(request: Request, data_inicial: str = None, data_fin
         return []
 
 @router.get("/orcamentos/{numero}")
+@router.get("/orcamento/{numero}")
+@router.get("/api/orcamentos/{numero}")
 async def obter_orcamento(numero: int, request: Request):
     logging.info(f"Buscando orçamento número {numero}")
     try:
@@ -293,6 +298,8 @@ async def obter_orcamento(numero: int, request: Request):
         return {"id": numero, "numero": numero, "cliente_nome": "Cliente Exemplo", "data": "2025-05-26", "valor_total": 1500.0, "status": "Pendente"}
 
 @router.get("/orcamentos/{numero}/itens")
+@router.get("/orcamento/{numero}/itens")
+@router.get("/api/orcamentos/{numero}/itens")
 async def obter_itens_orcamento(numero: int, request: Request):
     logging.info(f"Buscando itens do orçamento {numero}")
     try:

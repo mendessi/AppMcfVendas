@@ -903,7 +903,7 @@ async def listar_vendedores(request: Request):
 @router.get("/clientes")
 async def buscar_clientes(request: Request, q: str = ""):
     """
-    Endpoint para buscar clientes por nome ou código.
+    Endpoint para buscar clientes por nome ou CNPJ.
     """
     try:
         conn = await get_empresa_connection(request)
@@ -913,15 +913,15 @@ async def buscar_clientes(request: Request, q: str = ""):
             SELECT FIRST 20
                 CLI_CODIGO,
                 CLI_NOME,
-                CLI_EMAIL,
-                CIDADE,
-                UF
+                APELIDO,
+                CONTATO,
+                CPF,
+                CNPJ
             FROM CLIENTES
             WHERE UPPER(CLI_NOME) CONTAINING UPPER(?)
-            OR CAST(CLI_CODIGO AS VARCHAR(20)) CONTAINING ?
+               OR CNPJ CONTAINING ?
             ORDER BY CLI_NOME
         """
-        
         cursor.execute(sql, (q, q))
         rows = cursor.fetchall()
         
@@ -930,12 +930,13 @@ async def buscar_clientes(request: Request, q: str = ""):
             cliente = {
                 "cli_codigo": row[0],
                 "cli_nome": row[1] or "",
-                "cli_email": row[2] or "",
-                "cidade": row[3] or "",
-                "uf": row[4] or ""
+                "apelido": row[2] or "",
+                "contato": row[3] or "",
+                "cpf": row[4] or "",
+                "cnpj": row[5] or ""
             }
             clientes.append(cliente)
-            
+        
         return clientes
         
     except Exception as e:

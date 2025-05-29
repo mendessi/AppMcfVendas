@@ -17,7 +17,7 @@ import { API_URL } from '../config';
 const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
   // Log para debug
   console.log('Dashboard - Empresa selecionada:', empresaSelecionada);
-  const [stats, setStats] = useState({
+  const statsDefault = {
     totalClientes: 0,
     totalProdutos: 0,
     totalPedidos: 0,
@@ -27,7 +27,8 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     vendasNaoAutenticadas: 0,
     vendasAutenticadas: 0,
     percentualCrescimento: 0
-  });
+  };
+  const [stats, setStats] = useState(statsDefault);
   const [loading, setLoading] = useState(true);
   const [topProdutos, setTopProdutos] = useState([]);
   const [topClientes, setTopClientes] = useState([]);
@@ -72,7 +73,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         // Verifica se o cache é do mesmo período
         if (dados.dataInicial === dataInicial && dados.dataFinal === dataFinal) {
           console.log('Cache válido para o período atual');
-          setStats(dados.stats);
+          setStats(dados.stats || statsDefault);
           setTopVendedores(dados.topVendedores);
           
           // Atualizar dados do gráfico de vendas por dia
@@ -657,7 +658,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
             <div className="ml-3 sm:ml-4">
               <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas do Dia</p>
               <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
-                {formatCurrency(stats.vendasDia)}
+                {formatCurrency(stats?.vendasDia ?? 0)}
               </p>
             </div>
           </div>
@@ -675,10 +676,10 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
             <div className="ml-3 sm:ml-4">
               <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas do Mês</p>
               <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
-                {formatCurrency(stats.vendasMes)}
+                {formatCurrency(stats?.vendasMes ?? 0)}
               </p>
-              <p className={`text-xs ${stats.percentualCrescimento >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {stats.percentualCrescimento >= 0 ? '+' : ''}{stats.percentualCrescimento}% em relação ao mês anterior
+              <p className={`text-xs ${stats?.percentualCrescimento >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {stats?.percentualCrescimento >= 0 ? '+' : ''}{stats?.percentualCrescimento}% em relação ao mês anterior
               </p>
             </div>
           </div>
@@ -696,7 +697,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
             <div className="ml-3 sm:ml-4">
               <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas Não Autenticadas</p>
               <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
-                {formatCurrency(stats.vendasNaoAutenticadas)}
+                {formatCurrency(stats?.vendasNaoAutenticadas ?? 0)}
               </p>
             </div>
           </div>
@@ -714,7 +715,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
             <div className="ml-3 sm:ml-4">
               <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas Autenticadas</p>
               <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
-                {formatCurrency(stats.vendasAutenticadas)}
+                {formatCurrency(stats?.vendasAutenticadas ?? 0)}
               </p>
             </div>
           </div>

@@ -56,10 +56,6 @@ async def listar_vendas(request: Request):
             data_final = (proximo_mes - timedelta(days=1)).isoformat()
         cli_codigo = request.query_params.get('cli_codigo')
         log.info(f"Filtro de data: {date_column} entre {data_inicial} e {data_final}. Cliente: {cli_codigo}")
-        # Verificar se a coluna ECF_CX_DATA existe na tabela VENDAS
-        existe_ecf_cx_data = "ecf_cx_data" in colunas_vendas
-        log.info(f"Coluna ECF_CX_DATA existe? {existe_ecf_cx_data}")
-        
         sql = f'''
             SELECT
               VENDAS.ECF_NUMERO,         -- ID da Venda
@@ -71,8 +67,8 @@ async def listar_vendas(request: Request):
               TABPRECO.TAB_NOME,         -- Nome da Tabela de Preço
               FORMAPAG.FPG_NOME,         -- Nome da Forma de Pagamento
               VENDAS.ECF_CAIXA,          -- Caixa que autenticou
-              VENDAS.ECF_DESCONTO        -- Valor do Desconto
-              {', VENDAS.ECF_CX_DATA' if existe_ecf_cx_data else ''}         -- Data de autenticação no caixa
+              VENDAS.ECF_DESCONTO,       -- Valor do Desconto
+              VENDAS.ECF_CX_DATA         -- Data de autenticação no caixa
             FROM
               VENDAS
             LEFT JOIN
@@ -84,7 +80,8 @@ async def listar_vendas(request: Request):
             WHERE
               VENDAS.ECF_CANCELADA = 'N'
               AND VENDAS.ECF_CONCLUIDA = 'S'
-              AND CAST(VENDAS.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+              AND VENDAS.{date_column} IS NOT NULL
+              AND CAST(VENDAS.{date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
         '''
         params = [data_inicial, data_final]
         if cli_codigo:

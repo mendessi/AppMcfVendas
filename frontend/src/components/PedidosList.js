@@ -16,6 +16,7 @@ const PedidosList = ({ darkMode }) => {
     return hoje.toISOString().slice(0, 10);
   });
   const [errorMsg, setErrorMsg] = useState(null);
+  const [filtroAutenticacao, setFiltroAutenticacao] = useState('todas'); // 'todas', 'autenticadas', 'nao_autenticadas'
 
   // Remover busca automática ao abrir no mobile
   useEffect(() => {
@@ -72,6 +73,9 @@ const PedidosList = ({ darkMode }) => {
       setFilteredPedidos(pedidosFormatados);
       // Diagnóstico: mostrar todos os nomes de clientes carregados
       console.log('Clientes carregados:', pedidosFormatados.map(p => p.cliente_nome));
+      
+      // Aplicar o filtro de autenticação
+      aplicarFiltros(pedidosFormatados, searchTerm, filtroAutenticacao);
     } catch (error) {
       setPedidos([]);
       setFilteredPedidos([]);
@@ -103,6 +107,35 @@ const PedidosList = ({ darkMode }) => {
   const normalize = (str) => {
     return (str || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   };
+  
+  // Função para aplicar todos os filtros
+  const aplicarFiltros = (listaPedidos, termo, filtroAuth) => {
+    // Filtrar pelo termo de busca
+    let resultado = listaPedidos;
+    
+    if (termo) {
+      const termoBusca = normalize(termo);
+      resultado = resultado.filter(p => {
+        return normalize(p.cliente_nome).includes(termoBusca) || 
+          normalize(p.id.toString()).includes(termoBusca) || 
+          normalize(p.status).includes(termoBusca);
+      });
+    }
+    
+    // Filtrar por autenticação
+    if (filtroAuth === 'autenticadas') {
+      resultado = resultado.filter(p => p.autenticada);
+    } else if (filtroAuth === 'nao_autenticadas') {
+      resultado = resultado.filter(p => !p.autenticada);
+    }
+    
+    setFilteredPedidos(resultado);
+  };
+  
+  // Efeito para atualizar os filtros quando o termo de busca ou filtro de autenticação mudar
+  useEffect(() => {
+    aplicarFiltros(pedidos, searchTerm, filtroAutenticacao);
+  }, [searchTerm, filtroAutenticacao, pedidos]);
 
   const togglePedidoDetails = async (pedidoId) => {
     if (expandedPedido === pedidoId) {
@@ -191,6 +224,18 @@ const PedidosList = ({ darkMode }) => {
             onChange={e => setDataFinal(e.target.value)}
           />
         </div>
+        <div>
+          <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Autenticação</label>
+          <select
+            className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"}`}
+            value={filtroAutenticacao}
+            onChange={e => setFiltroAutenticacao(e.target.value)}
+          >
+            <option value="todas">Todas</option>
+            <option value="autenticadas">Autenticadas</option>
+            <option value="nao_autenticadas">Não Autenticadas</option>
+          </select>
+        </div>
         <button
           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-5"
           onClick={buscarPedidos}
@@ -203,6 +248,37 @@ const PedidosList = ({ darkMode }) => {
         <Link to="/novo-pedido" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full sm:w-auto">
           Novo Pedido
         </Link>
+      </div>
+
+      {/* Totalizador */}
+      <div className={`mb-6 p-4 rounded-lg shadow-md ${darkMode ? "bg-gray-700" : "bg-white"}`}>
+        <div className="flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <h2 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
+              Resumo: <span className="font-bold">{filteredPedidos.length}</span> pedidos encontrados
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3 md:flex md:gap-4">
+            <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+              <p className={`text-xs md:text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Autenticadas</p>
+              <p className={`text-lg md:text-xl font-bold ${darkMode ? "text-green-300" : "text-green-600"}`}>
+                {filteredPedidos.filter(p => p.autenticada).length}
+              </p>
+            </div>
+            <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+              <p className={`text-xs md:text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Não Autenticadas</p>
+              <p className={`text-lg md:text-xl font-bold ${darkMode ? "text-red-300" : "text-red-600"}`}>
+                {filteredPedidos.filter(p => !p.autenticada).length}
+              </p>
+            </div>
+            <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+              <p className={`text-xs md:text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Valor Total</p>
+              <p className={`text-lg md:text-xl font-bold ${darkMode ? "text-blue-300" : "text-blue-600"}`}>
+                {formatCurrency(filteredPedidos.reduce((total, p) => total + (parseFloat(p.valor_total) || 0), 0))}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mb-6">

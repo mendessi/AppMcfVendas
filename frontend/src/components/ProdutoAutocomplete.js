@@ -190,6 +190,17 @@ function ProdutoAutocomplete({ value, onChange, onAdd, produtosNoOrcamento = [] 
                       </span>
                     )}
                     
+                    {p.pro_descprovlr && p.pro_descprovlr > 0 && (
+                      <span className={`${
+                        produtosNoOrcamento.some(prod => 
+                          (prod.codigo === (p.pro_codigo || p.codigo)) || 
+                          (prod.pro_codigo === (p.pro_codigo || p.codigo))
+                        ) ? 'text-red-700' : 'text-red-400'
+                      }`}>
+                        Mínimo: {Number(p.pro_descprovlr).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    )}
+                    
                     {p.pro_marca && (
                       <span className={`${
                         produtosNoOrcamento.some(prod => 

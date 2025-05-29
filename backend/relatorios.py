@@ -1634,6 +1634,7 @@ async def get_vendas_por_dia(request: Request, data_inicial: Optional[str] = Non
 
 # --- ENDPOINT: TABELAS DE PREÇO ---
 @router.get("/tabelas")
+@router.get("/listar_tabelas")
 async def listar_tabelas(request: Request):
     """
     Lista as tabelas de preço.
@@ -1654,6 +1655,7 @@ async def listar_tabelas(request: Request):
 
 # --- ENDPOINT: VENDEDORES ---
 @router.get("/vendedores")
+@router.get("/listar_vendedores")
 async def listar_vendedores(request: Request):
     """
     Lista os vendedores conforme select fornecido.
@@ -1674,6 +1676,7 @@ async def listar_vendedores(request: Request):
 
 # --- ENDPOINT: FORMAS DE PAGAMENTO ---
 @router.get("/formapag")
+@router.get("/listar_formas_pagamento")
 async def listar_formas_pagamento(request: Request):
     """
     Lista todas as formas de pagamento, conforme select fornecido.
@@ -1682,7 +1685,7 @@ async def listar_formas_pagamento(request: Request):
     try:
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
-        cursor.execute("SELECT FPG_COD, FPG_COD || ' - ' || FPG_NOME AS FPG_NOME FROM FORMAPAG ORDER BY FPG_COD")
+        cursor.execute("SELECT FPG_COD, FPG_NOME FROM FORMAPAG ORDER BY FPG_NOME")
         formas = [
             {"codigo": row[0], "nome": row[1]} for row in cursor.fetchall()
         ]

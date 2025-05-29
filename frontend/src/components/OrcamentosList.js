@@ -115,7 +115,15 @@ const OrcamentosList = ({ darkMode }) => {
       
       // Sempre usar os dados reais, mesmo que seja uma lista vazia
       console.log(`Encontrados ${data.length} orçamentos no banco`);
-      setOrcamentos(data.map(orc => ({ ...orc, itens: [] })));
+      
+      // Ordenar os orçamentos por número/ID em ordem decrescente
+      const orcamentosOrdenados = data.sort((a, b) => {
+        const numA = parseInt(a.numero || a.id) || 0;
+        const numB = parseInt(b.numero || b.id) || 0;
+        return numB - numA; // Ordem decrescente
+      });
+      
+      setOrcamentos(orcamentosOrdenados.map(orc => ({ ...orc, itens: [] })));
     } catch (error) {
       console.error('Erro ao buscar orçamentos:', error);
       

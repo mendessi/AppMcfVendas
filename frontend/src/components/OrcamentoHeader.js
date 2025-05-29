@@ -6,18 +6,39 @@ import api from '../services/api';
 function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagamento, setFormaPagamento, vendedor, setVendedor, dataOrcamento, validade, setValidade, especie, setEspecie, desconto, setDesconto, observacao, setObservacao, ESPECIE_OPCOES }) {
   // Funções de busca memorizadas
   const fetchTabelas = useCallback(async () => {
-    const res = await api.get('/relatorios/tabelas');
-    return (res.data || []).map(t => ({ value: t.codigo || t.TAB_CODIGO, label: t.nome || t.TAB_NOME }));
+    try {
+      console.log('Buscando tabelas de preço...');
+      const res = await api.get('/relatorios/listar_tabelas');
+      console.log('Resposta tabelas de preço:', res.data);
+      return (res.data || []).map(t => ({ value: t.codigo || t.TAB_CODIGO, label: t.nome || t.TAB_NOME }));
+    } catch (error) {
+      console.error('Erro ao buscar tabelas de preço:', error);
+      return [];
+    }
   }, []);
 
   const fetchFormasPagamento = useCallback(async () => {
-    const res = await api.get('/relatorios/formapag');
-    return (res.data || []).map(f => ({ value: f.codigo || f.FPG_CODIGO, label: f.nome || f.FPG_NOME }));
+    try {
+      console.log('Buscando formas de pagamento...');
+      const res = await api.get('/relatorios/listar_formas_pagamento');
+      console.log('Resposta formas de pagamento:', res.data);
+      return (res.data || []).map(f => ({ value: f.codigo || f.FPG_CODIGO, label: f.nome || f.FPG_NOME }));
+    } catch (error) {
+      console.error('Erro ao buscar formas de pagamento:', error);
+      return [];
+    }
   }, []);
 
   const fetchVendedores = useCallback(async () => {
-    const res = await api.get('/relatorios/vendedores');
-    return (res.data || []).map(v => ({ value: v.codigo || v.VEN_CODIGO, label: v.nome || v.VEN_NOME }));
+    try {
+      console.log('Buscando vendedores...');
+      const res = await api.get('/relatorios/listar_vendedores');
+      console.log('Resposta vendedores:', res.data);
+      return (res.data || []).map(v => ({ value: v.codigo || v.VEN_CODIGO, label: v.nome || v.VEN_NOME }));
+    } catch (error) {
+      console.error('Erro ao buscar vendedores:', error);
+      return [];
+    }
   }, []);
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -397,8 +397,8 @@ function OrcamentoForm() {
           valor_total: total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
         });
         
-        // Limpa o formulário após salvar com sucesso
-        limparFormulario();
+        // Não limpa o formulário aqui, apenas mantém o modal aberto
+        // para permitir que o usuário veja as opções (imprimir, copiar, novo)
       } else {
         console.error('Erro ao salvar orçamento:', data.message || 'Erro desconhecido');
         alert('Erro ao salvar: ' + (data.message || 'Erro desconhecido'));

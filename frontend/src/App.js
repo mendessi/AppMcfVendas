@@ -391,7 +391,7 @@ function AppContent() {
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
                       <FiShoppingCart className="mr-3 h-5 w-5" />
-                      <span>Pedidos</span>
+                      <span>Listar Vendas</span>
                     </Link>
                   </li>
                   <li className="mb-2">
@@ -401,7 +401,7 @@ function AppContent() {
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
                       <FiPlusCircle className="mr-3 h-5 w-5" />
-                      <span>Novo Pedido</span>
+                      <span>Nova Venda</span>
                     </Link>
                   </li>
                   <li className="mb-2">

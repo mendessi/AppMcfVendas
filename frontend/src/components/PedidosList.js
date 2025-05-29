@@ -244,9 +244,9 @@ const PedidosList = ({ darkMode }) => {
       </div>
 
       <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
-        <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Pedidos</h1>
+        <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Listar Vendas</h1>
         <Link to="/novo-pedido" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full sm:w-auto">
-          Novo Pedido
+          Nova Venda
         </Link>
       </div>
 

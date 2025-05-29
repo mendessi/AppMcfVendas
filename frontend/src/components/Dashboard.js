@@ -554,21 +554,21 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
   };
 
   return (
-    <div>
+    <div className="w-full max-w-full overflow-x-hidden">
       {/* Componente flutuante com informações detalhadas da empresa */}
       <EmpresaAtualInfo darkMode={darkMode} />
       
-      <div className="mb-6">
+      <div className="mb-4 px-2 sm:px-4">
         <div className="flex items-center justify-between">
-          <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Dashboard</h1>
+          <h1 className={`text-xl sm:text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Dashboard</h1>
           <EmpresaInfo darkMode={darkMode} />
         </div>
       </div>
       
       {/* Filtro de período unificado */}
-      <div className={`mb-6 p-4 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-4">
-          <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+      <div className={`mb-4 p-2 sm:p-4 rounded-lg shadow-md ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2 sm:gap-4">
+          <h2 className={`text-base sm:text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             <FiCalendar className="inline-block mr-2" />
             Período do Dashboard
             {dadosEmCache && (
@@ -648,34 +648,34 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       </div>
 
       {/* Cards de Vendas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-8 px-2 sm:px-4">
         {/* Card - Vendas do Dia */}
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6`}>
+        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-3 sm:p-6`}>
           <div className="flex items-center">
-            <div className={`p-2 sm:p-3 rounded-full ${darkMode ? "bg-blue-900 text-blue-400" : "bg-blue-100 text-blue-600"}`}>
-              <FiDollarSign className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className={`p-2 rounded-full ${darkMode ? "bg-blue-900 text-blue-400" : "bg-blue-100 text-blue-600"}`}>
+              <FiDollarSign className="h-5 w-5" />
             </div>
-            <div className="ml-3 sm:ml-4">
-              <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas do Dia</p>
-              <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
+            <div className="ml-3">
+              <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas do Dia</p>
+              <p className={`text-base sm:text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
                 {formatCurrency(stats?.vendasDia ?? 0)}
               </p>
             </div>
           </div>
-          <div className="mt-3 sm:mt-4">
-            <Link to="/pedidos" className={`text-xs sm:text-sm ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"}`}>Ver detalhes →</Link>
+          <div className="mt-2">
+            <Link to="/pedidos" className={`text-xs ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"}`}>Ver detalhes →</Link>
           </div>
         </div>
 
         {/* Card - Vendas do Mês */}
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6`}>
+        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-3 sm:p-6`}>
           <div className="flex items-center">
-            <div className={`p-2 sm:p-3 rounded-full ${darkMode ? "bg-green-900 text-green-400" : "bg-green-100 text-green-600"}`}>
-              <FiCalendar className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className={`p-2 rounded-full ${darkMode ? "bg-green-900 text-green-400" : "bg-green-100 text-green-600"}`}>
+              <FiCalendar className="h-5 w-5" />
             </div>
-            <div className="ml-3 sm:ml-4">
-              <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas do Mês</p>
-              <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
+            <div className="ml-3">
+              <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas do Mês</p>
+              <p className={`text-base sm:text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
                 {formatCurrency(stats?.vendasMes ?? 0)}
               </p>
               <p className={`text-xs ${stats?.percentualCrescimento >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -683,61 +683,63 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
               </p>
             </div>
           </div>
-          <div className="mt-3 sm:mt-4">
-            <Link to="/relatorios" className={`text-xs sm:text-sm ${darkMode ? "text-green-400 hover:text-green-300" : "text-green-600 hover:text-green-800"}`}>Ver relatório mensal →</Link>
+          <div className="mt-2">
+            <Link to="/relatorios" className={`text-xs ${darkMode ? "text-green-400 hover:text-green-300" : "text-green-600 hover:text-green-800"}`}>Ver relatório mensal →</Link>
           </div>
         </div>
 
         {/* Card - Vendas Não Autenticadas */}
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6`}>
+        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-3 sm:p-6`}>
           <div className="flex items-center">
-            <div className={`p-2 sm:p-3 rounded-full ${darkMode ? "bg-yellow-900 text-yellow-400" : "bg-yellow-100 text-yellow-600"}`}>
-              <FiAlertCircle className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className={`p-2 rounded-full ${darkMode ? "bg-yellow-900 text-yellow-400" : "bg-yellow-100 text-yellow-600"}`}>
+              <FiAlertCircle className="h-5 w-5" />
             </div>
-            <div className="ml-3 sm:ml-4">
-              <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas Não Autenticadas</p>
-              <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
+            <div className="ml-3">
+              <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas Não Autenticadas</p>
+              <p className={`text-base sm:text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
                 {formatCurrency(stats?.vendasNaoAutenticadas ?? 0)}
               </p>
             </div>
           </div>
-          <div className="mt-3 sm:mt-4">
-            <Link to="/vendas-pendentes" className={`text-xs sm:text-sm ${darkMode ? "text-yellow-400 hover:text-yellow-300" : "text-yellow-600 hover:text-yellow-800"}`}>Verificar pendências →</Link>
+          <div className="mt-2">
+            <Link to="/vendas-pendentes" className={`text-xs ${darkMode ? "text-yellow-400 hover:text-yellow-300" : "text-yellow-600 hover:text-yellow-800"}`}>Verificar pendências →</Link>
           </div>
         </div>
 
         {/* Card - Vendas Autenticadas */}
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6`}>
+        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-3 sm:p-6`}>
           <div className="flex items-center">
-            <div className={`p-2 sm:p-3 rounded-full ${darkMode ? "bg-blue-900 text-blue-400" : "bg-blue-100 text-blue-600"}`}>
-              <FiAward className="h-5 w-5 sm:h-6 sm:w-6" />
+            <div className={`p-2 rounded-full ${darkMode ? "bg-blue-900 text-blue-400" : "bg-blue-100 text-blue-600"}`}>
+              <FiAward className="h-5 w-5" />
             </div>
-            <div className="ml-3 sm:ml-4">
-              <p className={`text-xs sm:text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas Autenticadas</p>
-              <p className={`text-lg sm:text-2xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
+            <div className="ml-3">
+              <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas Autenticadas</p>
+              <p className={`text-base sm:text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
                 {formatCurrency(stats?.vendasAutenticadas ?? 0)}
               </p>
             </div>
           </div>
-          <div className="mt-3 sm:mt-4">
-            <Link to="/vendas-autenticadas" className={`text-xs sm:text-sm ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"}`}>Ver autenticadas →</Link>
+          <div className="mt-2">
+            <Link to="/vendas-autenticadas" className={`text-xs ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"}`}>Ver autenticadas →</Link>
           </div>
         </div>
 
       </div>
 
       {/* Gráfico de Vendas por Dia */}
-      <VendasPorDiaChart 
-        empresaSelecionada={empresaSelecionada}
-        dataInicial={dataInicial}
-        dataFinal={dataFinal}
-        darkMode={darkMode}
-        dadosEmCache={dadosEmCache}
-        vendasPorDia={vendasPorDia}
-      />
+      <div className="px-2 sm:px-4 mb-4 sm:mb-8">
+        <VendasPorDiaChart 
+          empresaSelecionada={empresaSelecionada}
+          dataInicial={dataInicial}
+          dataFinal={dataFinal}
+          darkMode={darkMode}
+          dadosEmCache={dadosEmCache}
+          vendasPorDia={vendasPorDia}
+        />
+      </div>
 
       {/* Tabela de Vendedores */}
-      <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-4 sm:p-6 mb-8`}>
+      <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-2 sm:p-6 mb-4 sm:mb-8 mx-2 sm:mx-4`}>
         <h2 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"} mb-4`}>
           <FiAward className="inline-block mr-2" />
           Vendedores {loadingVendedores ? '(Carregando...)' : `(${topVendedores.length} registros)`}
@@ -762,7 +764,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         
         {/* Versão para desktop */}
         <div className="hidden sm:block overflow-x-auto">
-          <table className={`min-w-full ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+          <table className={`min-w-full max-w-full ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
             <thead>
               <tr className={darkMode ? "bg-gray-700" : "bg-gray-100"}>
                 <th className="px-4 py-2 text-left">Nome</th>
@@ -813,7 +815,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         </div>
         
         {/* Versão para celular - NOVA IMPLEMENTAÇÃO COMPLETA */}
-        <div className="sm:hidden space-y-4">
+        <div className="sm:hidden w-full overflow-x-auto">
           {/* Titulo mobile com contador */}
           <div className={`px-3 py-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-md`}>
             <p className="text-sm font-semibold">
@@ -870,7 +872,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       </div>
 
       {/* Top Clientes */}
-      <div className="mb-8">
+      <div className="mb-4 sm:mb-8 px-2 sm:px-4">
         <TopClientes
           darkMode={darkMode}
           empresaSelecionada={empresaSelecionada}
@@ -882,55 +884,80 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       </div>
 
       {/* Top Produtos */}
-      <div className={`${darkMode ? "bg-gray-900" : "bg-white"} rounded-lg shadow p-6`}>
+      <div className={`${darkMode ? "bg-gray-900" : "bg-white"} rounded-lg shadow p-2 sm:p-6 mx-2 sm:mx-4`}>
         <h2 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-900"} mb-4`}>Top Produtos</h2>
         {loadingProdutos ? (
           <div className="flex justify-center items-center h-40">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className={`min-w-full divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"} ${darkMode ? "text-gray-200" : "text-gray-900"}`}> 
-              <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Produto</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Vendido</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Estoque</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Estoque Mínimo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
-                </tr>
-              </thead>
-              <tbody className={darkMode ? "bg-gray-900 divide-gray-800" : "bg-white divide-gray-200"}>
-                {topProdutos.map((produto, index) => (
-                  <tr key={index} className={
-                    darkMode
-                      ? (index % 2 === 1 ? "bg-gray-800" : "")
-                      : (index % 2 === 1 ? "bg-gray-100" : "")
-                  }>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">{produto.PRO_DESCRICAO}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(produto.TOTAL ?? 0))}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {Number(produto.ESTOQUE ?? 0).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {Number(produto.EST_MINIMO ?? 0).toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0)
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0) ? 'Estoque Baixo' : 'Estoque OK'}
-                      </span>
-                    </td>
+          <>
+            {/* Tabela apenas no desktop */}
+            <div className="hidden sm:block overflow-x-auto w-full">
+              <table className={`w-full max-w-full text-sm ${darkMode ? "divide-gray-700 text-gray-200" : "divide-gray-200 text-gray-900"}`}> 
+                <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
+                  <tr>
+                    <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider break-words whitespace-normal">Produto</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider break-words whitespace-normal">Total Vendido</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider break-words whitespace-normal">Estoque</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider break-words whitespace-normal">Estoque Mínimo</th>
+                    <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider break-words whitespace-normal">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className={darkMode ? "bg-gray-900 divide-gray-800" : "bg-white divide-gray-200"}>
+                  {topProdutos.map((produto, index) => (
+                    <tr key={index} className={
+                      darkMode
+                        ? (index % 2 === 1 ? "bg-gray-800" : "")
+                        : (index % 2 === 1 ? "bg-gray-100" : "")
+                    }>
+                      <td className="px-2 py-2 break-words whitespace-normal text-sm">{produto.PRO_DESCRICAO}</td>
+                      <td className="px-2 py-2 break-words whitespace-normal text-sm">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(produto.TOTAL ?? 0))}
+                      </td>
+                      <td className="px-2 py-2 break-words whitespace-normal text-sm">
+                        {Number(produto.ESTOQUE ?? 0).toFixed(2)}
+                      </td>
+                      <td className="px-2 py-2 break-words whitespace-normal text-sm">
+                        {Number(produto.EST_MINIMO ?? 0).toFixed(2)}
+                      </td>
+                      <td className="px-2 py-2 break-words whitespace-normal">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0)
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0) ? 'Estoque Baixo' : 'Estoque OK'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Cards no mobile */}
+            <div className="sm:hidden flex flex-col gap-3">
+              {topProdutos.map((produto, index) => (
+                <div key={index} className={`rounded-lg p-3 shadow ${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-900'}`}> 
+                  <div className="font-semibold text-base break-words mb-1">{produto.PRO_DESCRICAO || '-'}</div>
+                  <div className="flex flex-wrap gap-2 text-xs mb-1">
+                    <span><b>Total Vendido:</b> {produto.TOTAL !== undefined && produto.TOTAL !== null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(produto.TOTAL)) : '-'}</span>
+                    <span><b>Estoque:</b> {produto.ESTOQUE !== undefined && produto.ESTOQUE !== null ? Number(produto.ESTOQUE).toFixed(2) : '-'}</span>
+                    <span><b>Est. Mínimo:</b> {produto.EST_MINIMO !== undefined && produto.EST_MINIMO !== null ? Number(produto.EST_MINIMO).toFixed(2) : '-'}</span>
+                  </div>
+                  <div>
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0)
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0) ? 'Estoque Baixo' : 'Estoque OK'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

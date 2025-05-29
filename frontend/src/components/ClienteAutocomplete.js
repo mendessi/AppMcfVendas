@@ -36,14 +36,27 @@ function ClienteAutocomplete({ value, onChange }) {
       setLoading(true);
       try {
         const token = localStorage.getItem('token');
-        const empresaAtual = JSON.parse(localStorage.getItem('empresa_atual'));
-        console.log('Buscando clientes com termo:', val);
-        console.log('Headers da requisição:', {
-          Authorization: token,
-          'x-empresa-codigo': empresaAtual?.cli_codigo
-        });
+        const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada') || localStorage.getItem('empresaSelecionadaCodigo');
+        let empresaCodigo = null;
+        if (empresaCodigo) {
+          try {
+            const empObj = JSON.parse(empresaCodigo);
+            empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
+          } catch {
+            empresaCodigo = empresaSelecionada;
+          }
+        }
 
-        const response = await api.get(`/relatorios/clientes?q=${encodeURIComponent(val)}`);
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
+
+        console.log('Buscando clientes com termo:', val);
+        console.log('Headers da requisição:', headers);
+
+        const response = await api.get(`/relatorios/clientes?q=${encodeURIComponent(val)}`, { headers });
         console.log('Resposta da API:', response.data);
 
         if (!response.data || !Array.isArray(response.data)) {

@@ -171,63 +171,77 @@ const handleVerItensVenda = async (venda) => {
       </form>
 
       {/* Versão para desktop */}
-      <div className="hidden md:block">
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow overflow-x-auto`}>
-          <table className="min-w-full divide-y divide-gray-700">
-            <thead className={darkMode ? "bg-gray-900" : "bg-gray-50"}>
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Código</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Nome</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">WhatsApp</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">CNPJ</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Endereço</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Bairro</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Cidade/UF</th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody className={`${darkMode ? "bg-gray-800" : "bg-white"} divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
-              {clientes.length > 0 ? (
-                clientes.map((cliente) => (
-                  <tr key={cliente.cli_codigo} className={darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cli_codigo}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm font-medium flex items-center gap-2 ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cli_nome}{cliente.bloqueado && (<span className="ml-2 px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-bold border border-red-300">BLOQUEADO</span>)}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.tel_whatsapp || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cnpj || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.endereco} {cliente.numero ? ', ' + cliente.numero : ''}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.bairro || '-'}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cidade} / {cliente.uf}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-  <button className={darkMode ? "text-green-400 hover:text-green-300 mr-3" : "text-green-600 hover:text-green-900 mr-3"} onClick={() => handleVerVendas(cliente)}>Ver Vendas</button>
-  <button className={darkMode ? "text-purple-400 hover:text-purple-300" : "text-purple-600 hover:text-purple-900"} onClick={() => handleVerContas(cliente)}>Ver Contas</button>
-</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="9" className={`px-4 py-4 text-center text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Nenhum cliente encontrado.</td>
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="min-w-full break-words divide-y divide-gray-200">
+          <thead className={darkMode ? "bg-gray-900" : "bg-gray-50"}>
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Código</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Nome</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">WhatsApp</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">CNPJ</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Endereço</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Bairro</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Cidade/UF</th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">Ações</th>
+            </tr>
+          </thead>
+          <tbody className={`${darkMode ? "bg-gray-800" : "bg-white"} divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
+            {clientes.length > 0 ? (
+              clientes.map((cliente) => (
+                <tr key={cliente.cli_codigo} className={darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cli_codigo}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className={`text-sm font-medium flex items-center gap-2 ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cli_nome}{cliente.bloqueado && (<span className="ml-2 px-2 py-0.5 rounded bg-red-100 text-red-700 text-xs font-bold border border-red-300">BLOQUEADO</span>)}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.tel_whatsapp || '-'}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cnpj || '-'}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.endereco} {cliente.numero ? ', ' + cliente.numero : ''}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.bairro || '-'}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{cliente.cidade} / {cliente.uf}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
+    <button className={darkMode ? "text-green-400 hover:text-green-300 mr-3" : "text-green-600 hover:text-green-900 mr-3"} onClick={() => handleVerVendas(cliente)}>Ver Vendas</button>
+    <button className={darkMode ? "text-purple-400 hover:text-purple-300" : "text-purple-600 hover:text-purple-900"} onClick={() => handleVerContas(cliente)}>Ver Contas</button>
+  </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="9" className={`px-4 py-4 text-center text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Nenhum cliente encontrado.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
-
+      {/* Versão para mobile - cards */}
+      <div className="block sm:hidden space-y-4">
+        {clientes.length > 0 ? (
+          clientes.map((cliente, idx) => (
+            <div key={cliente.cli_codigo || idx} className="bg-white rounded-lg shadow p-4">
+              <div className="font-bold text-gray-900 text-lg mb-1">{cliente.cli_nome}</div>
+              <div className="text-sm text-gray-600 mb-1">Código: {cliente.cli_codigo}</div>
+              {cliente.apelido && <div className="text-sm text-gray-500 mb-1">Apelido: {cliente.apelido}</div>}
+              {cliente.contato && <div className="text-sm text-gray-500 mb-1">Contato: {cliente.contato}</div>}
+              {cliente.cpf && <div className="text-sm text-gray-500 mb-1">CPF: {cliente.cpf}</div>}
+              {cliente.cnpj && <div className="text-sm text-gray-500 mb-1">CNPJ: {cliente.cnpj}</div>}
+            </div>
+          ))
+        ) : (
+          <div className="text-center text-gray-500">Nenhum cliente encontrado.</div>
+        )}
+      </div>
 
       {/* Modal de Vendas */}
       {modalVendas.open && (

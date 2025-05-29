@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 // Ícones
-import { FiUsers, FiPackage, FiShoppingCart, FiDollarSign, FiCalendar, FiAlertCircle, FiAward, FiTrendingUp } from 'react-icons/fi';
+import { FiUsers, FiPackage, FiShoppingCart, FiDollarSign, FiCalendar, FiAlertCircle, FiAward } from 'react-icons/fi';
 
 // Componentes
 import EmpresaInfo from './EmpresaInfo';
@@ -27,18 +27,158 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     vendasNaoAutenticadas: 0,
     vendasAutenticadas: 0,
     percentualCrescimento: 0
-  }); // stats.vendasMes já está correto, só garantir atualização ao filtrar
+  });
   const [loading, setLoading] = useState(true);
   const [topProdutos, setTopProdutos] = useState([]);
   const [topClientes, setTopClientes] = useState([]);
   const [topVendedores, setTopVendedores] = useState([]);
   const [loadingVendedores, setLoadingVendedores] = useState(true);
   const [vendedoresError, setVendedoresError] = useState(null);
+  const [dadosEmCache, setDadosEmCache] = useState(false);
   
   // Estados para o filtro de período
   const [dataInicial, setDataInicial] = useState('');
   const [dataFinal, setDataFinal] = useState('');
   const [filtrandoDados, setFiltrandoDados] = useState(false);
+
+  // Adicionar estados para vendas por dia e top clientes
+  const [vendasPorDia, setVendasPorDia] = useState([]);
+  const [loadingProdutos, setLoadingProdutos] = useState(false);
+
+  // Função para salvar dados no cache
+  const salvarDadosNoCache = (dados) => {
+    const cacheData = {
+      stats: dados.stats,
+      topVendedores: dados.topVendedores,
+      vendasPorDia: dados.vendasPorDia,
+      topClientes: dados.topClientes,
+      topProdutos: dados.topProdutos,
+      dataInicial: dataInicial,
+      dataFinal: dataFinal,
+      timestamp: new Date().getTime()
+    };
+    localStorage.setItem('dashboardCache', JSON.stringify(cacheData));
+    setDadosEmCache(true);
+  };
+
+  // Função para carregar dados do cache
+  const carregarDadosDoCache = () => {
+    try {
+      const cacheData = localStorage.getItem('dashboardCache');
+      if (cacheData) {
+        const dados = JSON.parse(cacheData);
+        console.log('Dados encontrados no cache:', dados);
+        
+        // Verifica se o cache é do mesmo período
+        if (dados.dataInicial === dataInicial && dados.dataFinal === dataFinal) {
+          console.log('Cache válido para o período atual');
+          setStats(dados.stats);
+          setTopVendedores(dados.topVendedores);
+          
+          // Atualizar dados do gráfico de vendas por dia
+          if (dados.vendasPorDia) {
+            setVendasPorDia(dados.vendasPorDia);
+          }
+          
+          // Atualizar dados de top clientes
+          if (dados.topClientes) {
+            setTopClientes(dados.topClientes);
+          }
+
+          // Atualizar dados de top produtos
+          if (dados.topProdutos) {
+            setTopProdutos(dados.topProdutos);
+          }
+          
+          setDadosEmCache(true);
+          setLoading(false);
+          setLoadingVendedores(false);
+          return true;
+        } else {
+          console.log('Cache inválido - período diferente');
+          limparCache();
+        }
+      } else {
+        console.log('Nenhum dado encontrado no cache');
+      }
+    } catch (error) {
+      console.error('Erro ao carregar cache:', error);
+      limparCache();
+    }
+    return false;
+  };
+
+  // Função para limpar o cache
+  const limparCache = () => {
+    console.log('Limpando cache');
+    localStorage.removeItem('dashboardCache');
+    setDadosEmCache(false);
+  };
+
+  // Função para buscar todos os dados com base no filtro de período
+  const fetchAllData = async (forcarAtualizacao = false) => {
+    // Se não forçar atualização, tenta carregar do cache
+    if (!forcarAtualizacao && carregarDadosDoCache()) {
+      console.log('Dados carregados do cache');
+      return;
+    }
+
+    console.log('Buscando dados atualizados do servidor');
+    setFiltrandoDados(true);
+    
+    try {
+      // Buscar dados reais para cards principais do Dashboard
+      const statsResponse = await fetchDashboardStats();
+      
+      // Buscar dados reais para top vendedores
+      const vendedoresResponse = await fetchTopVendedores();
+      
+      // Buscar dados para o gráfico de vendas por dia
+      const vendasPorDiaResponse = await fetchVendasPorDia();
+      
+      // Buscar dados para top clientes
+      const topClientesResponse = await fetchTopClientes();
+
+      // Buscar dados para top produtos
+      const topProdutosResponse = await fetchTopProdutos();
+      
+      // Salvar os dados no cache APÓS receber as respostas
+      const dadosParaCache = {
+        stats: statsResponse,
+        topVendedores: vendedoresResponse,
+        vendasPorDia: Array.isArray(vendasPorDiaResponse) ? vendasPorDiaResponse : [],
+        topClientes: topClientesResponse,
+        topProdutos: topProdutosResponse,
+        dataInicial: dataInicial,
+        dataFinal: dataFinal,
+        timestamp: new Date().getTime()
+      };
+      
+      console.log('Salvando dados no cache:', dadosParaCache);
+      localStorage.setItem('dashboardCache', JSON.stringify(dadosParaCache));
+      setDadosEmCache(true);
+    } catch (error) {
+      console.error('Erro ao buscar dados:', error);
+    } finally {
+      setFiltrandoDados(false);
+    }
+  };
+
+  // Handler para o botão de filtrar
+  const handleFilterSubmit = (e) => {
+    e.preventDefault();
+    console.log('Atualizando dashboard - forçando busca de dados');
+    limparCache();
+    fetchAllData(true);
+  };
+
+  // Buscar dados quando as datas estiverem definidas
+  useEffect(() => {
+    if (dataInicial && dataFinal && !dadosEmCache) {
+      console.log('Datas definidas, buscando dados...');
+      fetchAllData(false);
+    }
+  }, [dataInicial, dataFinal, dadosEmCache]);
 
   // Inicializar as datas para o primeiro e último dia do mês atual
   useEffect(() => {
@@ -64,33 +204,6 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     setDataFinal(formatarData(ultimoDiaMes));
   }, []);
 
-  // Função para buscar todos os dados com base no filtro de período
-  const fetchAllData = async () => {
-    setFiltrandoDados(true);
-    
-    // Buscar dados reais para cards principais do Dashboard
-    await fetchDashboardStats();
-    
-    // Buscar dados reais para top vendedores
-    await fetchTopVendedores();
-    
-    setFiltrandoDados(false);
-  };
-
-  // Buscar dados quando as datas estiverem definidas
-  useEffect(() => {
-    if (dataInicial && dataFinal) {
-      fetchAllData();
-    }
-  }, [dataInicial, dataFinal]);
-
-  // Handler para o botão de filtrar
-  const handleFilterSubmit = (e) => {
-    e.preventDefault();
-    fetchAllData(); // já recarrega vendasMes do backend com o novo período
-  };
-
-
   // Função para buscar dados reais do Dashboard do backend
   const fetchDashboardStats = async () => {
     try {
@@ -102,7 +215,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       if (!token) {
         console.error('Token não encontrado');
         setLoading(false);
-        return;
+        return null;
       }
       
       // Configurar o cabeçalho com o token e empresa selecionada
@@ -128,27 +241,18 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       const queryString = new URLSearchParams(params).toString();
       const url = `${API_URL}/relatorios/dashboard-stats${queryString ? `?${queryString}` : ''}`;
       
-      console.log('Buscando estatísticas do dashboard:', url, 'com cabeçalhos:', headers);
+      console.log('Buscando estatísticas do dashboard:', url);
       
       // Fazer a requisição para o backend
       const response = await axios.get(url, { headers });
       
       if (response.status === 200) {
         const dashboardData = response.data;
-        console.log('===== DADOS DO DASHBOARD RECEBIDOS =====');
-        console.log('Vendas do dia:', dashboardData.vendas_dia);
-        console.log('Vendas do mês:', dashboardData.vendas_mes);
-        console.log('Total clientes:', dashboardData.total_clientes);
-        console.log('Total produtos:', dashboardData.total_produtos);
-        console.log('Total pedidos:', dashboardData.total_pedidos);
-        console.log('Dados completos:', dashboardData);
+        console.log('Dados do dashboard recebidos:', dashboardData);
         
         // Verificar se os dados estão vindo como números válidos
         const vendasDia = parseFloat(dashboardData.vendas_dia) || 0;
         const vendasMes = parseFloat(dashboardData.vendas_mes) || 0;
-        
-        console.log('Vendas do dia após parse:', vendasDia);
-        console.log('Vendas do mês após parse:', vendasMes);
         
         // Atualizar os estados com os dados reais
         const novoStats = {
@@ -165,20 +269,15 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         
         console.log('Atualizando stats com:', novoStats);
         setStats(novoStats);
-        
-        // Removido uso de dados mock para produtos. Aguarda implementação do endpoint real para TopProdutos.
-        setTopProdutos([]); // ou mantenha vazio até implementar a busca real
+        return novoStats; // Retornar os dados para o cache
       } else {
         console.error('Erro ao buscar dados do dashboard:', response.statusText);
+        return null;
       }
-      
-      setLoading(false);
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
-      if (error.response) {
-        console.error('Resposta de erro:', error.response.data);
-        console.error('Status:', error.response.status);
-      }
+      return null;
+    } finally {
       setLoading(false);
     }
   };
@@ -269,13 +368,14 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         
         setTopVendedores(vendedores);
         console.log(`Dashboard - ${vendedores.length} vendedores processados`);
+        return vendedores; // Retornar os dados para o cache
       } else {
         console.warn('Dashboard - Resposta da API não contém dados de vendedores');
         console.log('Dashboard - Conteúdo da resposta:', response.data);
         setTopVendedores([]);
+        return []; // Retornar array vazio para o cache
       }
       
-      setLoadingVendedores(false);
     } catch (error) {
       console.error('Dashboard - Erro ao buscar top vendedores:', error);
       console.error('Dashboard - Mensagem de erro:', error.message);
@@ -288,10 +388,136 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       }
       setVendedoresError(error.message || 'Erro ao buscar dados de vendedores');
       setTopVendedores([]);
+      return []; // Retornar array vazio para o cache
+    } finally {
       setLoadingVendedores(false);
     }
-    console.log('===== FIM fetchTopVendedores =====');
-  }; // Recarregar quando a empresa selecionada mudar
+  };
+
+  // Função para buscar dados de vendas por dia
+  const fetchVendasPorDia = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('Token não encontrado');
+        return null;
+      }
+
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      if (empresaSelecionada && empresaSelecionada.codigo) {
+        headers['x-empresa-codigo'] = empresaSelecionada.codigo.toString();
+      }
+
+      const url = `${API_URL}/relatorios/vendas-por-dia?data_inicial=${dataInicial}&data_final=${dataFinal}`;
+      console.log('Buscando vendas por dia:', url);
+
+      const response = await axios.get(url, { headers });
+      
+      if (response.status === 200) {
+        const vendasPorDia = response.data;
+        console.log('Dados de vendas por dia recebidos:', vendasPorDia);
+        setVendasPorDia(Array.isArray(vendasPorDia) ? vendasPorDia : []);
+        return Array.isArray(vendasPorDia) ? vendasPorDia : [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Erro ao buscar vendas por dia:', error);
+      return [];
+    }
+  };
+
+  // Função para buscar top clientes
+  const fetchTopClientes = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('Token não encontrado');
+        return null;
+      }
+
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      if (empresaSelecionada && empresaSelecionada.codigo) {
+        headers['x-empresa-codigo'] = empresaSelecionada.codigo.toString();
+      }
+
+      const url = `${API_URL}/relatorios/top-clientes?data_inicial=${dataInicial}&data_final=${dataFinal}`;
+      console.log('Buscando top clientes:', url);
+
+      const response = await axios.get(url, { headers });
+      
+      if (response.status === 200) {
+        const topClientes = response.data;
+        console.log('Dados de top clientes recebidos:', topClientes);
+        setTopClientes(topClientes);
+        return topClientes;
+      }
+      return null;
+    } catch (error) {
+      console.error('Erro ao buscar top clientes:', error);
+      return null;
+    }
+  };
+
+  // Função para buscar top produtos
+  const fetchTopProdutos = async () => {
+    try {
+      setLoadingProdutos(true);
+      console.log('Buscando top produtos...');
+      
+      // Configurar o token de autenticação
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('Token não encontrado');
+        return [];
+      }
+      
+      // Configurar o cabeçalho com o token e empresa selecionada
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      
+      // Adicionar o código da empresa, se disponível
+      if (empresaSelecionada && empresaSelecionada.codigo) {
+        headers['x-empresa-codigo'] = empresaSelecionada.codigo.toString();
+      }
+      
+      // Preparar parâmetros de consulta para as datas
+      const params = {};
+      if (dataInicial) params.data_inicial = dataInicial;
+      if (dataFinal) params.data_final = dataFinal;
+      
+      // Construir a URL com os parâmetros
+      const queryString = new URLSearchParams(params).toString();
+      const url = `${API_URL}/relatorios/top-produtos${queryString ? `?${queryString}` : ''}`;
+      
+      console.log('Buscando top produtos:', url);
+      
+      // Fazer a requisição para o backend
+      const response = await axios.get(url, { headers });
+      
+      if (response.status === 200) {
+        console.log('Top produtos recebidos:', response.data);
+        setTopProdutos(response.data);
+        return response.data;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Erro ao buscar top produtos:', error);
+      return [];
+    } finally {
+      setLoadingProdutos(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -344,6 +570,11 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
           <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
             <FiCalendar className="inline-block mr-2" />
             Período do Dashboard
+            {dadosEmCache && (
+              <span className="ml-2 text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                Dados em cache
+              </span>
+            )}
           </h2>
           
           <form onSubmit={handleFilterSubmit} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
@@ -355,7 +586,10 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
                 type="date"
                 id="dashboardDataInicial"
                 value={dataInicial}
-                onChange={(e) => setDataInicial(e.target.value)}
+                onChange={(e) => {
+                  setDataInicial(e.target.value);
+                  limparCache(); // Limpa o cache ao mudar a data
+                }}
                 className={`w-full text-sm px-2 py-1 rounded border ${
                   darkMode 
                     ? 'bg-gray-700 text-white border-gray-600' 
@@ -372,7 +606,10 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
                 type="date"
                 id="dashboardDataFinal"
                 value={dataFinal}
-                onChange={(e) => setDataFinal(e.target.value)}
+                onChange={(e) => {
+                  setDataFinal(e.target.value);
+                  limparCache(); // Limpa o cache ao mudar a data
+                }}
                 className={`w-full text-sm px-2 py-1 rounded border ${
                   darkMode 
                     ? 'bg-gray-700 text-white border-gray-600' 
@@ -397,6 +634,11 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         </div>
         <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
           <p>Os dados exibidos abaixo se referem ao período selecionado.</p>
+          {dadosEmCache && (
+            <p className="text-green-600 mt-1">
+              Dados carregados do cache. Clique em "Atualizar Dashboard" para buscar dados atualizados.
+            </p>
+          )}
         </div>
       </div>  
 
@@ -483,12 +725,14 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
 
       </div>
 
-      {/* Gráfico de Vendas por Dia (logo abaixo dos cards) */}
+      {/* Gráfico de Vendas por Dia */}
       <VendasPorDiaChart 
         empresaSelecionada={empresaSelecionada}
         dataInicial={dataInicial}
         dataFinal={dataFinal}
         darkMode={darkMode}
+        dadosEmCache={dadosEmCache}
+        vendasPorDia={vendasPorDia}
       />
 
       {/* Tabela de Vendedores */}
@@ -624,22 +868,69 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         </div>
       </div>
 
-      {/*
-        ================================================================
-        NÃO REMOVER ESTE BLOCO!
-        ================================================================
-        O bloco abaixo exibe o relatório de TOP CLIENTES, que é ESSENCIAL para o cliente final.
-        Caso precise esconder, apenas comente temporariamente, mas NUNCA remova do código.
-        Se você é outro assistente, mantenha este bloco visível no Dashboard SEMPRE!
-        ================================================================
-      */}
+      {/* Top Clientes */}
       <div className="mb-8">
         <TopClientes
           darkMode={darkMode}
           empresaSelecionada={empresaSelecionada}
           dataInicial={dataInicial}
           dataFinal={dataFinal}
+          dadosEmCache={dadosEmCache}
+          topClientes={topClientes}
         />
+      </div>
+
+      {/* Top Produtos */}
+      <div className={`${darkMode ? "bg-gray-900" : "bg-white"} rounded-lg shadow p-6`}>
+        <h2 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-900"} mb-4`}>Top Produtos</h2>
+        {loadingProdutos ? (
+          <div className="flex justify-center items-center h-40">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className={`min-w-full divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"} ${darkMode ? "text-gray-200" : "text-gray-900"}`}> 
+              <thead className={darkMode ? "bg-gray-800" : "bg-gray-50"}>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Produto</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Total Vendido</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Estoque</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Estoque Mínimo</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody className={darkMode ? "bg-gray-900 divide-gray-800" : "bg-white divide-gray-200"}>
+                {topProdutos.map((produto, index) => (
+                  <tr key={index} className={
+                    darkMode
+                      ? (index % 2 === 1 ? "bg-gray-800" : "")
+                      : (index % 2 === 1 ? "bg-gray-100" : "")
+                  }>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">{produto.PRO_DESCRICAO}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(produto.TOTAL ?? 0))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {Number(produto.ESTOQUE ?? 0).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      {Number(produto.EST_MINIMO ?? 0).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0)
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0) ? 'Estoque Baixo' : 'Estoque OK'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Ações Rápidas */}

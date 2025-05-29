@@ -1051,3 +1051,65 @@ async def verificar_estrutura_produto(request: Request):
             conn.close()
         except:
             pass
+
+@router.get("/top-produtos")
+async def top_produtos(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
+    try:
+        # Obter parâmetros da query string
+        data_inicial = request.query_params.get('data_inicial')
+        data_final = request.query_params.get('data_final')
+        
+        if not data_inicial or not data_final:
+            return JSONResponse({'error': 'Data inicial e final são obrigatórias'}), 400
+
+        # Conectar ao banco de dados
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+
+        # Buscar top produtos por valor
+        try:
+            logging.info("Buscando top produtos por valor (com estoque e mínimo)")
+            cursor.execute(
+                f"""
+                SELECT FIRST 10 
+                    PRODUTO.PRO_CODIGO,
+                    PRODUTO.PRO_DESCRICAO,
+                    COALESCE(SUM(ITVENDA.PRO_QUANTIDADE * ITVENDA.PRO_VENDA), 0) AS TOTAL,
+                    COALESCE(PRODUTO.PRO_QUANTIDADE, 0) AS ESTOQUE,
+                    COALESCE(PRODUTO.PRO_MINIMA, 0) AS EST_MINIMO
+                FROM ITVENDA
+                JOIN VENDAS ON VENDAS.ECF_NUMERO = ITVENDA.ECF_NUMERO
+                     AND VENDAS.ECF_CANCELADA = 'N'
+                     AND VENDAS.ECF_CONCLUIDA = 'S'
+                JOIN PRODUTO ON PRODUTO.PRO_CODIGO = ITVENDA.PRO_CODIGO
+                WHERE VENDAS.ECF_DATA BETWEEN ? AND ?
+                GROUP BY PRODUTO.PRO_CODIGO, PRODUTO.PRO_DESCRICAO, PRODUTO.PRO_QUANTIDADE, PRODUTO.PRO_MINIMA
+                ORDER BY TOTAL DESC
+                """,
+                (data_inicial, data_final),
+            )
+            produtos = cursor.fetchall() or []
+            
+            # Converter para lista de dicionários
+            resultado = []
+            for produto in produtos:
+                resultado.append({
+                    'PRO_CODIGO': produto[0],
+                    'PRO_DESCRICAO': produto[1],
+                    'TOTAL': float(produto[2] or 0),
+                    'ESTOQUE': float(produto[3] or 0),
+                    'EST_MINIMO': float(produto[4] or 0)
+                })
+            
+            return resultado
+            
+        except Exception as e:
+            logging.error(f"Erro ao buscar top produtos por valor: {e}")
+            return JSONResponse({'error': str(e)}), 500
+        finally:
+            cursor.close()
+            conn.close()
+
+    except Exception as e:
+        logging.error(f"Erro ao buscar top produtos: {e}")
+        return JSONResponse({'error': str(e)}), 500

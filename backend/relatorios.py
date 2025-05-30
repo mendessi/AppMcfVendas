@@ -760,8 +760,8 @@ async def get_itens_venda(request: Request, ecf_numero: str):
                         "PRO_QUANTIDADE": quantidade,
                         "PRO_VENDA": valor_unitario,
                         "PRO_TOTAL": total,
-                        "PRO_MARCA": row[6] if row[6] is not None else "",
-                        "UNI_CODIGO": row[7] if row[7] is not None else "",
+                        "PRO_MARCA": row[5] if row[5] is not None else "",
+                        "UNI_CODIGO": row[6] if row[6] is not None else "",
                         "ESTOQUE_ATUAL": estoque
                     }
                     itens.append(item)
@@ -991,8 +991,8 @@ async def buscar_produtos(request: Request, q: str = ""):
                     "pro_venda": valor_unitario,
                     "pro_vendapz": valor_prazo,
                     "pro_descprovlr": valor_minimo,
-                    "PRO_MARCA": row[6] if row[6] is not None else "",
-                    "UNI_CODIGO": row[7] if row[7] is not None else "",
+                    "PRO_MARCA": row[5] if row[5] is not None else "",
+                    "UNI_CODIGO": row[6] if row[6] is not None else "",
                     "pro_quantidade": estoque,
                     "pro_imagem": row[8] or ""
                 }

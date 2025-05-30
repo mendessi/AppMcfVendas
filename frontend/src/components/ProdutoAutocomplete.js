@@ -195,9 +195,26 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
                         </div>
                       )}
                     </div>
-                    <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                      Código: {produto.pro_codigo} - Preço: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_venda)}
-                    </span>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        Código: {produto.pro_codigo}
+                      </span>
+                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        Marca: {produto.PRO_MARCA || '-'}
+                      </span>
+                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        À Vista: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_venda)}
+                      </span>
+                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        Preço 2: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_vendapz || 0)}
+                      </span>
+                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        Mínimo: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_descprovlr || 0)}
+                      </span>
+                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                        Estoque: {produto.pro_quantidade || 0} {produto.UNI_CODIGO || ''}
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={(e) => {

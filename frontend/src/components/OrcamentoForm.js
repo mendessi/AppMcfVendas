@@ -146,15 +146,25 @@ const OrcamentoForm = ({ numero, darkMode }) => {
       return;
     }
     
-    // Mapear os campos corretamente
+    // Mapear os campos corretamente incluindo os novos campos
     const produtoCodigo = produto.pro_codigo || produto.codigo;
     const produtoDescricao = produto.pro_descricao || produto.descricao;
     const produtoPreco = produto.pro_venda || produto.preco || produto.valor_unitario || 0;
+    const produtoMarca = produto.PRO_MARCA || produto.pro_marca || '';
+    const precoPrazo = produto.pro_vendapz || 0;
+    const precoMinimo = produto.pro_descprovlr || 0;
+    const estoqueAtual = produto.pro_quantidade || 0;
+    const unidade = produto.UNI_CODIGO || '';
     
     console.log('Campos mapeados:', {
       produtoCodigo,
       produtoDescricao,
-      produtoPreco
+      produtoPreco,
+      produtoMarca,
+      precoPrazo,
+      precoMinimo,
+      estoqueAtual,
+      unidade
     });
     
     const produtoExistente = orcamento.produtos.find(p => p.codigo === produtoCodigo);
@@ -179,9 +189,14 @@ const OrcamentoForm = ({ numero, darkMode }) => {
       const novoProduto = {
         codigo: produtoCodigo,
         descricao: produtoDescricao,
+        marca: produtoMarca,
+        unidade: unidade,
         quantidade: 1,
         valor_unitario: produtoPreco,
-        valor_total: produtoPreco
+        valor_total: produtoPreco,
+        preco_prazo: precoPrazo,
+        preco_minimo: precoMinimo,
+        estoque_atual: estoqueAtual
       };
       console.log('Novo produto criado:', novoProduto);
       
@@ -330,6 +345,16 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                   } uppercase tracking-wider`}>
                     Descrição
                   </th>
+                  <th className={`px-6 py-3 text-left text-xs font-medium ${
+                    darkMode ? "text-gray-300" : "text-gray-500"
+                  } uppercase tracking-wider`}>
+                    Marca
+                  </th>
+                  <th className={`px-6 py-3 text-center text-xs font-medium ${
+                    darkMode ? "text-gray-300" : "text-gray-500"
+                  } uppercase tracking-wider`}>
+                    Unid.
+                  </th>
                   <th className={`px-6 py-3 text-right text-xs font-medium ${
                     darkMode ? "text-gray-300" : "text-gray-500"
                   } uppercase tracking-wider`}>
@@ -339,6 +364,21 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                     darkMode ? "text-gray-300" : "text-gray-500"
                   } uppercase tracking-wider`}>
                     Valor Unitário
+                  </th>
+                  <th className={`px-6 py-3 text-right text-xs font-medium ${
+                    darkMode ? "text-gray-300" : "text-gray-500"
+                  } uppercase tracking-wider`}>
+                    Preço 2
+                  </th>
+                  <th className={`px-6 py-3 text-right text-xs font-medium ${
+                    darkMode ? "text-gray-300" : "text-gray-500"
+                  } uppercase tracking-wider`}>
+                    Preço Mín.
+                  </th>
+                  <th className={`px-6 py-3 text-right text-xs font-medium ${
+                    darkMode ? "text-gray-300" : "text-gray-500"
+                  } uppercase tracking-wider`}>
+                    Estoque
                   </th>
                   <th className={`px-6 py-3 text-right text-xs font-medium ${
                     darkMode ? "text-gray-300" : "text-gray-500"
@@ -366,6 +406,16 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                       darkMode ? "text-white" : "text-gray-900"
                     }`}>
                       {produto.descricao}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}>
+                      {produto.marca}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-center ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}>
+                      {produto.unidade}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <input
@@ -395,14 +445,35 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                       {new Intl.NumberFormat('pt-BR', {
                         style: 'currency',
                         currency: 'BRL'
+                      }).format(produto.preco_prazo)}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-right ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}>
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                      }).format(produto.preco_minimo)}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-right ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}>
+                      {produto.estoque_atual}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-right ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}>
+                      {new Intl.NumberFormat('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
                       }).format(produto.valor_total)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <button
                         type="button"
                         onClick={() => handleRemoveProduto(produto.codigo)}
-                        className={`text-red-600 hover:text-red-900 ${
-                          darkMode ? "hover:text-red-400" : ""
+                        className={`text-red-500 hover:text-red-700 ${
+                          darkMode ? "text-red-300 hover:text-red-400" : ""
                         }`}
                       >
                         <FiTrash2 className="inline-block" />
@@ -411,68 +482,29 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                   </tr>
                 ))}
               </tbody>
-              <tfoot className={darkMode ? "bg-gray-600" : "bg-gray-100"}>
-                <tr>
-                  <td colSpan="4" className={`px-6 py-4 text-right font-medium ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}>
-                    Subtotal:
-                  </td>
-                  <td className={`px-6 py-4 text-right font-medium ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}>
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0))}
-                  </td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td colSpan="4" className={`px-6 py-4 text-right font-medium ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}>
-                    Desconto ({orcamento.desconto}%):
-                  </td>
-                  <td className={`px-6 py-4 text-right font-medium ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}>
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format((orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0) * orcamento.desconto) / 100)}
-                  </td>
-                  <td></td>
-                </tr>
-                <tr>
-                  <td colSpan="4" className={`px-6 py-4 text-right font-bold ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}>
-                    Total:
-                  </td>
-                  <td className={`px-6 py-4 text-right font-bold ${
-                    darkMode ? "text-white" : "text-gray-900"
-                  }`}>
-                    {new Intl.NumberFormat('pt-BR', {
-                      style: 'currency',
-                      currency: 'BRL'
-                    }).format(calcularTotal())}
-                  </td>
-                  <td></td>
-                </tr>
-              </tfoot>
             </table>
           </div>
-        ) : (
-          <div className={`text-center py-8 ${
-            darkMode ? "text-gray-300" : "text-gray-600"
-          }`}>
-            Nenhum produto adicionado
+        ) : null}
+      </div>
+
+      <div className={`p-4 rounded-lg ${
+        darkMode ? "bg-gray-700" : "bg-gray-50"
+      }`}>
+        <div className="flex justify-end">
+          <div className="text-right">
+            <p className={`text-lg font-medium ${
+              darkMode ? "text-gray-300" : "text-gray-700"
+            }`}>
+              Total: {new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+              }).format(calcularTotal())}
+            </p>
           </div>
-        )}
+        </div>
       </div>
     </form>
   );
 };
 
-export default OrcamentoForm; 
+export default OrcamentoForm;

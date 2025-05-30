@@ -57,6 +57,9 @@ function OrcamentoForm({ darkMode = false }) {
   const [produtoSelecionadoConfirmacao, setProdutoSelecionadoConfirmacao] = useState(null);
   const [indiceProduto, setIndiceProduto] = useState(-1);
 
+  // Estado para rastrear o último item inserido (sempre será o índice 0)
+  const [ultimoItemInserido, setUltimoItemInserido] = useState(null);
+
   // useEffect para limpar campos ao entrar na tela
   useEffect(() => {
     console.log('Componente OrcamentoForm montado - limpando campos...');
@@ -164,36 +167,6 @@ function OrcamentoForm({ darkMode = false }) {
     setIndiceProduto(-1);
   };
 
-  // Handler para adicionar produto
-  const handleAdicionarProduto = () => {
-    if (!produtoSelecionado) return;
-    const valorUnit = produtoSelecionado.pro_venda || produtoSelecionado.valor_unitario || 0;
-    const novoItem = {
-      codigo: produtoSelecionado.pro_codigo || produtoSelecionado.codigo,
-      descricao: produtoSelecionado.pro_descricao || produtoSelecionado.descricao,
-      quantidade: 1,
-      valor_unitario: valorUnit,
-      valor_total: valorUnit * 1,
-      imagem: produtoSelecionado.pro_imagem || produtoSelecionado.imagem || ''
-    };
-    
-    // Adiciona o novo item no início do array para aparecer acima dos existentes
-    setProdutos([novoItem, ...produtos]);
-    
-    setProdutoSelecionado(null);
-    setQuantidade(1);
-    setValorUnitario(0);
-    setImagem('');
-    setProdutoBusca('');
-    
-    // Foca no campo de quantidade do novo item (que agora está na posição 0)
-    setTimeout(() => {
-      if (quantidadeRefs.current[0]) {
-        quantidadeRefs.current[0].focus();
-      }
-    }, 100);
-  };
-
   const handleQuantidadeChange = (idx, value) => {
     const novaQtd = parseFloat(value) || 1;
     const novosProdutos = produtos.map((p, i) =>
@@ -235,9 +208,10 @@ function OrcamentoForm({ darkMode = false }) {
     if (!produtoExistente) {
       // Adiciona um novo produto
       const valorUnit = produto.pro_venda || produto.valor_unitario || 0;
+      const codigoProduto = produto.pro_codigo || produto.codigo;
       const novoItem = {
-        codigo: produto.pro_codigo || produto.codigo,
-        pro_codigo: produto.pro_codigo || produto.codigo, // Garantir que pro_codigo está definido
+        codigo: codigoProduto,
+        pro_codigo: codigoProduto, // Garantir que pro_codigo está definido
         descricao: produto.pro_descricao || produto.descricao,
         quantidade: 1,
         valor_unitario: valorUnit,
@@ -246,6 +220,14 @@ function OrcamentoForm({ darkMode = false }) {
       };
       const novosProdutos = [novoItem, ...produtos];
       setProdutos(novosProdutos);
+      
+      // Marca este produto como o último inserido
+      setUltimoItemInserido(codigoProduto);
+      
+      // Remove o destaque após 3 segundos
+      setTimeout(() => {
+        setUltimoItemInserido(null);
+      }, 3000);
       
       // Foca no novo item após a atualização do estado
       setTimeout(() => {
@@ -260,12 +242,22 @@ function OrcamentoForm({ darkMode = false }) {
       );
       
       if (index !== -1) {
+        const codigoProduto = produto.pro_codigo || produto.codigo;
         novosProdutos[index] = {
           ...novosProdutos[index],
           quantidade: (novosProdutos[index].quantidade || 1) + 1,
           valor_total: novosProdutos[index].valor_unitario * ((novosProdutos[index].quantidade || 1) + 1)
         };
         setProdutos(novosProdutos);
+        
+        // Marca este produto como o último modificado
+        setUltimoItemInserido(codigoProduto);
+        
+        // Remove o destaque após 3 segundos
+        setTimeout(() => {
+          setUltimoItemInserido(null);
+        }, 3000);
+        
         scrollToProduto(index);
       }
     }
@@ -371,6 +363,7 @@ function OrcamentoForm({ darkMode = false }) {
     setProdutoSelecionadoConfirmacao(null);
     setIndiceProduto(-1);
     setIsLoading(false);
+    setUltimoItemInserido(null);
     
     // Limpa os campos de busca
     setTimeout(() => {
@@ -546,7 +539,7 @@ function OrcamentoForm({ darkMode = false }) {
       {/* Itens do orçamento */}
       <div className="mb-8 flex-1">
         <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Itens</h3>
-        <div className="flex flex-col sm:flex-row gap-2 mb-2">
+        <div className="flex gap-3 items-end mb-6">
           <div className="flex-1">
             <ProdutoAutocomplete 
               value={produtoSelecionado} 
@@ -556,90 +549,140 @@ function OrcamentoForm({ darkMode = false }) {
               darkMode={darkMode}
             />
           </div>
-          <button 
-            type="button" 
-            onClick={handleAdicionarProduto} 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition w-full sm:w-auto"
-            style={{ fontSize: 18 }}
-          >
-            Adicionar Produto
-          </button>
         </div>
         <div className="space-y-3">
-          {produtos.map((p, idx) => (
-            <div key={idx} ref={el => produtoRefs.current[idx] = el} className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg shadow-sm p-3 flex flex-col gap-3`}>
-              <div className="flex items-center justify-between">
-                <div className={`font-medium text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>{p.codigo}</div>
-                <button 
-                  type="button" 
-                  onClick={() => handleRemoverProduto(idx)} 
-                  className={`${darkMode ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' : 'text-red-500 hover:text-red-700 hover:bg-red-50'} rounded p-1 transition-all`}
-                  title="Remover produto"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              
-              <div className={`font-semibold text-base leading-tight ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>{p.descricao}</div>
-              
-              <div className="grid grid-cols-3 gap-3 items-end">
-                <div className="flex flex-col">
-                  <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Qtd</label>
-                  <input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={p.quantidade}
-                    ref={el => quantidadeRefs.current[idx] = el}
-                    onChange={e => handleQuantidadeChange(idx, e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === 'Tab') {
-                        e.preventDefault();
-                        if (precoRefs.current[idx]) precoRefs.current[idx].focus();
-                      }
-                    }}
-                    className={`w-full px-2 py-2 rounded border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} focus:outline-none focus:ring-1 text-center font-medium`}
-                  />
+          {produtos.map((p, idx) => {
+            // Verifica se este é o último item inserido
+            const isUltimoInserido = ultimoItemInserido === p.codigo;
+            
+            return (
+              <div 
+                key={idx} 
+                ref={el => produtoRefs.current[idx] = el} 
+                className={`
+                  ${isUltimoInserido 
+                    ? darkMode 
+                      ? 'bg-green-900/30 border-green-500 ring-2 ring-green-500/50' 
+                      : 'bg-green-50 border-green-300 ring-2 ring-green-300/50'
+                    : darkMode 
+                      ? 'bg-gray-800 border-gray-700' 
+                      : 'bg-white border-gray-200'
+                  } 
+                  border rounded-lg shadow-sm p-3 flex flex-col gap-3 transition-all duration-300
+                  ${isUltimoInserido ? 'animate-pulse' : ''}
+                `}
+              >
+                <div className="flex items-center justify-between">
+                  <div className={`font-medium text-sm ${
+                    isUltimoInserido 
+                      ? darkMode ? 'text-green-300' : 'text-green-700'
+                      : darkMode ? 'text-gray-300' : 'text-gray-900'
+                  }`}>
+                    {p.codigo}
+                    {isUltimoInserido && (
+                      <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                        darkMode ? 'bg-green-600 text-white' : 'bg-green-200 text-green-800'
+                      }`}>
+                        NOVO
+                      </span>
+                    )}
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => handleRemoverProduto(idx)} 
+                    className={`${darkMode ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' : 'text-red-500 hover:text-red-700 hover:bg-red-50'} rounded p-1 transition-all`}
+                    title="Remover produto"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
-                <div className="flex flex-col">
-                  <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Valor Unit.</label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={p.valor_unitario}
-                    ref={el => precoRefs.current[idx] = el}
-                    onChange={e => handleValorUnitarioChange(idx, e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        if (quantidadeRefs.current[idx + 1]) {
+                
+                <div className={`font-semibold text-base leading-tight ${
+                  isUltimoInserido 
+                    ? darkMode ? 'text-green-200' : 'text-green-800'
+                    : darkMode ? 'text-gray-100' : 'text-gray-800'
+                }`}>
+                  {p.descricao}
+                </div>
+                
+                <div className="grid grid-cols-3 gap-3 items-end">
+                  <div className="flex flex-col">
+                    <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Qtd</label>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={p.quantidade}
+                      ref={el => quantidadeRefs.current[idx] = el}
+                      onChange={e => handleQuantidadeChange(idx, e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === 'Tab') {
                           e.preventDefault();
-                          quantidadeRefs.current[idx + 1].focus();
+                          if (precoRefs.current[idx]) precoRefs.current[idx].focus();
                         }
-                      }
-                    }}
-                    className={`w-full px-2 py-2 rounded border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} focus:outline-none focus:ring-1 text-right font-medium`}
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total</label>
-                  <div className={`px-2 py-2 border rounded text-right font-semibold ${darkMode ? 'bg-blue-900/20 border-blue-800 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
-                    R$ {parseFloat(p.valor_total).toLocaleString('pt-BR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
+                      }}
+                      className={`w-full px-2 py-2 rounded border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} focus:outline-none focus:ring-1 text-center font-medium`}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Valor Unit.</label>
+                    <input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={p.valor_unitario}
+                      ref={el => precoRefs.current[idx] = el}
+                      onChange={e => handleValorUnitarioChange(idx, e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          if (quantidadeRefs.current[idx + 1]) {
+                            e.preventDefault();
+                            quantidadeRefs.current[idx + 1].focus();
+                          }
+                        }
+                      }}
+                      className={`w-full px-2 py-2 rounded border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} focus:outline-none focus:ring-1 text-right font-medium`}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total</label>
+                    <div className={`px-2 py-2 border rounded text-right font-semibold ${darkMode ? 'bg-blue-900/20 border-blue-800 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                      R$ {parseFloat(p.valor_total).toLocaleString('pt-BR', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       {/* Totais */}
       <div className={`${darkMode ? 'bg-gray-900' : 'bg-gray-100'} rounded-lg p-4 mb-6`}>
         <div className="space-y-2">
+          {/* Linha de quantidade de itens */}
+          <div className="flex justify-between items-center">
+            <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium`}>Qtde de Itens:</span>
+            <span className={`${darkMode ? 'text-gray-100' : 'text-gray-900'} font-semibold`}>
+              {produtos.length}
+            </span>
+          </div>
+          
+          {/* Linha de quantidade total */}
+          <div className="flex justify-between items-center">
+            <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium`}>Soma das Qtdades:</span>
+            <span className={`${darkMode ? 'text-gray-100' : 'text-gray-900'} font-semibold`}>
+              {produtos.reduce((total, produto) => total + (parseFloat(produto.quantidade) || 0), 0).toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+              })}
+            </span>
+          </div>
+          
           {/* Linha de subtotal */}
           <div className="flex justify-between items-center">
             <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium`}>Subtotal:</span>

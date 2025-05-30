@@ -1,147 +1,179 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiSearch, FiLoader } from 'react-icons/fi';
 import api from '../services/api';
 
-function ClienteAutocomplete({ value, onChange }) {
-  const [input, setInput] = useState(value?.cli_nome || '');
-  const [clientes, setClientes] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showList, setShowList] = useState(false);
-  const [error, setError] = useState(null);
-  const timeoutRef = useRef(null);
+const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const wrapperRef = useRef(null);
 
   useEffect(() => {
-    if (value) {
-      setInput(value.cli_nome || '');
-    }
-  }, [value]);
-
-  const handleInput = async (e) => {
-    const val = e.target.value;
-    setInput(val);
-    setShowList(true);
-    setError(null);
-
-    // Limpar timeout anterior
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    if (val.length < 2) {
-      setClientes([]);
-      return;
-    }
-
-    // Adicionar debounce de 500ms
-    timeoutRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('token');
-        const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada') || localStorage.getItem('empresaSelecionadaCodigo');
-        let empresaCodigo = null;
-        if (empresaCodigo) {
-          try {
-            const empObj = JSON.parse(empresaCodigo);
-            empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
-          } catch {
-            empresaCodigo = empresaSelecionada;
-          }
-        }
-
-        const headers = {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        };
-        if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
-
-        console.log('Buscando clientes com termo:', val);
-        console.log('Headers da requisição:', headers);
-
-        const response = await api.get(`/relatorios/clientes?q=${encodeURIComponent(val)}`, { headers });
-        console.log('Resposta da API:', response.data);
-
-        if (!response.data || !Array.isArray(response.data)) {
-          console.error('Resposta inválida da API:', response.data);
-          setError('Erro ao buscar clientes: resposta inválida');
-          setClientes([]);
-          return;
-        }
-
-        setClientes(response.data);
-      } catch (err) {
-        console.error('Erro ao buscar clientes:', err);
-        setError(err.message || 'Erro ao buscar clientes');
-        setClientes([]);
-      } finally {
-        setLoading(false);
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setShowSuggestions(false);
       }
-    }, 500);
-  };
+    };
 
-  // Limpar timeout ao desmontar
-  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  const handleSelect = (cliente) => {
-    console.log('=== CLIENTE SELECIONADO NO AUTOCOMPLETE ===');
-    console.log('Cliente selecionado (objeto bruto):', cliente);
-    console.log('Tipo do objeto:', typeof cliente);
-    console.log('Campos disponíveis:', Object.keys(cliente));
-    console.log('cli_nome:', cliente.cli_nome);
-    console.log('CLI_NOME:', cliente.CLI_NOME);
-    console.log('nome:', cliente.nome);
-    console.log('label:', cliente.label);
-    
-    // Garante que o cliente tenha pelo menos o campo cli_nome
-    const clienteFormatado = {
-      ...cliente,
-      cli_nome: cliente.cli_nome || cliente.CLI_NOME || cliente.nome || cliente.label || 'Cliente não informado',
-      cli_codigo: cliente.cli_codigo || cliente.CLI_CODIGO || cliente.codigo || null
+  useEffect(() => {
+    const searchClientes = async () => {
+      if (searchTerm.length < 2) {
+        setSuggestions([]);
+        return;
+      }
+
+      // Limitar o termo de busca a 14 caracteres para evitar erro no Firebird
+      const searchQuery = searchTerm.substring(0, 14);
+
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const empresaCodigo = localStorage.getItem('empresa_atual');
+        const empresaDetalhes = localStorage.getItem('empresa_detalhes');
+
+        if (!empresaCodigo || !empresaDetalhes) {
+          console.error('Dados da empresa não encontrados');
+          return;
+        }
+
+        const response = await api.get(`/relatorios/clientes`, {
+          params: {
+            q: searchQuery,
+            empresa: empresaCodigo
+          },
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'x-empresa-codigo': empresaCodigo
+          }
+        });
+
+        console.log('Dados retornados da API:', response.data);
+
+        // Mapear os dados retornados para o formato esperado
+        const clientesMapeados = response.data.map(cliente => ({
+          codigo: cliente.cli_codigo || cliente.codigo,
+          nome: cliente.cli_nome || cliente.nome,
+          documento: cliente.cli_cgc || cliente.cli_cpf || cliente.documento,
+          tipo: cliente.cli_tipo || cliente.tipo || 'F'
+        }));
+
+        console.log('Dados mapeados:', clientesMapeados);
+        setSuggestions(clientesMapeados);
+      } catch (error) {
+        console.error('Erro ao buscar clientes:', error);
+        if (error.response) {
+          console.error('Detalhes do erro:', error.response.data);
+          // Se for erro de tamanho do parâmetro, mostrar mensagem amigável
+          if (error.response.data?.detail?.includes('too long')) {
+            console.warn('Busca limitada aos primeiros 14 caracteres devido a restrição do banco de dados');
+          }
+        }
+        setSuggestions([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
-    
-    console.log('Cliente formatado para envio:', clienteFormatado);
-    
-    setInput(clienteFormatado.cli_nome);
-    setShowList(false);
-    onChange(clienteFormatado);
+
+    const timeoutId = setTimeout(searchClientes, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (typeof value === 'string') {
+      setSearchTerm(value);
+    } else if (value && typeof value === 'object') {
+      setSearchTerm(value.nome || '');
+    } else {
+      setSearchTerm('');
+    }
+  }, [value]);
+
+  const handleInputChange = (e) => {
+    const newValue = e.target.value;
+    setSearchTerm(newValue);
+    if (onChange) {
+      onChange(newValue);
+    }
+    setShowSuggestions(true);
+  };
+
+  const handleSuggestionClick = (cliente) => {
+    setSearchTerm(cliente.nome || '');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    if (onSelect) {
+      onSelect({
+        codigo: cliente.codigo,
+        nome: cliente.nome,
+        documento: cliente.documento,
+        tipo: cliente.tipo
+      });
+    }
   };
 
   return (
-    <div className="relative">
-      <input
-        type="text"
-        className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="Buscar cliente..."
-        value={input}
-        onChange={handleInput}
-        onFocus={() => setShowList(true)}
-        autoComplete="off"
-      />
-      {loading && <div className="absolute right-3 top-3 spinner-border animate-spin w-4 h-4 border-2 border-blue-400 rounded-full"></div>}
-      {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
-      {showList && clientes.length > 0 && (
-        <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-lg max-h-96 overflow-auto">
-          {clientes.map((c, idx) => (
-            <div
-              key={c.cli_codigo ? c.cli_codigo : `cliente-${idx}`}
-              className="p-2 hover:bg-blue-700 cursor-pointer border-b border-gray-700 last:border-b-0"
-              onClick={() => handleSelect(c)}
-            >
-              <div className="font-bold text-gray-100">{c.cli_nome || '[Sem nome]'}</div>
-              <div className="text-sm text-gray-400">
-                {c.cli_cgc && `CNPJ: ${c.cli_cgc}`}
-                {c.cli_cpf && `CPF: ${c.cli_cpf}`}
+    <div className="relative" ref={wrapperRef}>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <FiSearch className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+        </div>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={handleInputChange}
+          placeholder="Buscar cliente..."
+          className={`pl-10 w-full rounded-md ${
+            darkMode
+              ? "bg-gray-600 border-gray-500 text-white"
+              : "bg-white border-gray-300 text-gray-700"
+          }`}
+        />
+      </div>
+
+      {showSuggestions && (searchTerm.length >= 2) && (
+        <div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${
+          darkMode ? "bg-gray-700" : "bg-white"
+        }`}>
+          <div className="max-h-60 overflow-auto">
+            {isLoading ? (
+              <div className={`p-4 text-center ${darkMode ? "text-gray-300" : "text-gray-500"}`}>
+                <FiLoader className="animate-spin h-5 w-5 mx-auto" />
+                <span className="ml-2">Carregando...</span>
               </div>
-            </div>
-          ))}
+            ) : suggestions.length > 0 ? (
+              <ul className="py-1">
+                {suggestions.map((cliente) => (
+                  <li
+                    key={cliente.codigo}
+                    onClick={() => handleSuggestionClick(cliente)}
+                    className={`px-4 py-2 cursor-pointer hover:${
+                      darkMode ? "bg-gray-600" : "bg-gray-100"
+                    } ${darkMode ? "text-white" : "text-gray-700"}`}
+                  >
+                    <div className="font-medium">{cliente.nome}</div>
+                    <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Código: {cliente.codigo} | {cliente.tipo === 'F' ? 'CPF' : 'CNPJ'}: {cliente.documento}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className={`p-4 text-center ${darkMode ? "text-gray-300" : "text-gray-500"}`}>
+                Nenhum cliente encontrado
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
-}
+};
 
 export default ClienteAutocomplete;

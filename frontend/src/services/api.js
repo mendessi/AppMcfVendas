@@ -36,73 +36,40 @@ if (API_URL.endsWith('/')) {
 
 // Criar uma instância do axios com configurações padrão
 const api = axios.create({
-  baseURL: API_URL,
-  timeout: 30000, // 30 segundos
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  }
+  baseURL: process.env.REACT_APP_API_URL || API_URL,
+  timeout: 10000
 });
 
 // Interceptador para adicionar o token em todas as requisições
 api.interceptors.request.use(
-  config => {
-    // Obter o token do localStorage
+  (config) => {
+    // Adicionar token de autenticação
     const token = localStorage.getItem('token');
-    
-    // Se o token existir, adicionar ao cabeçalho Authorization
     if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    
-    // Obter a empresa atual do localStorage
-    const empresaAtualStr = localStorage.getItem('empresa_atual');
-    if (empresaAtualStr) {
-      try {
-        const empresaAtual = JSON.parse(empresaAtualStr);
-        // Adicionar o código da empresa ao cabeçalho
-        if (empresaAtual && empresaAtual.cli_codigo) {
-          config.headers['x-empresa-codigo'] = empresaAtual.cli_codigo.toString();
-        }
-      } catch (error) {
-        console.error('Erro ao processar empresa atual:', error);
-      }
+
+    // Adicionar código da empresa
+    const empresaAtual = localStorage.getItem('empresa_atual');
+    if (empresaAtual) {
+      config.headers['x-empresa-codigo'] = empresaAtual;
     }
-    
+
     return config;
   },
-  error => {
-    console.error('Erro no interceptador de requisição:', error);
+  (error) => {
     return Promise.reject(error);
   }
 );
 
 // Interceptador para tratar erros nas respostas
 api.interceptors.response.use(
-  response => {
-    return response;
-  },
-  error => {
-    if (error.response && error.response.status === 401) {
-      console.warn('Sessão expirada ou token inválido');
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
     }
-    
-    if (error.response && error.response.status === 403) {
-      console.warn('Acesso negado - verifique as permissões');
-    }
-    
-    if (!error.response) {
-      console.error('Erro de conexão - possível problema de CORS ou rede');
-    }
-    
-    console.error('Detalhes do erro API:', {
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      data: error.response?.data,
-      message: error.message
-    });
-    
     return Promise.reject(error);
   }
 );
@@ -127,6 +94,46 @@ api.interceptors.response.use(null, async (error) => {
   // Tenta novamente
   return api(config);
 });
+
+// Funções para buscar dados de tabelas, vendedores e formas de pagamento
+export const getTabelasPreco = async () => {
+  const empresaCodigo = localStorage.getItem('empresa_atual');
+  return api.get('/relatorios/listar_tabelas', {
+    params: {
+      search: '',
+      empresa: empresaCodigo
+    },
+    headers: {
+      'x-empresa-codigo': empresaCodigo
+    }
+  });
+};
+
+export const getVendedores = async () => {
+  const empresaCodigo = localStorage.getItem('empresa_atual');
+  return api.get('/relatorios/listar_vendedores', {
+    params: {
+      search: '',
+      empresa: empresaCodigo
+    },
+    headers: {
+      'x-empresa-codigo': empresaCodigo
+    }
+  });
+};
+
+export const getFormasPagamento = async () => {
+  const empresaCodigo = localStorage.getItem('empresa_atual');
+  return api.get('/relatorios/listar_formas_pagamento', {
+    params: {
+      search: '',
+      empresa: empresaCodigo
+    },
+    headers: {
+      'x-empresa-codigo': empresaCodigo
+    }
+  });
+};
 
 // Exportar a instância do axios diretamente
 export default api;

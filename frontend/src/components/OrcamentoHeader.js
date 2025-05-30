@@ -1,160 +1,328 @@
-import React, { useCallback } from 'react';
+import React from 'react';
+import { FiUser, FiCalendar, FiPercent, FiFileText } from 'react-icons/fi';
 import ClienteAutocomplete from './ClienteAutocomplete';
-import SelectDinamico from './SelectDinamico';
-import api from '../services/api';
+import TabelaPrecoSelect from './TabelaPrecoSelect';
+import VendedorSelect from './VendedorSelect';
+import FormaPagamentoSelect from './FormaPagamentoSelect';
 
-function OrcamentoHeader({ cliente, setCliente, tabela, setTabela, formaPagamento, setFormaPagamento, vendedor, setVendedor, dataOrcamento, validade, setValidade, especie, setEspecie, desconto, setDesconto, observacao, setObservacao, ESPECIE_OPCOES }) {
-  // Funções de busca memorizadas
-  const fetchTabelas = useCallback(async () => {
-    try {
-      console.log('Buscando tabelas de preço...');
-      const token = localStorage.getItem('token');
-      const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada') || localStorage.getItem('empresaSelecionadaCodigo');
-      let empresaCodigo = null;
-      if (empresaSelecionada) {
-        try {
-          const empObj = JSON.parse(empresaSelecionada);
-          empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
-        } catch {
-          empresaCodigo = empresaSelecionada;
+const OrcamentoHeader = ({
+  darkMode,
+  orcamento = {},
+  setOrcamento,
+  // Props individuais para compatibilidade
+  cliente,
+  setCliente,
+  tabela,
+  setTabela,
+  formaPagamento,
+  setFormaPagamento,
+  vendedor,
+  setVendedor,
+  dataOrcamento,
+  validade,
+  setValidade,
+  especie,
+  setEspecie,
+  desconto,
+  setDesconto,
+  observacao,
+  setObservacao,
+  ESPECIE_OPCOES,
+  tabelas = [],
+  formasPagamento = [],
+  vendedores = [],
+  onClienteSelect
+}) => {
+  // Determina se está usando o modo unificado (setOrcamento) ou props individuais
+  const isUnifiedMode = !!setOrcamento;
+
+  // Funções auxiliares para lidar com as mudanças
+  const handleClienteChange = (value) => {
+    if (isUnifiedMode) {
+      setOrcamento(prev => ({
+        ...prev,
+        cliente: {
+          codigo: prev.cliente?.codigo || '',
+          nome: value,
+          tipo: prev.cliente?.tipo || 'F',
+          documento: prev.cliente?.documento || ''
         }
-      }
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
-
-      const res = await api.get('/relatorios/listar_tabelas', { headers });
-      console.log('Resposta tabelas de preço:', res.data);
-      return (res.data || []).map(t => ({ value: t.codigo || t.TAB_CODIGO, label: t.nome || t.TAB_NOME }));
-    } catch (error) {
-      console.error('Erro ao buscar tabelas de preço:', error);
-      return [];
+      }));
+    } else if (setCliente) {
+      setCliente(prev => ({
+        ...prev,
+        nome: value
+      }));
     }
-  }, []);
+  };
 
-  const fetchFormasPagamento = useCallback(async () => {
-    try {
-      console.log('Buscando formas de pagamento...');
-      const token = localStorage.getItem('token');
-      const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada') || localStorage.getItem('empresaSelecionadaCodigo');
-      let empresaCodigo = null;
-      if (empresaSelecionada) {
-        try {
-          const empObj = JSON.parse(empresaSelecionada);
-          empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
-        } catch {
-          empresaCodigo = empresaSelecionada;
+  const handleClienteSelect = (selectedCliente) => {
+    console.log('Cliente selecionado:', selectedCliente);
+    if (isUnifiedMode) {
+      setOrcamento(prev => ({
+        ...prev,
+        cliente: {
+          codigo: selectedCliente.codigo,
+          nome: selectedCliente.nome,
+          tipo: selectedCliente.tipo || 'F',
+          documento: selectedCliente.documento || ''
         }
-      }
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
-
-      const res = await api.get('/relatorios/listar_formas_pagamento', { headers });
-      console.log('Resposta formas de pagamento:', res.data);
-      return (res.data || []).map(f => ({ value: f.codigo || f.FPG_CODIGO, label: f.nome || f.FPG_NOME }));
-    } catch (error) {
-      console.error('Erro ao buscar formas de pagamento:', error);
-      return [];
+      }));
+    } else if (setCliente) {
+      setCliente(selectedCliente);
     }
-  }, []);
-
-  const fetchVendedores = useCallback(async () => {
-    try {
-      console.log('Buscando vendedores...');
-      const token = localStorage.getItem('token');
-      const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada') || localStorage.getItem('empresaSelecionadaCodigo');
-      let empresaCodigo = null;
-      if (empresaSelecionada) {
-        try {
-          const empObj = JSON.parse(empresaSelecionada);
-          empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
-        } catch {
-          empresaCodigo = empresaSelecionada;
-        }
-      }
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-      if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
-
-      const res = await api.get('/relatorios/listar_vendedores', { headers });
-      console.log('Resposta vendedores:', res.data);
-      return (res.data || []).map(v => ({ value: v.codigo || v.VEN_CODIGO, label: v.nome || v.VEN_NOME }));
-    } catch (error) {
-      console.error('Erro ao buscar vendedores:', error);
-      return [];
+    if (onClienteSelect) {
+      onClienteSelect(selectedCliente);
     }
-  }, []);
+  };
+
+  const handleTabelaPrecoChange = (tabelaCodigo) => {
+    if (isUnifiedMode) {
+      setOrcamento(prev => ({
+        ...prev,
+        tabela_preco: tabelaCodigo
+      }));
+    } else if (setTabela) {
+      setTabela(tabelaCodigo);
+    }
+  };
+
+  const handleVendedorChange = (vendedorCodigo) => {
+    if (isUnifiedMode) {
+      setOrcamento(prev => ({
+        ...prev,
+        vendedor: vendedorCodigo
+      }));
+    } else if (setVendedor) {
+      setVendedor(vendedorCodigo);
+    }
+  };
+
+  const handleFormaPagamentoChange = (formaPagamentoCodigo) => {
+    if (isUnifiedMode) {
+      setOrcamento(prev => ({
+        ...prev,
+        forma_pagamento: formaPagamentoCodigo
+      }));
+    } else if (setFormaPagamento) {
+      setFormaPagamento(formaPagamentoCodigo);
+    }
+  };
+
+  const handleDescontoChange = (value) => {
+    const descontoValue = parseFloat(value) || 0;
+    if (isUnifiedMode) {
+      setOrcamento(prev => ({
+        ...prev,
+        desconto: descontoValue
+      }));
+    } else if (setDesconto) {
+      setDesconto(descontoValue);
+    }
+  };
+
+  const handleValidadeChange = (value) => {
+    if (isUnifiedMode) {
+      setOrcamento(prev => ({
+        ...prev,
+        validade: value
+      }));
+    } else if (setValidade) {
+      setValidade(value);
+    }
+  };
+
+  const handleObservacaoChange = (value) => {
+    if (isUnifiedMode) {
+      setOrcamento(prev => ({
+        ...prev,
+        observacao: value
+      }));
+    } else if (setObservacao) {
+      setObservacao(value);
+    }
+  };
+
+  // Obtém os valores corretos dependendo do modo
+  const clienteValue = isUnifiedMode 
+    ? (orcamento?.cliente || { codigo: '', nome: '' })
+    : (cliente || { codigo: '', nome: '' });
+  const clienteNome = typeof clienteValue === 'string' ? clienteValue : (clienteValue.nome || '');
+  const validadeValue = isUnifiedMode ? orcamento.validade : validade;
+  const tabelaValue = isUnifiedMode ? (orcamento.tabela_preco || '') : (tabela || '');
+  const formaPagamentoValue = isUnifiedMode ? (orcamento.forma_pagamento || '') : (formaPagamento || '');
+  const vendedorValue = isUnifiedMode ? (orcamento.vendedor || '') : (vendedor || '');
+  const descontoValue = isUnifiedMode ? (orcamento.desconto || 0) : (desconto || 0);
+  const observacaoValue = isUnifiedMode ? (orcamento.observacao || '') : (observacao || '');
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <label className="block text-gray-300 mb-1">Cliente</label>
-        <ClienteAutocomplete value={cliente} onChange={setCliente} />
-      </div>
-      <div>
-        <SelectDinamico
-          label="Tabela de Preço"
-          value={tabela}
-          onChange={setTabela}
-          fetchOptions={fetchTabelas}
-          placeholder="Selecione a tabela"
-        />
-      </div>
-      <div>
-        <SelectDinamico
-          label="Forma de Pagamento"
-          value={formaPagamento}
-          onChange={setFormaPagamento}
-          fetchOptions={fetchFormasPagamento}
-          placeholder="Selecione a forma de pagamento"
-        />
-      </div>
-      <div>
-        <SelectDinamico
-          label="Vendedor"
-          value={vendedor}
-          onChange={setVendedor}
-          fetchOptions={fetchVendedores}
-          placeholder="Selecione o vendedor"
-        />
-      </div>
-      <div>
-        <label className="block text-gray-300 mb-1">Data Orçamento</label>
-        <input type="date" value={dataOrcamento} readOnly className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-gray-100" />
-      </div>
-      <div>
-        <label className="block text-gray-300 mb-1">Validade</label>
-        <input type="date" value={validade} onChange={e => setValidade(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-gray-100" />
-      </div>
-      <div>
-        <label className="block text-gray-300 mb-1">Espécie</label>
-        <select value={especie} onChange={e => setEspecie(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-gray-100">
-          {ESPECIE_OPCOES.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
+    <div className={`p-4 rounded-lg ${
+      darkMode ? "bg-gray-700" : "bg-gray-50"
+    }`}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Cliente */}
         <div>
-          <label className="block text-gray-300 mb-1">Desconto</label>
-          <input type="number" value={desconto} onChange={e => setDesconto(parseFloat(e.target.value) || 0)} className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-gray-100" />
+          <label className={`block text-sm font-medium mb-1 ${
+            darkMode ? "text-gray-300" : "text-gray-700"
+          }`}>
+            Cliente
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiUser className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+            </div>
+            <ClienteAutocomplete
+              value={clienteNome}
+              onChange={handleClienteChange}
+              onSelect={handleClienteSelect}
+              darkMode={darkMode}
+            />
+          </div>
         </div>
+
+        {/* Data */}
         <div>
-          <label className="block text-gray-300 mb-1">Observação</label>
-          <input type="text" value={observacao} onChange={e => setObservacao(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-gray-100" />
+          <label className={`block text-sm font-medium mb-1 ${
+            darkMode ? "text-gray-300" : "text-gray-700"
+          }`}>
+            Data
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiCalendar className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+            </div>
+            <input
+              type="date"
+              value={isUnifiedMode ? orcamento.data : dataOrcamento}
+              disabled
+              className={`pl-10 w-full rounded-md ${
+                darkMode
+                  ? "bg-gray-600 border-gray-500 text-white"
+                  : "bg-white border-gray-300 text-gray-700"
+              }`}
+            />
+          </div>
+        </div>
+
+        {/* Validade */}
+        <div>
+          <label className={`block text-sm font-medium mb-1 ${
+            darkMode ? "text-gray-300" : "text-gray-700"
+          }`}>
+            Validade
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiCalendar className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+            </div>
+            <input
+              type="date"
+              value={validadeValue}
+              onChange={(e) => handleValidadeChange(e.target.value)}
+              className={`pl-10 w-full rounded-md ${
+                darkMode
+                  ? "bg-gray-600 border-gray-500 text-white"
+                  : "bg-white border-gray-300 text-gray-700"
+              }`}
+            />
+          </div>
+        </div>
+
+        {/* Tabela de Preços */}
+        <div>
+          <label className={`block text-sm font-medium mb-1 ${
+            darkMode ? "text-gray-300" : "text-gray-700"
+          }`}>
+            Tabela de Preços
+          </label>
+          <TabelaPrecoSelect
+            value={tabelaValue}
+            onChange={handleTabelaPrecoChange}
+            darkMode={darkMode}
+          />
+        </div>
+
+        {/* Forma de Pagamento */}
+        <div>
+          <label className={`block text-sm font-medium mb-1 ${
+            darkMode ? "text-gray-300" : "text-gray-700"
+          }`}>
+            Forma de Pagamento
+          </label>
+          <FormaPagamentoSelect
+            value={formaPagamentoValue}
+            onChange={handleFormaPagamentoChange}
+            darkMode={darkMode}
+          />
+        </div>
+
+        {/* Vendedor */}
+        <div>
+          <label className={`block text-sm font-medium mb-1 ${
+            darkMode ? "text-gray-300" : "text-gray-700"
+          }`}>
+            Vendedor
+          </label>
+          <VendedorSelect
+            value={vendedorValue}
+            onChange={handleVendedorChange}
+            darkMode={darkMode}
+          />
+        </div>
+
+        {/* Desconto */}
+        <div>
+          <label className={`block text-sm font-medium mb-1 ${
+            darkMode ? "text-gray-300" : "text-gray-700"
+          }`}>
+            Desconto (%)
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiPercent className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+            </div>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={descontoValue}
+              onChange={(e) => handleDescontoChange(e.target.value)}
+              className={`pl-10 w-full rounded-md ${
+                darkMode
+                  ? "bg-gray-600 border-gray-500 text-white"
+                  : "bg-white border-gray-300 text-gray-700"
+              }`}
+            />
+          </div>
+        </div>
+
+        {/* Observações */}
+        <div className="md:col-span-2 lg:col-span-3">
+          <label className={`block text-sm font-medium mb-1 ${
+            darkMode ? "text-gray-300" : "text-gray-700"
+          }`}>
+            Observações
+          </label>
+          <div className="relative">
+            <div className="absolute top-3 left-3 pointer-events-none">
+              <FiFileText className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+            </div>
+            <textarea
+              value={observacaoValue}
+              onChange={(e) => handleObservacaoChange(e.target.value)}
+              rows="3"
+              className={`pl-10 w-full rounded-md ${
+                darkMode
+                  ? "bg-gray-600 border-gray-500 text-white"
+                  : "bg-white border-gray-300 text-gray-700"
+              }`}
+              placeholder="Digite as observações do orçamento..."
+            />
+          </div>
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default OrcamentoHeader;

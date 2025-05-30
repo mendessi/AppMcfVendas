@@ -162,127 +162,33 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
     }
   };
 
-  const handleEmpresaSelect = async (empresa) => {
+  const handleEmpresaSelect = (empresa) => {
     try {
-      // Verifica se a empresa está bloqueada
-      if (empresa.cli_bloqueadoapp === 'S') {
-        setError(empresa.cli_mensagem || 'Esta empresa está bloqueada para acesso.');
-        return;
-      }
-
-      // Usar o token armazenado no localStorage
-      const token = localStorage.getItem('token');
+      // Salvar apenas o código da empresa
+      localStorage.setItem('empresa', empresa.cli_codigo.toString());
+      localStorage.setItem('empresa_atual', empresa.cli_codigo.toString());
+      localStorage.setItem('empresa_selecionada', empresa.cli_codigo.toString());
       
-      // Chamar a API para selecionar a empresa
-      // Garantir que o código da empresa seja um número inteiro
-      const dadosEmpresa = {
-        cli_codigo: parseInt(empresa.cli_codigo, 10), // Converter para inteiro
-        cli_nome: empresa.cli_nome || '',
-        cli_bloqueadoapp: empresa.cli_bloqueadoapp || 'N',
-        cli_mensagem: empresa.cli_mensagem || '',
-        cli_caminho_base: empresa.cli_caminho_base || '',
-        cli_ip_servidor: empresa.cli_ip_servidor || '127.0.0.1',
-        cli_nome_base: empresa.cli_nome_base || '',
-        cli_porta: empresa.cli_porta || '3050'
-      };
+      // Configurar headers do axios
+      axios.defaults.headers.common['x-empresa-codigo'] = empresa.cli_codigo.toString();
       
-      console.log('Enviando dados da empresa formatados:', dadosEmpresa);
+      // Salvar objeto completo em outra chave se necessário
+      localStorage.setItem('empresa_detalhes', JSON.stringify(empresa));
       
-      // Configurar o cabeçalho de autorização para o axios
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      axios.defaults.headers.common['Content-Type'] = 'application/json';
-      
-      // Usar a rota real de seleção de empresa
-      try {
-        console.log('Fazendo a seleção real da empresa');
-        // Primeiro testar com o endpoint simplificado para confirmar CORS
-        console.log('Testando com o endpoint simplificado para CORS');
-        const testURL = `${API_URL}/teste-selecionar-empresa`;
-        console.log('URL de teste:', testURL);
-        
-        // Configuração detalhada para debug
-        const config = {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          validateStatus: status => status < 500
-        };
-        
-        console.log('Configuração da requisição:', config);
-        console.log('Dados enviados:', dadosEmpresa);
-        
-        // Testar primeiro com o endpoint simplificado
-        const response = await axios.post(testURL, dadosEmpresa, config);
-        console.log('Resposta do teste:', response);
-        
-        // Se o teste funcionou, testar com o endpoint real
-        //const responseReal = await axios.post(`${API_URL}/selecionar-empresa`, dadosEmpresa, config);
-        
-        // Verificar se a resposta não é bem-sucedida (códigos 4xx)
-        if (response.status >= 400) {
-          console.error('Erro na resposta:', response.data);
-          throw new Error(response.data.detail || 'Erro ao selecionar empresa: ' + response.status);
-        }
-      
-        // Os dados já estão no formato JSON com axios
-        const data = response.data;
-        console.log('Empresa selecionada com sucesso:', data);
-      } catch (axiosError) {
-        console.error('Erro na requisição axios:', axiosError);
-        
-        // Extrair informações de erro mais detalhadas
-        if (axiosError.response) {
-          // A requisição foi feita e o servidor respondeu com um status de erro
-          console.error('Dados do erro:', axiosError.response.data);
-          console.error('Status do erro:', axiosError.response.status);
-          console.error('Headers do erro:', axiosError.response.headers);
-          throw new Error(axiosError.response.data?.detail || `Erro ${axiosError.response.status}: ${axiosError.message}`);
-        } else if (axiosError.request) {
-          // A requisição foi feita mas não houve resposta
-          console.error('Requisição sem resposta:', axiosError.request);
-          throw new Error('Sem resposta do servidor. Verifique sua conexão.');
-        } else {
-          // Algo aconteceu na configuração da requisição que causou um erro
-          console.error('Erro na configuração:', axiosError.message);
-          throw new Error(`Erro de configuração: ${axiosError.message}`);
-        }
-      }
-      
-      // Notificar o componente pai que a empresa foi selecionada
+      // Notificar componente pai
       if (onSelectEmpresa) {
         onSelectEmpresa(empresa);
-      } else {
-        console.warn('onSelectEmpresa não foi fornecido como prop');
       }
       
-      // Armazena os dados da empresa selecionada localmente
-      localStorage.setItem('empresa', JSON.stringify(empresa));
-      localStorage.setItem('empresa_atual', JSON.stringify(empresa));
-      
-      // Atualiza os headers do axios para incluir o contexto da empresa
-      const empresaContexto = {
+      // Registrar no console
+      console.log('Empresa selecionada:', {
         codigo: empresa.cli_codigo,
         nome: empresa.cli_nome
-      };
-      localStorage.setItem('empresa_contexto', JSON.stringify(empresaContexto));
-      
-      // Registrar no console que estamos entrando no sistema
-      console.log(`Entrando no sistema com a empresa: ${empresa.cli_nome}`);
-
-      // Redirecionar para o dashboard após pequeno delay para garantir que o contexto foi atualizado
-      setTimeout(() => {
-        console.log('Redirecionando para o dashboard com a empresa:', empresa.cli_nome);
-        // Recarregar a página para garantir que todas as atualizações de contexto sejam aplicadas
-        window.location.href = '/';
-      }, 300);
-    } catch (err) {
-      console.error('Erro ao selecionar empresa:', err);
-      setError(err.message || 'Erro ao selecionar empresa. Tente novamente.');
+      });
+    } catch (error) {
+      console.error('Erro ao selecionar empresa:', error);
     }
   };
-
-
 
   if (loading) {
     return (
@@ -292,8 +198,6 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
       </div>
     );
   }
-
-  // Esta declaração foi removida para evitar duplicação
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'} py-12 px-4 sm:px-6 lg:px-8`}>
@@ -445,6 +349,7 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
               localStorage.removeItem('user');
               localStorage.removeItem('empresa');
               localStorage.removeItem('empresa_atual');
+              localStorage.removeItem('empresa_selecionada');
               // Usar redirecionamento direto em vez de navigate
               window.location.href = '/';
             }}

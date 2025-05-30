@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 
 const ProdutosList = ({ darkMode, empresaSelecionada }) => {
   const [produtos, setProdutos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProdutos, setFilteredProdutos] = useState([]);
-
 
   const handleBuscar = () => {
     if (searchTerm.length >= 2 || searchTerm.length === 0) {
@@ -16,19 +16,12 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
   const fetchProdutos = async (busca) => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const empresaCodigo = empresaSelecionada?.cli_codigo || empresaSelecionada?.codigo;
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'x-empresa-codigo': empresaCodigo,
-        'Content-Type': 'application/json',
-      };
-      const apiUrl = process.env.REACT_APP_API_URL || '';
-      const url = busca && busca.length >= 2 ? `${apiUrl}/relatorios/produtos?q=${encodeURIComponent(busca)}` : `${apiUrl}/relatorios/produtos?q=`;
-      const response = await fetch(url, { headers });
-      if (!response.ok) throw new Error('Erro ao buscar produtos');
-      const data = await response.json();
-      // Ajustar os campos para o padrão esperado no front
+      const url = busca && busca.length >= 2 ? `/relatorios/produtos?q=${encodeURIComponent(busca)}` : `/relatorios/produtos?q=`;
+      
+      const response = await api.get(url);
+      const data = response.data;
+      
       const produtosPadronizados = data.map((p, idx) => ({
         id: idx + 1,
         codigo: p.pro_codigo,
@@ -48,10 +41,6 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
       setLoading(false);
     }
   };
-
-
-  // Removido o useEffect automático para busca
-
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -97,31 +86,16 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
 
       {/* Versão para desktop */}
       <div className="hidden md:block">
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow overflow-hidden`}>
-          <table className="min-w-full divide-y divide-gray-700">
-            <thead className={darkMode ? "bg-gray-900" : "bg-gray-50"}>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className={darkMode ? "bg-gray-700" : "bg-gray-50"}>
               <tr>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Código
-                </th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Descrição
-                </th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  À Prazo
-                </th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Preço
-                </th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Estoque
-                </th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Unidade
-                </th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Ações
-                </th>
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Código</th>
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Descrição</th>
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Preço</th>
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>A Prazo</th>
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Estoque</th>
+                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-300" : "text-gray-500"} uppercase tracking-wider`}>Unidade</th>
               </tr>
             </thead>
             <tbody className={`${darkMode ? "bg-gray-800" : "bg-white"} divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
@@ -146,16 +120,14 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{produto.unidade}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className={darkMode ? "text-blue-400 hover:text-blue-300 mr-3" : "text-blue-600 hover:text-blue-900 mr-3"}>Editar</button>
-                      <button className={darkMode ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-900"}>Excluir</button>
-                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className={`px-6 py-4 text-center text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                    Nenhum produto encontrado
+                  <td colSpan="6" className="px-6 py-4 text-center">
+                    <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      {loading ? "Carregando..." : "Nenhum produto encontrado"}
+                    </div>
                   </td>
                 </tr>
               )}
@@ -163,8 +135,8 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
           </table>
         </div>
       </div>
-      
-      {/* Versão para dispositivos móveis - cards */}
+
+      {/* Versão para mobile */}
       <div className="md:hidden">
         {filteredProdutos.length > 0 ? (
           <div className="grid grid-cols-1 gap-4">
@@ -180,31 +152,30 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
                     <button className={darkMode ? "text-red-400 hover:text-red-300" : "text-red-600 hover:text-red-900"}>Excluir</button>
                   </div>
                 </div>
-                
-                <div className="mt-4 grid grid-cols-4 gap-2">
+                <div className="mt-4 grid grid-cols-2 gap-2">
                   <div>
-                    <span className={`text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase`}>Preço:</span>
-                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-900"} font-bold`}>{formatCurrency(produto.preco)}</p>
+                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Preço:</p>
+                    <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(produto.preco)}</p>
                   </div>
                   <div>
-                    <span className={`text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase`}>À Prazo:</span>
-                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-900"} font-bold`}>{formatCurrency(produto.aprazo)}</p>
+                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>A Prazo:</p>
+                    <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(produto.aprazo)}</p>
                   </div>
                   <div>
-                    <span className={`text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase`}>Estoque:</span>
-                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{produto.estoque}</p>
+                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Estoque:</p>
+                    <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{produto.estoque}</p>
                   </div>
                   <div>
-                    <span className={`text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase`}>Unidade:</span>
-                    <p className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{produto.unidade}</p>
+                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Unidade:</p>
+                    <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{produto.unidade}</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-6 text-center`}>
-            <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Nenhum produto encontrado</p>
+          <div className={`text-center py-4 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+            {loading ? "Carregando..." : "Nenhum produto encontrado"}
           </div>
         )}
       </div>

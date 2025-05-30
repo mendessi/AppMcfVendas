@@ -52,11 +52,10 @@ function AppContent() {
     const token = localStorage.getItem(AUTH_CONFIG.tokenKey);
     const user = JSON.parse(localStorage.getItem(AUTH_CONFIG.userKey));
     
-    // Verificar todas as possíveis chaves para empresa selecionada
-    const empresaAtual = JSON.parse(localStorage.getItem(AUTH_CONFIG.empresaKey)) || 
-                          JSON.parse(localStorage.getItem('empresa')) || 
-                          JSON.parse(localStorage.getItem('empresa_atual'));
-    
+    // Verificar se há uma empresa selecionada
+    const empresaAtual = localStorage.getItem('empresa_atual');
+    const empresaDetalhes = localStorage.getItem('empresa_detalhes');
+
     if (token && user) {
       console.log('Usuário já está logado:', user);
       setUser(user);
@@ -65,19 +64,18 @@ function AppContent() {
       // Configurar o token no header padrão para requisições
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      // Se já tiver uma empresa selecionada, definir o estado e configurar
       if (empresaAtual) {
-        console.log('Empresa já selecionada:', empresaAtual);
-        setEmpresaSelecionada(empresaAtual);
+        // Configurar o header com o código da empresa
+        axios.defaults.headers.common['x-empresa-codigo'] = empresaAtual;
         
-        // Configurar o contexto da empresa para requisições
-        if (empresaAtual.cli_codigo) {
-          // Atualizar o header com o código da empresa - usando minúsculo para compatibilidade
-          axios.defaults.headers.common['x-empresa-codigo'] = empresaAtual.cli_codigo;
-          console.log(`App - Configurando cabeçalho de empresa: ${empresaAtual.cli_codigo}`);
-          
-          // Manter empresaCodigo por compatibilidade com código legado
-          localStorage.setItem('empresaCodigo', empresaAtual.cli_codigo);
+        // Se precisar dos detalhes da empresa, usar o objeto salvo
+        if (empresaDetalhes) {
+          try {
+            const detalhes = JSON.parse(empresaDetalhes);
+            setEmpresaSelecionada(detalhes);
+          } catch (error) {
+            console.error('Erro ao carregar detalhes da empresa:', error);
+          }
         }
       }
     }
@@ -166,33 +164,21 @@ function AppContent() {
     console.log('Empresa selecionada no App:', empresa);
     setEmpresaSelecionada(empresa);
     
-    // Log para debug - mostrar o valor de AUTH_CONFIG.empresaKey
-    console.log('Chaves de armazenamento:', {
-      'AUTH_CONFIG.empresaKey': AUTH_CONFIG.empresaKey,
-      'Todas as chaves de AUTH_CONFIG': AUTH_CONFIG
-    });
+    // Armazenar o código da empresa em todos os formatos esperados
+    const empresaCodigo = empresa.cli_codigo.toString();
+    localStorage.setItem(AUTH_CONFIG.empresaKey, empresaCodigo);
+    localStorage.setItem('empresa', empresaCodigo);
+    localStorage.setItem('empresa_atual', empresaCodigo);
+    localStorage.setItem('empresa_selecionada', empresaCodigo);
     
-    // Armazenar a empresa em todos os formatos esperados para garantir compatibilidade
-    localStorage.setItem(AUTH_CONFIG.empresaKey, JSON.stringify(empresa));
-    localStorage.setItem('empresa', JSON.stringify(empresa));
-    localStorage.setItem('empresa_atual', JSON.stringify(empresa));
-    localStorage.setItem('empresa_selecionada', JSON.stringify(empresa)); // Adicionando esta chave também
+    // Armazenar os detalhes completos da empresa em uma chave separada
+    localStorage.setItem('empresa_detalhes', JSON.stringify(empresa));
     
-    // Armazenar o contexto da empresa para uso em chamadas de API
-    const empresaContexto = {
-      codigo: empresa.cli_codigo,
-      nome: empresa.cli_nome
-    };
-    localStorage.setItem('empresa_contexto', JSON.stringify(empresaContexto));
-    
-    // Configurar o axios com o contexto da empresa
-    if (empresa.cli_codigo) {
-      const token = localStorage.getItem(AUTH_CONFIG.tokenKey);
-      if (token) {
-        // Garantir que todas as requisições futuras incluam o token e o contexto
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        axios.defaults.headers.common['X-Empresa-Codigo'] = empresa.cli_codigo;
-      }
+    // Configurar o axios com o token e o código da empresa
+    const token = localStorage.getItem(AUTH_CONFIG.tokenKey);
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['x-empresa-codigo'] = empresaCodigo;
     }
   };
 
@@ -416,24 +402,14 @@ function AppContent() {
                   </li>
                   <li className="mb-2">
                     <Link 
-                      to="/catalogo" 
+                      to="/orcamentos" 
                       className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
-                      <FiGrid className="mr-3 h-5 w-5" />
-                      <span>Catálogo</span>
+                      <FiClipboard className="mr-3 h-5 w-5" />
+                      <span>Listar Orçamentos</span>
                     </Link>
                   </li>
-                <li className="mb-2">
-                  <Link 
-                    to="/orcamentos" 
-                    className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
-                    onClick={() => window.innerWidth < 768 && toggleSidebar()}
-                  >
-                    <FiClipboard className="mr-3 h-5 w-5" />
-                    <span>Listar Orçamentos</span>
-                  </Link>
-                </li>
                 </ul>
               </div>
             </div>

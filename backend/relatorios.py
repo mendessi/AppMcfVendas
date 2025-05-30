@@ -66,8 +66,19 @@ class VendaPorDia(BaseModel):
     total: float
     quantidade: int
 
-# --- NOVOS ENDPOINTS PARA VENDAS E ITENS DE VENDA ---
+class TabelaPreco(BaseModel):
+    """Modelo para tabela de preço"""
+    TAB_COD: int
+    TAB_NOME: str
 
+class Vendedor(BaseModel):
+    """Modelo para vendedor"""
+    VEN_CODIGO: int
+    VEN_NOME: str
+
+class FormaPagamento(BaseModel):
+    """Modelo para forma de pagamento"""
+    FPG_COD: int
 @router.get("/vendas")
 async def listar_vendas(request: Request):
     """
@@ -1092,3 +1103,54 @@ async def top_produtos(request: Request, data_inicial: Optional[str] = None, dat
     except Exception as e:
         logging.error(f"Erro ao buscar top produtos: {e}")
         return JSONResponse({'error': str(e)}), 500
+
+@router.get("/tabelas-preco")
+async def get_tabelas_preco(request: Request, search: str = "", empresa: str = None):
+    """Endpoint para listar tabelas de preço"""
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT TAB_COD, TAB_NOME FROM TABPRECO ORDER BY TAB_COD")
+        tabelas = [
+            {"codigo": row[0], "nome": row[1]} for row in cursor.fetchall()
+        ]
+        cursor.close()
+        conn.close()
+        return JSONResponse(content=tabelas)
+    except Exception as e:
+        return JSONResponse(content=[], status_code=200)
+
+@router.get("/vendedores-ativos")
+async def get_vendedores_ativos(request: Request, search: str = "", empresa: str = None):
+    """Endpoint para listar vendedores ativos"""
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT VEN_CODIGO, VEN_NOME FROM VENDEDOR WHERE VEN_ATIVO = 'S' ORDER BY VEN_NOME")
+        vendedores = [
+            {"codigo": row[0], "nome": row[1]} for row in cursor.fetchall()
+        ]
+        cursor.close()
+        conn.close()
+        return JSONResponse(content=vendedores)
+    except Exception as e:
+        return JSONResponse(content=[], status_code=200)
+
+@router.get("/formas-pagamento")
+async def get_formas_pagamento(request: Request, search: str = "", empresa: str = None):
+    """Endpoint para listar formas de pagamento"""
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT FPG_COD, FPG_NOME FROM FORMAPAG ORDER BY FPG_NOME")
+        formas = [
+            {"codigo": row[0], "nome": row[1]} for row in cursor.fetchall()
+        ]
+        cursor.close()
+        conn.close()
+        return JSONResponse(content=formas)
+    except Exception as e:
+        return JSONResponse(content=[], status_code=200)

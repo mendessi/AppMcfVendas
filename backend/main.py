@@ -39,6 +39,16 @@ import sys
 # Importar o router de orçamentos
 from orcamento_router import router as orcamento_router
 from fastapi import FastAPI
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+
+# Função para obter a sessão do banco de dados
+def get_db():
+    db = database.get_connection()
+    try:
+        yield db
+    finally:
+        db.close()
 
 if getattr(sys, 'frozen', False):
     # Executável PyInstaller: arquivos extraídos em _MEIPASS
@@ -591,6 +601,473 @@ async def get_pedidos(request: Request):
             return pedidos
         finally:
             conn.close()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/clientes/buscar")
+async def buscar_clientes(termo: str, db: Session = Depends(get_db)):
+    try:
+        query = """
+            SELECT 
+                CLI_CODIGO as codigo,
+                CLI_NOME as nome,
+                CLI_CNPJ as cnpj,
+                CLI_CPF as cpf
+            FROM CLIENTES 
+            WHERE CLI_NOME LIKE :termo 
+            OR CLI_CNPJ LIKE :termo 
+            OR CLI_CPF LIKE :termo
+            ORDER BY CLI_NOME
+            FETCH FIRST 20 ROWS ONLY
+        """
+        result = await db.execute(text(query), {"termo": f"%{termo}%"})
+        clientes = result.fetchall()
+        return [dict(cliente) for cliente in clientes]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/produtos/buscar")
+async def buscar_produtos(termo: str, db: Session = Depends(get_db)):
+    try:
+        query = """
+            SELECT 
+                PRO_CODIGO as codigo,
+                PRO_DESCRICAO as descricao,
+                PRO_VENDA as preco,
+                PRO_QUANTIDADE as estoque,
+                UNI_CODIGO as unidade,
+                PRO_IMAGEM as imagem
+            FROM PRODUTO 
+            WHERE PRO_DESCRICAO LIKE :termo 
+            OR PRO_CODIGO LIKE :termo
+            ORDER BY PRO_DESCRICAO
+            FETCH FIRST 20 ROWS ONLY
+        """
+        result = await db.execute(text(query), {"termo": f"%{termo}%"})
+        produtos = result.fetchall()
+        return [dict(produto) for produto in produtos]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+class ItemOrcamento(BaseModel):
+    codigo: str
+    descricao: str
+    quantidade: float
+    valor_unitario: float
+    valor_total: float
+    imagem: str = None
+
+class OrcamentoCreate(BaseModel):
+    cliente_codigo: str
+    nome_cliente: str
+    tabela_codigo: str = None
+    formapag_codigo: str = None
+    valor_total: float
+    data_orcamento: str
+    data_validade: str = None
+    observacao: str = None
+    vendedor_codigo: str = None
+    especie: str = "0"
+    desconto: float = 0
+    produtos: List[ItemOrcamento]
+
+@app.post("/orcamentos")
+async def criar_orcamento(orcamento: OrcamentoCreate, db: Session = Depends(get_db)):
+    try:
+        # Iniciar transação
+        async with db.begin():
+            # Gerar número do orçamento
+            query_numero = """
+                SELECT COALESCE(MAX(ORC_NUMERO), 0) + 1 as proximo_numero
+                FROM ORCAMENTO
+            """
+            result = await db.execute(text(query_numero))
+            numero = result.scalar()
+
+            # Inserir cabeçalho do orçamento
+            query_orcamento = """
+                INSERT INTO ORCAMENTO (
+                    ORC_NUMERO,
+                    CLI_CODIGO,
+                    CLI_NOME,
+                    TAB_CODIGO,
+                    FPG_CODIGO,
+                    ORC_TOTAL,
+                    ORC_DATA,
+                    ORC_VALIDADE,
+                    ORC_OBSERVACAO,
+                    VEN_CODIGO,
+                    ORC_ESPECIE,
+                    ORC_DESCONTO
+                ) VALUES (
+                    :numero,
+                    :cliente_codigo,
+                    :nome_cliente,
+                    :tabela_codigo,
+                    :formapag_codigo,
+                    :valor_total,
+                    :data_orcamento,
+                    :data_validade,
+                    :observacao,
+                    :vendedor_codigo,
+                    :especie,
+                    :desconto
+                )
+            """
+            await db.execute(text(query_orcamento), {
+                "numero": numero,
+                "cliente_codigo": orcamento.cliente_codigo,
+                "nome_cliente": orcamento.nome_cliente,
+                "tabela_codigo": orcamento.tabela_codigo,
+                "formapag_codigo": orcamento.formapag_codigo,
+                "valor_total": orcamento.valor_total,
+                "data_orcamento": orcamento.data_orcamento,
+                "data_validade": orcamento.data_validade,
+                "observacao": orcamento.observacao,
+                "vendedor_codigo": orcamento.vendedor_codigo,
+                "especie": orcamento.especie,
+                "desconto": orcamento.desconto
+            })
+
+            # Inserir itens do orçamento
+            for idx, item in enumerate(orcamento.produtos, 1):
+                query_item = """
+                    INSERT INTO ITENS_ORCAMENTO (
+                        ORC_NUMERO,
+                        PRO_CODIGO,
+                        PRO_DESCRICAO,
+                        ITE_QUANTIDADE,
+                        ITE_VALOR_UNITARIO,
+                        ITE_VALOR_TOTAL,
+                        ITE_SEQUENCIA,
+                        PRO_IMAGEM
+                    ) VALUES (
+                        :numero,
+                        :codigo,
+                        :descricao,
+                        :quantidade,
+                        :valor_unitario,
+                        :valor_total,
+                        :sequencia,
+                        :imagem
+                    )
+                """
+                await db.execute(text(query_item), {
+                    "numero": numero,
+                    "codigo": item.codigo,
+                    "descricao": item.descricao,
+                    "quantidade": item.quantidade,
+                    "valor_unitario": item.valor_unitario,
+                    "valor_total": item.valor_total,
+                    "sequencia": idx,
+                    "imagem": item.imagem
+                })
+
+            return {
+                "numero": numero,
+                "mensagem": "Orçamento criado com sucesso"
+            }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/orcamentos")
+async def listar_orcamentos(
+    cliente_codigo: str = None,
+    data_inicio: str = None,
+    data_fim: str = None,
+    db: Session = Depends(get_db)
+):
+    try:
+        query = """
+            SELECT 
+                o.ORC_NUMERO as numero,
+                o.CLI_CODIGO as cliente_codigo,
+                o.CLI_NOME as cliente_nome,
+                o.ORC_TOTAL as total,
+                o.ORC_DATA as data,
+                o.ORC_VALIDADE as validade,
+                o.ORC_OBSERVACAO as observacao,
+                o.VEN_CODIGO as vendedor_codigo,
+                o.ORC_ESPECIE as especie,
+                o.ORC_DESCONTO as desconto,
+                o.TAB_CODIGO as tabela_codigo,
+                o.FPG_CODIGO as formapag_codigo
+            FROM ORCAMENTO o
+            WHERE 1=1
+        """
+        params = {}
+
+        if cliente_codigo:
+            query += " AND o.CLI_CODIGO = :cliente_codigo"
+            params["cliente_codigo"] = cliente_codigo
+
+        if data_inicio:
+            query += " AND o.ORC_DATA >= :data_inicio"
+            params["data_inicio"] = data_inicio
+
+        if data_fim:
+            query += " AND o.ORC_DATA <= :data_fim"
+            params["data_fim"] = data_fim
+
+        query += " ORDER BY o.ORC_DATA DESC, o.ORC_NUMERO DESC"
+
+        result = await db.execute(text(query), params)
+        orcamentos = result.fetchall()
+
+        # Buscar itens de cada orçamento
+        for orcamento in orcamentos:
+            query_itens = """
+                SELECT 
+                    i.PRO_CODIGO as codigo,
+                    i.PRO_DESCRICAO as descricao,
+                    i.ITE_QUANTIDADE as quantidade,
+                    i.ITE_VALOR_UNITARIO as valor_unitario,
+                    i.ITE_VALOR_TOTAL as valor_total,
+                    i.ITE_SEQUENCIA as sequencia,
+                    i.PRO_IMAGEM as imagem
+                FROM ITENS_ORCAMENTO i
+                WHERE i.ORC_NUMERO = :numero
+                ORDER BY i.ITE_SEQUENCIA
+            """
+            result_itens = await db.execute(text(query_itens), {"numero": orcamento.numero})
+            orcamento.itens = [dict(item) for item in result_itens.fetchall()]
+
+        return [dict(orcamento) for orcamento in orcamentos]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/orcamentos/{numero}")
+async def buscar_orcamento(numero: int, db: Session = Depends(get_db)):
+    try:
+        # Buscar cabeçalho do orçamento
+        query = """
+            SELECT 
+                o.ORC_NUMERO as numero,
+                o.CLI_CODIGO as cliente_codigo,
+                o.CLI_NOME as cliente_nome,
+                o.ORC_TOTAL as total,
+                o.ORC_DATA as data,
+                o.ORC_VALIDADE as validade,
+                o.ORC_OBSERVACAO as observacao,
+                o.VEN_CODIGO as vendedor_codigo,
+                o.ORC_ESPECIE as especie,
+                o.ORC_DESCONTO as desconto,
+                o.TAB_CODIGO as tabela_codigo,
+                o.FPG_CODIGO as formapag_codigo
+            FROM ORCAMENTO o
+            WHERE o.ORC_NUMERO = :numero
+        """
+        result = await db.execute(text(query), {"numero": numero})
+        orcamento = result.fetchone()
+
+        if not orcamento:
+            raise HTTPException(status_code=404, detail="Orçamento não encontrado")
+
+        # Buscar itens do orçamento
+        query_itens = """
+            SELECT 
+                i.PRO_CODIGO as codigo,
+                i.PRO_DESCRICAO as descricao,
+                i.ITE_QUANTIDADE as quantidade,
+                i.ITE_VALOR_UNITARIO as valor_unitario,
+                i.ITE_VALOR_TOTAL as valor_total,
+                i.ITE_SEQUENCIA as sequencia,
+                i.PRO_IMAGEM as imagem
+            FROM ITENS_ORCAMENTO i
+            WHERE i.ORC_NUMERO = :numero
+            ORDER BY i.ITE_SEQUENCIA
+        """
+        result_itens = await db.execute(text(query_itens), {"numero": numero})
+        orcamento.itens = [dict(item) for item in result_itens.fetchall()]
+
+        return dict(orcamento)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/orcamentos/{numero}")
+async def excluir_orcamento(numero: int, db: Session = Depends(get_db)):
+    try:
+        # Iniciar transação
+        async with db.begin():
+            # Verificar se o orçamento existe
+            query_check = """
+                SELECT COUNT(*) as total
+                FROM ORCAMENTO
+                WHERE ORC_NUMERO = :numero
+            """
+            result = await db.execute(text(query_check), {"numero": numero})
+            if result.scalar() == 0:
+                raise HTTPException(status_code=404, detail="Orçamento não encontrado")
+
+            # Excluir itens do orçamento
+            query_delete_itens = """
+                DELETE FROM ITENS_ORCAMENTO
+                WHERE ORC_NUMERO = :numero
+            """
+            await db.execute(text(query_delete_itens), {"numero": numero})
+
+            # Excluir cabeçalho do orçamento
+            query_delete_orcamento = """
+                DELETE FROM ORCAMENTO
+                WHERE ORC_NUMERO = :numero
+            """
+            await db.execute(text(query_delete_orcamento), {"numero": numero})
+
+            return {
+                "mensagem": "Orçamento excluído com sucesso"
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/orcamentos/{numero}")
+async def atualizar_orcamento(numero: int, orcamento: OrcamentoCreate, db: Session = Depends(get_db)):
+    try:
+        # Iniciar transação
+        async with db.begin():
+            # Verificar se o orçamento existe
+            query_check = """
+                SELECT COUNT(*) as total
+                FROM ORCAMENTO
+                WHERE ORC_NUMERO = :numero
+            """
+            result = await db.execute(text(query_check), {"numero": numero})
+            if result.scalar() == 0:
+                raise HTTPException(status_code=404, detail="Orçamento não encontrado")
+
+            # Atualizar cabeçalho do orçamento
+            query_orcamento = """
+                UPDATE ORCAMENTO SET
+                    CLI_CODIGO = :cliente_codigo,
+                    CLI_NOME = :nome_cliente,
+                    TAB_CODIGO = :tabela_codigo,
+                    FPG_CODIGO = :formapag_codigo,
+                    ORC_TOTAL = :valor_total,
+                    ORC_DATA = :data_orcamento,
+                    ORC_VALIDADE = :data_validade,
+                    ORC_OBSERVACAO = :observacao,
+                    VEN_CODIGO = :vendedor_codigo,
+                    ORC_ESPECIE = :especie,
+                    ORC_DESCONTO = :desconto
+                WHERE ORC_NUMERO = :numero
+            """
+            await db.execute(text(query_orcamento), {
+                "numero": numero,
+                "cliente_codigo": orcamento.cliente_codigo,
+                "nome_cliente": orcamento.nome_cliente,
+                "tabela_codigo": orcamento.tabela_codigo,
+                "formapag_codigo": orcamento.formapag_codigo,
+                "valor_total": orcamento.valor_total,
+                "data_orcamento": orcamento.data_orcamento,
+                "data_validade": orcamento.data_validade,
+                "observacao": orcamento.observacao,
+                "vendedor_codigo": orcamento.vendedor_codigo,
+                "especie": orcamento.especie,
+                "desconto": orcamento.desconto
+            })
+
+            # Excluir itens antigos
+            query_delete_itens = """
+                DELETE FROM ITENS_ORCAMENTO
+                WHERE ORC_NUMERO = :numero
+            """
+            await db.execute(text(query_delete_itens), {"numero": numero})
+
+            # Inserir novos itens
+            for idx, item in enumerate(orcamento.produtos, 1):
+                query_item = """
+                    INSERT INTO ITENS_ORCAMENTO (
+                        ORC_NUMERO,
+                        PRO_CODIGO,
+                        PRO_DESCRICAO,
+                        ITE_QUANTIDADE,
+                        ITE_VALOR_UNITARIO,
+                        ITE_VALOR_TOTAL,
+                        ITE_SEQUENCIA,
+                        PRO_IMAGEM
+                    ) VALUES (
+                        :numero,
+                        :codigo,
+                        :descricao,
+                        :quantidade,
+                        :valor_unitario,
+                        :valor_total,
+                        :sequencia,
+                        :imagem
+                    )
+                """
+                await db.execute(text(query_item), {
+                    "numero": numero,
+                    "codigo": item.codigo,
+                    "descricao": item.descricao,
+                    "quantidade": item.quantidade,
+                    "valor_unitario": item.valor_unitario,
+                    "valor_total": item.valor_total,
+                    "sequencia": idx,
+                    "imagem": item.imagem
+                })
+
+            return {
+                "mensagem": "Orçamento atualizado com sucesso"
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tabelas")
+async def listar_tabelas(db: Session = Depends(get_db)):
+    try:
+        query = """
+            SELECT 
+                TAB_CODIGO as codigo,
+                TAB_NOME as nome
+            FROM TABELA_PRECO
+            ORDER BY TAB_NOME
+        """
+        result = await db.execute(text(query))
+        tabelas = result.fetchall()
+        return [dict(tabela) for tabela in tabelas]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/formas-pagamento")
+async def listar_formas_pagamento(db: Session = Depends(get_db)):
+    try:
+        query = """
+            SELECT 
+                FPG_CODIGO as codigo,
+                FPG_NOME as nome
+            FROM FORMA_PAGAMENTO
+            ORDER BY FPG_NOME
+        """
+        result = await db.execute(text(query))
+        formas = result.fetchall()
+        return [dict(forma) for forma in formas]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/vendedores")
+async def listar_vendedores(db: Session = Depends(get_db)):
+    try:
+        query = """
+            SELECT 
+                VEN_CODIGO as codigo,
+                VEN_NOME as nome
+            FROM VENDEDOR
+            ORDER BY VEN_NOME
+        """
+        result = await db.execute(text(query))
+        vendedores = result.fetchall()
+        return [dict(vendedor) for vendedor in vendedores]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

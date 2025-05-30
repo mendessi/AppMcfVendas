@@ -1,173 +1,118 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiSearch, FiLoader } from 'react-icons/fi';
 import api from '../services/api';
 
-function ProdutoAutocomplete({ value, onChange, onAdd, produtosNoOrcamento = [] }) {
-  const [input, setInput] = useState(value?.descricao || '');
-  const [produtos, setProdutos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showList, setShowList] = useState(false);
-  const [error, setError] = useState(null);
-  const timeoutRef = useRef(null);
+const ProdutoAutocomplete = ({ onSelect, darkMode }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const wrapperRef = useRef(null);
 
   useEffect(() => {
-    if (value) {
-      setInput(value.descricao || '');
-    }
-  }, [value]);
-
-  const handleInput = async (e) => {
-    const val = e.target.value;
-    setInput(val);
-    setShowList(true);
-    setError(null);
-
-    // Limpar timeout anterior
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    if (val.length < 2) {
-      setProdutos([]);
-      return;
-    }
-
-    // Adicionar debounce de 500ms
-    timeoutRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const token = localStorage.getItem('token');
-        const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada') || localStorage.getItem('empresaSelecionadaCodigo');
-        let empresaCodigo = null;
-        if (empresaCodigo) {
-          try {
-            const empObj = JSON.parse(empresaCodigo);
-            empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
-          } catch {
-            empresaCodigo = empresaSelecionada;
-          }
-        }
-
-        const headers = {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        };
-        if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
-
-        console.log('Buscando produtos com termo:', val);
-        console.log('Headers da requisição:', headers);
-
-        const response = await api.get(`/relatorios/produtos?q=${encodeURIComponent(val)}`, { headers });
-        console.log('Resposta da API:', response.data);
-
-        if (!response.data || !Array.isArray(response.data)) {
-          console.error('Resposta inválida da API:', response.data);
-          setError('Erro ao buscar produtos: resposta inválida');
-          setProdutos([]);
-          return;
-        }
-
-        setProdutos(response.data);
-      } catch (err) {
-        console.error('Erro ao buscar produtos:', err);
-        setError(err.message || 'Erro ao buscar produtos');
-        setProdutos([]);
-      } finally {
-        setLoading(false);
+    const handleClickOutside = (event) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+        setShowSuggestions(false);
       }
-    }, 500);
-  };
+    };
 
-  // Limpar timeout ao desmontar
-  useEffect(() => {
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  const handleSelect = (produto) => {
-    // NÃO limpar o input para permitir seleção rápida de vários produtos
-    setShowList(false);
-    onChange(produto);
+  useEffect(() => {
+    const searchProdutos = async () => {
+      if (searchTerm.length < 2) {
+        setSuggestions([]);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await api.get(`/produtos?search=${searchTerm}`);
+        setSuggestions(response.data);
+      } catch (error) {
+        console.error('Erro ao buscar produtos:', error);
+        setSuggestions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const timeoutId = setTimeout(searchProdutos, 300);
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    setShowSuggestions(true);
+  };
+
+  const handleSuggestionClick = (produto) => {
+    setSearchTerm('');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    onSelect(produto);
   };
 
   return (
-    <div className="relative">
-      <input
-        type="text"
-        className="w-full px-3 py-2 rounded-lg border border-gray-600 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        placeholder="Buscar produto..."
-        value={input}
-        onChange={handleInput}
-        onFocus={() => setShowList(true)}
-        onBlur={() => setTimeout(() => setShowList(false), 150)}
-        autoComplete="off"
-      />
-      {loading && <div className="absolute right-3 top-3 spinner-border animate-spin w-4 h-4 border-2 border-blue-400 rounded-full"></div>}
-      {error && <div className="text-red-500 text-sm mt-1">{error}</div>}
-      {showList && produtos.length > 0 && (
-        <div className="absolute left-1/2 -translate-x-1/2 w-[98vw] max-w-[520px] mt-1 bg-gray-100 border border-blue-200 rounded-2xl shadow-2xl max-h-[70vh] overflow-auto flex flex-col gap-4 p-3 z-50" style={{ minWidth: 280 }}>
-          {produtos.map((p, idx) => (
-            <div
-              key={p.pro_codigo || p.codigo || idx}
-              className={`flex items-center gap-4 p-4 rounded-2xl shadow-lg border-2 mb-1 transition-all duration-200 bg-white
-                ${produtosNoOrcamento.some(prod => (prod.codigo === (p.pro_codigo || p.codigo)) || (prod.pro_codigo === (p.pro_codigo || p.codigo)))
-                  ? 'border-yellow-400 ring-2 ring-yellow-300 opacity-80' 
-                  : 'border-blue-200 hover:border-blue-400 hover:ring-2 hover:ring-blue-200'}
-              `}
-              style={{ minHeight: 110 }}
-              onClick={(e) => {
-                const produtoExistente = produtosNoOrcamento.find(prod => (prod.codigo === (p.pro_codigo || p.codigo)) || (prod.pro_codigo === (p.pro_codigo || p.codigo)));
-                if (produtoExistente && onAdd) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onAdd(p, { scrollToExisting: true });
-                }
-              }}
-            >
-              <img
-                src={p.pro_imagem || '/img/produto-vazio.png'}
-                alt="img"
-                className="w-20 h-20 object-contain rounded-xl bg-gray-200 border border-gray-300 shadow-sm flex-shrink-0"
-                style={{ minWidth: 80, minHeight: 80 }}
-              />
-              <div className="flex-1 min-w-0 flex flex-col justify-center h-full">
-                <span className="font-bold text-gray-900 text-lg leading-tight block mb-1" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal' }}>
-                  {p.pro_descricao}
-                </span>
-                <span className="text-blue-700 font-bold text-base block mb-1">
-                  {Number(p.pro_venda).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </span>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-1">
-                  <span>Cód: {p.pro_codigo}</span>
-                  {p.pro_marca && <span>Marca: {p.pro_marca}</span>}
-                  {p.UNI_CODIGO && <span>Unid: {p.UNI_CODIGO}</span>}
-                  {p.pro_quantidade !== undefined && (
-                    <span className={p.pro_quantidade <= 0 ? 'text-red-500 font-bold' : 'text-green-700 font-bold'}>
-                      Estoque: {p.pro_quantidade ?? '0'}
-                    </span>
-                  )}
+    <div ref={wrapperRef} className="relative">
+      <div className="relative">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={handleInputChange}
+          placeholder="Digite para buscar produtos..."
+          className={`w-full p-2 pl-10 rounded-md ${
+            darkMode
+              ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+              : "bg-white border-gray-300 text-gray-700"
+          }`}
+        />
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          {isLoading ? (
+            <FiLoader className={`animate-spin h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+          ) : (
+            <FiSearch className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+          )}
+        </div>
+      </div>
+
+      {showSuggestions && suggestions.length > 0 && (
+        <div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${
+          darkMode ? "bg-gray-800" : "bg-white"
+        }`}>
+          <ul className={`max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm ${
+            darkMode ? "bg-gray-800" : "bg-white"
+          }`}>
+            {suggestions.map((produto) => (
+              <li
+                key={produto.pro_codigo}
+                onClick={() => handleSuggestionClick(produto)}
+                className={`cursor-pointer select-none relative py-2 pl-3 pr-9 ${
+                  darkMode
+                    ? "hover:bg-gray-700 text-white"
+                    : "hover:bg-gray-100 text-gray-900"
+                }`}
+              >
+                <div className="flex items-center">
+                  <span className="font-medium block truncate">{produto.pro_descricao}</span>
                 </div>
-              </div>
-              {!produtosNoOrcamento.some(prod => (prod.codigo === (p.pro_codigo || p.codigo)) || (prod.pro_codigo === (p.pro_codigo || p.codigo))) && (
-                <button
-                  className="ml-2 px-5 py-4 bg-blue-600 hover:bg-blue-800 text-white rounded-xl shadow text-lg font-bold whitespace-nowrap transition-all duration-200 h-full flex items-center"
-                  style={{ minWidth: 90 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAdd && onAdd(p);
-                  }}
-                >
-                  Adicionar
-                </button>
-              )}
-            </div>
-          ))}
+                <div className={`ml-3 block truncate ${
+                  darkMode ? "text-gray-400" : "text-gray-500"
+                }`}>
+                  Código: {produto.pro_codigo}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
   );
-}
+};
 
 export default ProdutoAutocomplete;

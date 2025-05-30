@@ -426,7 +426,7 @@ function AppContent() {
               <Route path="/pedidos" element={<PedidosList darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="/novo-pedido" element={<NovoPedido darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="/orcamento" element={<OrcamentoForm darkMode={darkMode} />} />
-              <Route path="/orcamentos" element={<OrcamentosList />} />
+              <Route path="/orcamentos" element={<OrcamentosList darkMode={darkMode} />} />
               
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

@@ -468,7 +468,7 @@ function OrcamentoForm() {
       {/* Itens do orçamento */}
       <div className="mb-8 flex-1">
         <h3 className="text-lg font-semibold mb-4 text-white">Itens</h3>
-        <div className="flex gap-2 mb-2">
+        <div className="flex flex-col sm:flex-row gap-2 mb-2">
           <div className="flex-1">
             <ProdutoAutocomplete 
               value={produtoSelecionado} 
@@ -477,94 +477,79 @@ function OrcamentoForm() {
               produtosNoOrcamento={produtos}
             />
           </div>
-          <button type="button" onClick={handleAdicionarProduto} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition">Adicionar Produto</button>
+          <button 
+            type="button" 
+            onClick={handleAdicionarProduto} 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition w-full sm:w-auto"
+            style={{ fontSize: 18 }}
+          >
+            Adicionar Produto
+          </button>
         </div>
         <div className="space-y-3">
           {produtos.map((p, idx) => (
-            <div key={idx} ref={el => produtoRefs.current[idx] = el} className="bg-gray-900 border border-gray-700 rounded-lg p-3">
-              <div className="flex flex-col sm:flex-row gap-3">
-                {/* Imagem do produto (se existir) */}
-                {p.imagem && (
-                  <div className="flex-shrink-0">
-                    <img 
-                      src={p.imagem} 
-                      alt={p.descricao} 
-                      className="w-16 h-16 sm:w-12 sm:h-12 object-cover rounded" 
-                    />
-                  </div>
-                )}
-                
-                {/* Conteúdo principal */}
-                <div className="flex-1 min-w-0">
-                  {/* Cabeçalho com código e descrição */}
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0">
-                      <div className="font-bold text-gray-200 truncate">
-                        {p.codigo} - {p.descricao}
-                      </div>
-                    </div>
-                    <button 
-                      type="button" 
-                      onClick={() => handleRemoverProduto(idx)} 
-                      className="text-red-400 hover:text-red-600 font-bold text-sm flex-shrink-0 ml-2"
-                    >
-                      Remover
-                    </button>
-                  </div>
-                  
-                  {/* Controles de quantidade e preço */}
-                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    <div className="flex items-center">
-                      <label className="text-sm text-gray-400 mr-2 whitespace-nowrap">Qtd:</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={p.quantidade}
-                        ref={el => quantidadeRefs.current[idx] = el}
-                        onChange={e => handleQuantidadeChange(idx, e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' || e.key === 'Tab') {
-                            e.preventDefault();
-                            if (precoRefs.current[idx]) precoRefs.current[idx].focus();
-                          }
-                        }}
-                        className="w-full px-2 py-1 rounded bg-gray-800 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <label className="text-sm text-gray-400 mr-2 whitespace-nowrap">Unit:</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={p.valor_unitario}
-                        ref={el => precoRefs.current[idx] = el}
-                        onChange={e => handleValorUnitarioChange(idx, e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') {
-                            if (quantidadeRefs.current[idx + 1]) {
-                              e.preventDefault();
-                              quantidadeRefs.current[idx + 1].focus();
-                            }
-                          }
-                        }}
-                        className="w-full px-2 py-1 rounded bg-gray-800 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    
-                    <div className="flex items-center col-span-2 sm:col-span-1">
-                      <span className="text-sm text-gray-400 whitespace-nowrap">Total:</span>
-                      <span className="ml-2 text-blue-400 font-bold">
-                        {parseFloat(p.valor_total).toLocaleString('pt-BR', {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2
-                        })}
-                      </span>
-                    </div>
-                  </div>
+            <div key={idx} ref={el => produtoRefs.current[idx] = el} className="bg-white border-2 border-blue-200 rounded-2xl shadow-xl p-4 mb-4 flex flex-col gap-2">
+              <div className="flex flex-col gap-1">
+                <div className="font-bold text-gray-900 text-lg truncate mb-1">{p.codigo} - {p.descricao}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className="text-base text-gray-500 mb-1">Qtd:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={p.quantidade}
+                    ref={el => quantidadeRefs.current[idx] = el}
+                    onChange={e => handleQuantidadeChange(idx, e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === 'Tab') {
+                        e.preventDefault();
+                        if (precoRefs.current[idx]) precoRefs.current[idx].focus();
+                      }
+                    }}
+                    className="w-full px-5 py-3 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xl text-center font-bold"
+                    style={{ minWidth: 70 }}
+                  />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-base text-gray-500 mb-1">Unitário:</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={p.valor_unitario}
+                    ref={el => precoRefs.current[idx] = el}
+                    onChange={e => handleValorUnitarioChange(idx, e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        if (quantidadeRefs.current[idx + 1]) {
+                          e.preventDefault();
+                          quantidadeRefs.current[idx + 1].focus();
+                        }
+                      }
+                    }}
+                    className="w-full px-5 py-3 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xl text-center font-bold"
+                    style={{ minWidth: 90 }}
+                  />
                 </div>
               </div>
+              <div className="flex flex-col items-center justify-center mt-2">
+                <span className="text-base text-gray-500 mb-1">Total:</span>
+                <span className="text-blue-700 font-extrabold text-2xl">
+                  {parseFloat(p.valor_total).toLocaleString('pt-BR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </span>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => handleRemoverProduto(idx)} 
+                className="mt-2 text-red-600 hover:text-white hover:bg-red-500 font-bold text-base rounded-lg px-4 py-2 transition-all border border-red-200 bg-red-50"
+                style={{ minWidth: 44, minHeight: 44 }}
+              >
+                Remover
+              </button>
             </div>
           ))}
         </div>

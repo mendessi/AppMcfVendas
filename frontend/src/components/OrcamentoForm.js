@@ -6,6 +6,8 @@ import ProdutoAutocomplete from './ProdutoAutocomplete';
 import api from '../services/api';
 
 const OrcamentoForm = ({ numero, darkMode }) => {
+  console.log('OrcamentoForm renderizado, props:', { numero, darkMode });
+  
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -134,33 +136,68 @@ const OrcamentoForm = ({ numero, darkMode }) => {
   };
 
   const handleProdutoSelect = (produto) => {
-    const produtoExistente = orcamento.produtos.find(p => p.codigo === produto.codigo);
+    console.log('=== HANDLEPRODUCTOSELECT INICIADO ===');
+    console.log('Produto recebido:', produto);
+    console.log('Estado atual do orçamento:', orcamento);
+    console.log('Produtos atuais:', orcamento.produtos);
+    
+    if (!produto) {
+      console.log('Produto é null ou undefined, saindo...');
+      return;
+    }
+    
+    // Mapear os campos corretamente
+    const produtoCodigo = produto.pro_codigo || produto.codigo;
+    const produtoDescricao = produto.pro_descricao || produto.descricao;
+    const produtoPreco = produto.pro_venda || produto.preco || produto.valor_unitario || 0;
+    
+    console.log('Campos mapeados:', {
+      produtoCodigo,
+      produtoDescricao,
+      produtoPreco
+    });
+    
+    const produtoExistente = orcamento.produtos.find(p => p.codigo === produtoCodigo);
+    console.log('Produto existente?', !!produtoExistente);
     
     if (produtoExistente) {
-      setOrcamento(prev => ({
-        ...prev,
-        produtos: prev.produtos.map(p =>
-          p.codigo === produto.codigo
-            ? { ...p, quantidade: p.quantidade + 1 }
+      console.log('Atualizando produto existente...');
+      setOrcamento(prev => {
+        const novoProdutos = prev.produtos.map(p =>
+          p.codigo === produtoCodigo
+            ? { ...p, quantidade: p.quantidade + 1, valor_total: (p.quantidade + 1) * p.valor_unitario }
             : p
-        )
-      }));
+        );
+        console.log('Novos produtos (existente):', novoProdutos);
+        return {
+          ...prev,
+          produtos: novoProdutos
+        };
+      });
     } else {
-      setOrcamento(prev => ({
-        ...prev,
-        produtos: [
-          ...prev.produtos,
-          {
-            codigo: produto.codigo,
-            descricao: produto.descricao,
-            quantidade: 1,
-            valor_unitario: produto.preco,
-            valor_total: produto.preco
-          }
-        ]
-      }));
+      console.log('Adicionando novo produto...');
+      const novoProduto = {
+        codigo: produtoCodigo,
+        descricao: produtoDescricao,
+        quantidade: 1,
+        valor_unitario: produtoPreco,
+        valor_total: produtoPreco
+      };
+      console.log('Novo produto criado:', novoProduto);
+      
+      setOrcamento(prev => {
+        const novoProdutos = [...prev.produtos, novoProduto];
+        console.log('Lista atualizada de produtos:', novoProdutos);
+        return {
+          ...prev,
+          produtos: novoProdutos
+        };
+      });
     }
+    console.log('=== HANDLEPRODUCTOSELECT FINALIZADO ===');
   };
+
+  console.log('Função handleProdutoSelect definida:', typeof handleProdutoSelect);
 
   const handleQuantidadeChange = (codigo, quantidade) => {
     setOrcamento(prev => ({
@@ -261,8 +298,17 @@ const OrcamentoForm = ({ numero, darkMode }) => {
           }`}>
             Produto
           </label>
+          {console.log('Renderizando ProdutoAutocomplete, handleProdutoSelect:', typeof handleProdutoSelect)}
           <ProdutoAutocomplete
-            onSelect={handleProdutoSelect}
+            onSelect={(produto) => {
+              console.log('onSelect wrapper chamado com:', produto);
+              console.log('handleProdutoSelect existe?', typeof handleProdutoSelect);
+              if (typeof handleProdutoSelect === 'function') {
+                return handleProdutoSelect(produto);
+              } else {
+                console.error('handleProdutoSelect não é uma função!');
+              }
+            }}
             darkMode={darkMode}
           />
         </div>

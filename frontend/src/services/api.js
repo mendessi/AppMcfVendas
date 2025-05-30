@@ -37,7 +37,7 @@ if (API_URL.endsWith('/')) {
 // Criar uma instância do axios com configurações padrão
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || API_URL,
-  timeout: 10000
+  timeout: 30000 // Aumentado de 10s para 30s para operações do Firebird
 });
 
 // Interceptador para adicionar o token em todas as requisições
@@ -74,12 +74,27 @@ api.interceptors.response.use(
   }
 );
 
-// Adicionar retry logic para melhorar performance em mobile
+// Melhorar retry logic com configuração mais conservadora
 api.interceptors.response.use(null, async (error) => {
   const config = error.config;
   
-  // Se não tiver config ou já tentou 3 vezes, rejeita
-  if (!config || config.__retryCount >= 3) {
+  // Não fazer retry para requisições canceladas (AbortController)
+  if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+    return Promise.reject(error);
+  }
+  
+  // Se não tiver config ou já tentou 2 vezes (reduzido de 3), rejeita
+  if (!config || config.__retryCount >= 2) {
+    return Promise.reject(error);
+  }
+  
+  // Só fazer retry para erros de rede ou timeout, não para 4xx/5xx
+  const isRetryableError = !error.response || 
+    error.response.status >= 500 || 
+    error.code === 'ECONNABORTED' ||
+    error.code === 'NETWORK_ERROR';
+    
+  if (!isRetryableError) {
     return Promise.reject(error);
   }
   
@@ -87,16 +102,18 @@ api.interceptors.response.use(null, async (error) => {
   config.__retryCount = config.__retryCount || 0;
   config.__retryCount++;
   
-  // Espera um tempo exponencial antes de tentar novamente
-  const delay = Math.min(1000 * Math.pow(2, config.__retryCount), 10000);
+  // Delay mais conservador: 2s, 4s (máximo)
+  const delay = Math.min(2000 * config.__retryCount, 4000);
   await new Promise(resolve => setTimeout(resolve, delay));
+  
+  console.log(`Tentativa ${config.__retryCount} para ${config.url}`);
   
   // Tenta novamente
   return api(config);
 });
 
 // Funções para buscar dados de tabelas, vendedores e formas de pagamento
-export const getTabelasPreco = async () => {
+export const getTabelasPreco = async (signal) => {
   const empresaCodigo = localStorage.getItem('empresa_atual');
   return api.get('/relatorios/listar_tabelas', {
     params: {
@@ -105,11 +122,12 @@ export const getTabelasPreco = async () => {
     },
     headers: {
       'x-empresa-codigo': empresaCodigo
-    }
+    },
+    signal
   });
 };
 
-export const getVendedores = async () => {
+export const getVendedores = async (signal) => {
   const empresaCodigo = localStorage.getItem('empresa_atual');
   return api.get('/relatorios/listar_vendedores', {
     params: {
@@ -118,11 +136,12 @@ export const getVendedores = async () => {
     },
     headers: {
       'x-empresa-codigo': empresaCodigo
-    }
+    },
+    signal
   });
 };
 
-export const getFormasPagamento = async () => {
+export const getFormasPagamento = async (signal) => {
   const empresaCodigo = localStorage.getItem('empresa_atual');
   return api.get('/relatorios/listar_formas_pagamento', {
     params: {
@@ -131,7 +150,8 @@ export const getFormasPagamento = async () => {
     },
     headers: {
       'x-empresa-codigo': empresaCodigo
-    }
+    },
+    signal
   });
 };
 

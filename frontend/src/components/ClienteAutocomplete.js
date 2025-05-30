@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiSearch, FiLoader } from 'react-icons/fi';
+import { FiSearch, FiLoader, FiX } from 'react-icons/fi';
 import api from '../services/api';
 
 const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
@@ -57,12 +57,20 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
         console.log('Dados retornados da API:', response.data);
 
         // Mapear os dados retornados para o formato esperado
-        const clientesMapeados = response.data.map(cliente => ({
-          codigo: cliente.cli_codigo || cliente.codigo,
-          nome: cliente.cli_nome || cliente.nome,
-          documento: cliente.cli_cgc || cliente.cli_cpf || cliente.documento,
-          tipo: cliente.cli_tipo || cliente.tipo || 'F'
-        }));
+        const clientesMapeados = response.data.map(cliente => {
+          console.log('Cliente original:', cliente);
+          const mapeado = {
+            codigo: cliente.cli_codigo || cliente.codigo,
+            nome: cliente.cli_nome || cliente.nome,
+            documento: cliente.cnpj || cliente.CNPJ || cliente.cli_cgc || cliente.cli_cpf || cliente.documento || '', // Tenta cnpj minúsculo primeiro
+            tipo: cliente.cli_tipo || cliente.tipo || 'F',
+            cidade: cliente.cidade || cliente.Cidade || '',
+            uf: cliente.uf || cliente.Uf || '',
+            bairro: cliente.bairro || cliente.Bairro || ''
+          };
+          console.log('Cliente mapeado:', mapeado);
+          return mapeado;
+        });
 
         console.log('Dados mapeados:', clientesMapeados);
         setSuggestions(clientesMapeados);
@@ -113,8 +121,28 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
         codigo: cliente.codigo,
         nome: cliente.nome,
         documento: cliente.documento,
-        tipo: cliente.tipo
+        tipo: cliente.tipo,
+        cidade: cliente.cidade,
+        uf: cliente.uf,
+        bairro: cliente.bairro
       });
+    }
+  };
+
+  const handleClear = () => {
+    setSearchTerm('');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    if (onChange) {
+      onChange('');
+    }
+    if (onSelect) {
+      onSelect(null);
+    }
+    // Foca no input após limpar
+    const input = wrapperRef.current?.querySelector('input');
+    if (input) {
+      setTimeout(() => input.focus(), 100);
     }
   };
 
@@ -129,12 +157,22 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
           value={searchTerm}
           onChange={handleInputChange}
           placeholder="Buscar cliente..."
-          className={`pl-10 w-full rounded-md ${
+          className={`pl-10 pr-10 w-full rounded-md ${
             darkMode
               ? "bg-gray-600 border-gray-500 text-white"
               : "bg-white border-gray-300 text-gray-700"
           }`}
         />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className={`absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer hover:${darkMode ? 'text-gray-200' : 'text-gray-700'} transition-colors`}
+            title="Limpar cliente"
+          >
+            <FiX className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+          </button>
+        )}
       </div>
 
       {showSuggestions && (searchTerm.length >= 2) && (
@@ -159,7 +197,10 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
                   >
                     <div className="font-medium">{cliente.nome}</div>
                     <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                      Código: {cliente.codigo} | {cliente.tipo === 'F' ? 'CPF' : 'CNPJ'}: {cliente.documento}
+                      Código: {cliente.codigo} | CNPJ: {cliente.documento}
+                    </div>
+                    <div className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                      {cliente.bairro ? `${cliente.bairro} - ` : ''}{cliente.cidade}/{cliente.uf}
                     </div>
                   </li>
                 ))}

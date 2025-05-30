@@ -41,18 +41,25 @@ const OrcamentoHeader = ({
     if (isUnifiedMode) {
       setOrcamento(prev => ({
         ...prev,
-        cliente: {
+        cliente: value ? {
           codigo: prev.cliente?.codigo || '',
           nome: value,
           tipo: prev.cliente?.tipo || 'F',
-          documento: prev.cliente?.documento || ''
-        }
+          documento: prev.cliente?.documento || '',
+          cidade: prev.cliente?.cidade || '',
+          uf: prev.cliente?.uf || '',
+          bairro: prev.cliente?.bairro || ''
+        } : null
       }));
     } else if (setCliente) {
-      setCliente(prev => ({
-        ...prev,
-        nome: value
-      }));
+      if (!value) {
+        setCliente(null);
+      } else {
+        setCliente(prev => ({
+          ...prev,
+          nome: value
+        }));
+      }
     }
   };
 
@@ -61,12 +68,15 @@ const OrcamentoHeader = ({
     if (isUnifiedMode) {
       setOrcamento(prev => ({
         ...prev,
-        cliente: {
+        cliente: selectedCliente ? {
           codigo: selectedCliente.codigo,
           nome: selectedCliente.nome,
           tipo: selectedCliente.tipo || 'F',
-          documento: selectedCliente.documento || ''
-        }
+          documento: selectedCliente.documento || '',
+          cidade: selectedCliente.cidade || '',
+          uf: selectedCliente.uf || '',
+          bairro: selectedCliente.bairro || ''
+        } : null
       }));
     } else if (setCliente) {
       setCliente(selectedCliente);
@@ -145,9 +155,9 @@ const OrcamentoHeader = ({
 
   // Obtém os valores corretos dependendo do modo
   const clienteValue = isUnifiedMode 
-    ? (orcamento?.cliente || { codigo: '', nome: '' })
-    : (cliente || { codigo: '', nome: '' });
-  const clienteNome = typeof clienteValue === 'string' ? clienteValue : (clienteValue.nome || '');
+    ? (orcamento?.cliente || null)
+    : (cliente || null);
+  const clienteNome = clienteValue ? (typeof clienteValue === 'string' ? clienteValue : (clienteValue.nome || '')) : '';
   const validadeValue = isUnifiedMode ? orcamento.validade : validade;
   const tabelaValue = isUnifiedMode ? (orcamento.tabela_preco || '') : (tabela || '');
   const formaPagamentoValue = isUnifiedMode ? (orcamento.forma_pagamento || '') : (formaPagamento || '');

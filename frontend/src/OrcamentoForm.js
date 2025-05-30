@@ -31,7 +31,7 @@ const ESPECIE_OPCOES = [
   { value: '12', label: 'PIX' }
 ];
 
-function OrcamentoForm() {
+function OrcamentoForm({ darkMode = false }) {
   // Estados principais do formulário
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [orcamentoSalvo, setOrcamentoSalvo] = useState(null);
@@ -51,6 +51,17 @@ function OrcamentoForm() {
   const [quantidade, setQuantidade] = useState(1);
   const [valorUnitario, setValorUnitario] = useState(0);
   const [imagem, setImagem] = useState('');
+
+  // Estados de controle do modal
+  const [confirmacaoVisivel, setConfirmacaoVisivel] = useState(false);
+  const [produtoSelecionadoConfirmacao, setProdutoSelecionadoConfirmacao] = useState(null);
+  const [indiceProduto, setIndiceProduto] = useState(-1);
+
+  // useEffect para limpar campos ao entrar na tela
+  useEffect(() => {
+    console.log('Componente OrcamentoForm montado - limpando campos...');
+    limparFormularioCompleto();
+  }, []); // Array vazio = executa apenas na montagem do componente
 
   // Monitora mudanças no cliente para debug
   useEffect(() => {
@@ -110,11 +121,6 @@ function OrcamentoForm() {
   const quantidadeRefs = useRef([]);
   const precoRefs = useRef([]);
   const produtoRefs = useRef([]); // Referência para os itens da lista
-  
-  // Estado para controle do modal de confirmação
-  const [confirmacaoVisivel, setConfirmacaoVisivel] = useState(false);
-  const [produtoSelecionadoConfirmacao, setProdutoSelecionadoConfirmacao] = useState(null);
-  const [indiceProduto, setIndiceProduto] = useState(-1);
   
   // Função para rolar até o produto e focar na quantidade
   const scrollToProduto = (index) => {
@@ -303,8 +309,9 @@ function OrcamentoForm() {
     window.print();
   };
 
-  // Função para limpar todos os campos do formulário
-  const limparFormulario = () => {
+  // Função para limpar formulário completo (incluindo estados de modal)
+  const limparFormularioCompleto = () => {
+    console.log('Limpando formulário completo...');
     setProdutos([]);
     setCliente(null);
     setTabela('');
@@ -316,25 +323,54 @@ function OrcamentoForm() {
     setObservacao('');
     setProdutoSelecionado(null);
     setQuantidade(1);
+    setValorUnitario(0);
+    setImagem('');
     setOrcamentoSalvo(null);
     setShowConfirmation(false);
+    setConfirmacaoVisivel(false);
+    setProdutoSelecionadoConfirmacao(null);
+    setIndiceProduto(-1);
+    setIsLoading(false);
     
     // Limpa os campos de busca
-    const buscaInputs = document.querySelectorAll('input[type="text"]');
-    buscaInputs.forEach(input => {
-      if (input.placeholder.includes('Buscar')) {
-        input.value = '';
+    setTimeout(() => {
+      const buscaInputs = document.querySelectorAll('input[type="text"], input[type="search"]');
+      buscaInputs.forEach(input => {
+        if (input.placeholder && (input.placeholder.includes('Buscar') || input.placeholder.includes('buscar') || input.placeholder.includes('Digite'))) {
+          input.value = '';
+        }
+      });
+      
+      // Foca no campo de busca de cliente após limpar
+      const clienteInput = document.querySelector('input[placeholder*="cliente" i]');
+      if (clienteInput) {
+        clienteInput.focus();
       }
-    });
+    }, 100);
     
-    // Foca no campo de busca de cliente
-    const clienteInput = document.querySelector('input[placeholder*="cliente" i]');
-    if (clienteInput) clienteInput.focus();
+    console.log('Formulário limpo com sucesso!');
   };
 
   // Handler para novo orçamento
   const handleNovoOrcamento = () => {
-    limparFormulario();
+    console.log('Iniciando novo orçamento...');
+    limparFormularioCompleto();
+    // Fechar modal se estiver aberto
+    setShowConfirmation(false);
+    
+    // Feedback visual opcional
+    if (window.innerWidth >= 768) { // Apenas no desktop para não atrapalhar o mobile
+      // Pequeno feedback que o formulário foi limpo
+      setTimeout(() => {
+        const titulo = document.querySelector('h2');
+        if (titulo) {
+          titulo.classList.add('animate-pulse');
+          setTimeout(() => {
+            titulo.classList.remove('animate-pulse');
+          }, 1000);
+        }
+      }, 200);
+    }
   };
 
   // Handler para submit do orçamento
@@ -435,6 +471,7 @@ function OrcamentoForm() {
           <div className={`transition-all duration-300 overflow-hidden ${headerOpen ? 'max-h-[1200px] opacity-100' : 'max-h-0 opacity-0'}`}>
             <div className="p-2">
               <OrcamentoHeader
+                darkMode={darkMode}
                 cliente={cliente} setCliente={setCliente}
                 tabela={tabela} setTabela={setTabela}
                 formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento}
@@ -452,6 +489,7 @@ function OrcamentoForm() {
       ) : (
         <div className="mb-8">
           <OrcamentoHeader
+            darkMode={darkMode}
             cliente={cliente} setCliente={setCliente}
             tabela={tabela} setTabela={setTabela}
             formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento}
@@ -475,6 +513,7 @@ function OrcamentoForm() {
               onChange={setProdutoSelecionado} 
               onAdd={handleAdicionarProdutoDireto}
               produtosNoOrcamento={produtos}
+              darkMode={darkMode}
             />
           </div>
           <button 
@@ -488,13 +527,26 @@ function OrcamentoForm() {
         </div>
         <div className="space-y-3">
           {produtos.map((p, idx) => (
-            <div key={idx} ref={el => produtoRefs.current[idx] = el} className="bg-white border-2 border-blue-200 rounded-2xl shadow-xl p-4 mb-4 flex flex-col gap-2">
-              <div className="flex flex-col gap-1">
-                <div className="font-bold text-gray-900 text-lg truncate mb-1">{p.codigo} - {p.descricao}</div>
+            <div key={idx} ref={el => produtoRefs.current[idx] = el} className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg shadow-sm p-3 flex flex-col gap-3`}>
+              <div className="flex items-center justify-between">
+                <div className={`font-medium text-sm ${darkMode ? 'text-gray-300' : 'text-gray-900'}`}>{p.codigo}</div>
+                <button 
+                  type="button" 
+                  onClick={() => handleRemoverProduto(idx)} 
+                  className={`${darkMode ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' : 'text-red-500 hover:text-red-700 hover:bg-red-50'} rounded p-1 transition-all`}
+                  title="Remover produto"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              
+              <div className={`font-semibold text-base leading-tight ${darkMode ? 'text-gray-100' : 'text-gray-800'}`}>{p.descricao}</div>
+              
+              <div className="grid grid-cols-3 gap-3 items-end">
                 <div className="flex flex-col">
-                  <label className="text-base text-gray-500 mb-1">Qtd:</label>
+                  <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Qtd</label>
                   <input
                     type="number"
                     min={1}
@@ -507,12 +559,11 @@ function OrcamentoForm() {
                         if (precoRefs.current[idx]) precoRefs.current[idx].focus();
                       }
                     }}
-                    className="w-full px-5 py-3 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xl text-center font-bold"
-                    style={{ minWidth: 70 }}
+                    className={`w-full px-2 py-2 rounded border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} focus:outline-none focus:ring-1 text-center font-medium`}
                   />
                 </div>
                 <div className="flex flex-col">
-                  <label className="text-base text-gray-500 mb-1">Unitário:</label>
+                  <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Valor Unit.</label>
                   <input
                     type="number"
                     min={0}
@@ -528,28 +579,19 @@ function OrcamentoForm() {
                         }
                       }
                     }}
-                    className="w-full px-5 py-3 rounded-lg bg-gray-100 text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-xl text-center font-bold"
-                    style={{ minWidth: 90 }}
+                    className={`w-full px-2 py-2 rounded border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} focus:outline-none focus:ring-1 text-right font-medium`}
                   />
                 </div>
+                <div className="flex flex-col">
+                  <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total</label>
+                  <div className={`px-2 py-2 border rounded text-right font-semibold ${darkMode ? 'bg-blue-900/20 border-blue-800 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                    R$ {parseFloat(p.valor_total).toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
+                    })}
+                  </div>
+                </div>
               </div>
-              <div className="flex flex-col items-center justify-center mt-2">
-                <span className="text-base text-gray-500 mb-1">Total:</span>
-                <span className="text-blue-700 font-extrabold text-2xl">
-                  {parseFloat(p.valor_total).toLocaleString('pt-BR', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
-                </span>
-              </div>
-              <button 
-                type="button" 
-                onClick={() => handleRemoverProduto(idx)} 
-                className="mt-2 text-red-600 hover:text-white hover:bg-red-500 font-bold text-base rounded-lg px-4 py-2 transition-all border border-red-200 bg-red-50"
-                style={{ minWidth: 44, minHeight: 44 }}
-              >
-                Remover
-              </button>
             </div>
           ))}
         </div>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiSearch, FiX, FiUser, FiPackage } from 'react-icons/fi';
+import ProdutoAutocomplete from './ProdutoAutocomplete';
+import api from '../services/api';
 
 const NovoPedido = ({ darkMode }) => {
   const navigate = useNavigate();
@@ -10,40 +12,105 @@ const NovoPedido = ({ darkMode }) => {
   const [clienteSelecionadoObj, setClienteSelecionadoObj] = useState(null);
   const [itensPedido, setItensPedido] = useState([]);
   const [observacao, setObservacao] = useState('');
-  const [produtoSelecionado, setProdutoSelecionado] = useState('');
-  const [produtoSelecionadoObj, setProdutoSelecionadoObj] = useState(null);
   const [quantidade, setQuantidade] = useState(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   
   // Estados para busca e autocompletar
   const [clienteSearchTerm, setClienteSearchTerm] = useState('');
-  const [produtoSearchTerm, setProdutoSearchTerm] = useState('');
   const [clientesSugeridos, setClientesSugeridos] = useState([]);
-  const [produtosSugeridos, setProdutosSugeridos] = useState([]);
   const [showClientesSugeridos, setShowClientesSugeridos] = useState(false);
-  const [showProdutosSugeridos, setShowProdutosSugeridos] = useState(false);
   
   // Refs para os dropdowns
   const clienteDropdownRef = useRef(null);
-  const produtoDropdownRef = useRef(null);
 
-  // Fechar os dropdowns quando clicar fora deles
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (clienteDropdownRef.current && !clienteDropdownRef.current.contains(event.target)) {
-        setShowClientesSugeridos(false);
-      }
-      if (produtoDropdownRef.current && !produtoDropdownRef.current.contains(event.target)) {
-        setShowProdutosSugeridos(false);
-      }
+  // Estado para controlar a edição de itens
+  const [editingItemId, setEditingItemId] = useState(null);
+  const [editingPreco, setEditingPreco] = useState('');
+  const [editingQuantidade, setEditingQuantidade] = useState('');
+
+  // Função para adicionar item ao pedido
+  const adicionarItemAoPedido = (produto) => {
+    console.log('Tentando adicionar produto:', produto);
+    
+    if (!produto || !produto.pro_codigo) {
+      console.error('Produto inválido:', produto);
+      return;
+    }
+
+    const novoItem = {
+      produto_id: produto.pro_codigo,
+      produto_codigo: produto.pro_codigo,
+      produto_descricao: produto.pro_descricao,
+      preco_unitario: parseFloat(produto.pro_venda || 0),
+      quantidade: 1,
+      unidade: produto.uni_codigo,
+      valor_total: parseFloat(produto.pro_venda || 0),
+      editavel: true
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+    console.log('Novo item criado:', novoItem);
+
+    setItensPedido(prevItens => {
+      const novosItens = [...prevItens, novoItem];
+      console.log('Lista atualizada de itens:', novosItens);
+      return novosItens;
+    });
+
+    // Ativar modo de edição
+    console.log('Ativando modo de edição para:', novoItem.produto_id);
+    setEditingItemId(novoItem.produto_id);
+    setEditingPreco(novoItem.preco_unitario.toString());
+    setEditingQuantidade('1');
+  };
+
+  // Função para iniciar a edição de um item
+  const handleStartEditing = (item) => {
+    setEditingItemId(item.produto_id);
+    setEditingPreco(item.preco_unitario.toString());
+    setEditingQuantidade(item.quantidade.toString());
+  };
+  
+  // Função para salvar as alterações de um item em edição
+  const handleSaveEdit = (itemId) => {
+    const preco = parseFloat(editingPreco.replace(',', '.'));
+    const quantidade = parseFloat(editingQuantidade.replace(',', '.'));
+    
+    if (isNaN(preco) || isNaN(quantidade) || preco <= 0 || quantidade <= 0) {
+      alert('Por favor, informe valores válidos para preço e quantidade.');
+      return;
+    }
+    
+    const novosItens = itensPedido.map(item => {
+      if (item.produto_id === itemId) {
+        return {
+          ...item,
+          preco_unitario: preco,
+          quantidade: quantidade,
+          valor_total: preco * quantidade,
+          editavel: false
+        };
+      }
+      return item;
+    });
+    
+    setItensPedido(novosItens);
+    setEditingItemId(null);
+    setEditingPreco('');
+    setEditingQuantidade('');
+  };
+  
+  // Função para cancelar a edição
+  const handleCancelEdit = () => {
+    setEditingItemId(null);
+    setEditingPreco('');
+    setEditingQuantidade('');
+  };
+
+  const handleRemoveItem = (produtoId) => {
+    const novosItens = itensPedido.filter(item => item.produto_id !== produtoId);
+    setItensPedido(novosItens);
+  };
 
   useEffect(() => {
     // Em um ambiente real, você faria chamadas à API aqui
@@ -129,23 +196,6 @@ const NovoPedido = ({ darkMode }) => {
     setShowClientesSugeridos(filtered.length > 0);
   }, [clienteSearchTerm, clientes]);
   
-  // Filtrar produtos com base no termo de busca
-  useEffect(() => {
-    if (produtoSearchTerm.trim() === '') {
-      setProdutosSugeridos([]);
-      return;
-    }
-    
-    const termLower = produtoSearchTerm.toLowerCase();
-    const filtered = produtos.filter(produto => 
-      produto.descricao.toLowerCase().includes(termLower) || 
-      produto.codigo.toLowerCase().includes(termLower)
-    ).slice(0, 10); // Limitar a 10 resultados para melhor desempenho
-    
-    setProdutosSugeridos(filtered);
-    setShowProdutosSugeridos(filtered.length > 0);
-  }, [produtoSearchTerm, produtos]);
-  
   // Selecionar cliente
   const handleSelectCliente = (cliente) => {
     setClienteSelecionadoObj(cliente);
@@ -154,131 +204,11 @@ const NovoPedido = ({ darkMode }) => {
     setShowClientesSugeridos(false);
   };
   
-  // Selecionar produto
-  const handleSelectProduto = (produto) => {
-    setProdutoSelecionadoObj(produto);
-    setProdutoSelecionado(produto.id.toString());
-    setProdutoSearchTerm(produto.descricao);
-    setShowProdutosSugeridos(false);
-  };
-  
   // Limpar cliente selecionado
   const handleClearCliente = () => {
     setClienteSelecionadoObj(null);
     setSelectedCliente('');
     setClienteSearchTerm('');
-  };
-  
-  // Limpar produto selecionado
-  const handleClearProduto = () => {
-    setProdutoSelecionadoObj(null);
-    setProdutoSelecionado('');
-    setProdutoSearchTerm('');
-  };
-
-  // Estado para controlar a edição de itens
-  const [editingItemId, setEditingItemId] = useState(null);
-  const [editingPreco, setEditingPreco] = useState('');
-  const [editingQuantidade, setEditingQuantidade] = useState('');
-
-  const handleAddItem = () => {
-    if (!produtoSelecionadoObj) {
-      return;
-    }
-    
-    // Verificar se o produto já está no pedido
-    const itemExistente = itensPedido.find(item => item.produto_id === produtoSelecionadoObj.id);
-    
-    if (itemExistente) {
-      // Atualizar a quantidade do item existente
-      const novosItens = itensPedido.map(item => {
-        if (item.produto_id === produtoSelecionadoObj.id) {
-          const novaQuantidade = item.quantidade + 1; // Adiciona 1 por padrão, depois pode ser editado
-          return {
-            ...item,
-            quantidade: novaQuantidade,
-            valor_total: novaQuantidade * item.preco_unitario
-          };
-        }
-        return item;
-      });
-      
-      setItensPedido(novosItens);
-    } else {
-      // Adicionar novo item com quantidade 1 e preço padrão
-      // O usuário poderá editar esses valores depois
-      const novoItem = {
-        produto_id: produtoSelecionadoObj.id,
-        produto_codigo: produtoSelecionadoObj.codigo,
-        produto_descricao: produtoSelecionadoObj.descricao,
-        preco_unitario: produtoSelecionadoObj.preco,
-        quantidade: 1, // Quantidade padrão 1, será editável
-        unidade: produtoSelecionadoObj.unidade,
-        valor_total: produtoSelecionadoObj.preco * 1,
-        editavel: true // Flag para indicar que o item acabou de ser adicionado e pode ser editado
-      };
-      
-      const novosItens = [...itensPedido, novoItem];
-      setItensPedido(novosItens);
-      
-      // Automaticamente entra em modo de edição para o item recém-adicionado
-      setEditingItemId(produtoSelecionadoObj.id);
-      setEditingPreco(produtoSelecionadoObj.preco.toString());
-      setEditingQuantidade('1');
-    }
-    
-    // Limpar seleção de produto para adicionar outro rapidamente
-    setProdutoSelecionadoObj(null);
-    setProdutoSelecionado('');
-    setProdutoSearchTerm('');
-  };
-  
-  // Função para iniciar a edição de um item
-  const handleStartEditing = (item) => {
-    setEditingItemId(item.produto_id);
-    setEditingPreco(item.preco_unitario.toString());
-    setEditingQuantidade(item.quantidade.toString());
-  };
-  
-  // Função para salvar as alterações de um item em edição
-  const handleSaveEdit = (itemId) => {
-    const preco = parseFloat(editingPreco.replace(',', '.'));
-    const quantidade = parseFloat(editingQuantidade.replace(',', '.'));
-    
-    if (isNaN(preco) || isNaN(quantidade) || preco <= 0 || quantidade <= 0) {
-      alert('Por favor, informe valores válidos para preço e quantidade.');
-      return;
-    }
-    
-    const novosItens = itensPedido.map(item => {
-      if (item.produto_id === itemId) {
-        return {
-          ...item,
-          preco_unitario: preco,
-          quantidade: quantidade,
-          valor_total: preco * quantidade,
-          editavel: false
-        };
-      }
-      return item;
-    });
-    
-    setItensPedido(novosItens);
-    setEditingItemId(null);
-    setEditingPreco('');
-    setEditingQuantidade('');
-  };
-  
-  // Função para cancelar a edição
-  const handleCancelEdit = () => {
-    setEditingItemId(null);
-    setEditingPreco('');
-    setEditingQuantidade('');
-  };
-
-  const handleRemoveItem = (produtoId) => {
-    const novosItens = itensPedido.filter(item => item.produto_id !== produtoId);
-    setItensPedido(novosItens);
   };
 
   const calcularTotalPedido = () => {
@@ -436,60 +366,10 @@ const NovoPedido = ({ darkMode }) => {
               <label className={`block ${darkMode ? "text-gray-300" : "text-gray-700"} text-sm font-bold mb-2 flex items-center`} htmlFor="produto">
                 <FiPackage className="mr-2" /> Produto
               </label>
-              <div className="relative" ref={produtoDropdownRef}>
-                <div className="flex">
-                  <div className="relative flex-grow">
-                    <input
-                      id="produto"
-                      type="text"
-                      className={`shadow appearance-none border rounded-l w-full py-2 px-3 pl-8 ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"} leading-tight focus:outline-none focus:shadow-outline`}
-                      placeholder="Digite código ou descrição..."
-                      value={produtoSearchTerm}
-                      onChange={(e) => setProdutoSearchTerm(e.target.value)}
-                      onFocus={() => {
-                        if (produtoSearchTerm.trim() !== '' && produtosSugeridos.length > 0) {
-                          setShowProdutosSugeridos(true);
-                        }
-                      }}
-                    />
-                    <FiSearch className="absolute left-2 top-2.5 text-gray-400" />
-                  </div>
-                  {produtoSearchTerm && (
-                    <button 
-                      type="button"
-                      onClick={handleClearProduto}
-                      className={`px-3 py-2 ${darkMode ? "bg-gray-600 hover:bg-gray-500 border-gray-600" : "bg-gray-200 hover:bg-gray-300 border-gray-300"} border rounded-r`}
-                    >
-                      <FiX />
-                    </button>
-                  )}
-                </div>
-                
-                {showProdutosSugeridos && (
-                  <div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${darkMode ? "bg-gray-700" : "bg-white"} max-h-60 overflow-auto`}>
-                    {produtosSugeridos.length > 0 ? (
-                      produtosSugeridos.map((produto) => (
-                        <div 
-                          key={produto.id} 
-                          className={`p-2 cursor-pointer ${darkMode ? "hover:bg-gray-600 border-b border-gray-600" : "hover:bg-gray-100 border-b border-gray-200"} ${produtoSelecionadoObj && produtoSelecionadoObj.id === produto.id ? (darkMode ? "bg-gray-600" : "bg-blue-50") : ""}`}
-                          onClick={() => handleSelectProduto(produto)}
-                        >
-                          <div className="font-medium">{produto.descricao}</div>
-                          <div className="flex justify-between">
-                            <span className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{produto.codigo}</span>
-                            <span className={`text-sm font-semibold ${darkMode ? "text-green-400" : "text-green-600"}`}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.preco)}</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className={`p-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Nenhum produto encontrado</div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className={`text-xs mt-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                {produtos.length} produtos disponíveis. Digite para filtrar.
-              </div>
+              <ProdutoAutocomplete
+                onSelect={adicionarItemAoPedido}
+                darkMode={darkMode}
+              />
             </div>
             
             <div>
@@ -505,16 +385,6 @@ const NovoPedido = ({ darkMode }) => {
                 value={quantidade}
                 onChange={(e) => setQuantidade(e.target.value)}
               />
-            </div>
-            
-            <div className="flex items-end">
-              <button
-                type="button"
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-                onClick={handleAddItem}
-              >
-                Adicionar Item
-              </button>
             </div>
           </div>
 

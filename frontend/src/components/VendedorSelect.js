@@ -4,19 +4,40 @@ import { getVendedores } from '../services/api';
 const VendedorSelect = ({ value, onChange, darkMode }) => {
   const [vendedores, setVendedores] = useState([]);
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    const abortController = new AbortController();
+    
     const fetchVendedores = async () => {
       try {
-        const response = await getVendedores();
-        setVendedores(response.data); // Os dados já vêm no formato correto do backend
+        setIsLoading(true);
+        setError(null);
+        const response = await getVendedores(abortController.signal);
+        
+        // Só atualiza se não foi cancelado
+        if (!abortController.signal.aborted) {
+          setVendedores(response.data);
+        }
       } catch (error) {
-        console.error('Erro ao buscar vendedores:', error);
-        setError('Erro ao carregar vendedores');
+        // Só mostra erro se não foi cancelamento
+        if (!abortController.signal.aborted) {
+          console.error('Erro ao buscar vendedores:', error);
+          setError('Erro ao carregar vendedores');
+        }
+      } finally {
+        if (!abortController.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchVendedores();
+
+    // Cleanup: cancela a requisição se o componente for desmontado
+    return () => {
+      abortController.abort();
+    };
   }, []);
 
   return (
@@ -24,13 +45,14 @@ const VendedorSelect = ({ value, onChange, darkMode }) => {
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
+        disabled={isLoading}
         className={`w-full rounded-md ${
           darkMode
             ? "bg-gray-600 border-gray-500 text-white"
             : "bg-white border-gray-300 text-gray-700"
-        }`}
+        } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
-        <option value="">Selecione um vendedor</option>
+        <option value="">{isLoading ? 'Carregando...' : 'Selecione um vendedor'}</option>
         {vendedores.map((vendedor) => (
           <option key={vendedor.codigo} value={vendedor.codigo}>
             {vendedor.nome}

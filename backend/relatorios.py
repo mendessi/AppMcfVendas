@@ -79,6 +79,7 @@ class Vendedor(BaseModel):
 class FormaPagamento(BaseModel):
     """Modelo para forma de pagamento"""
     FPG_COD: int
+
 @router.get("/vendas")
 async def listar_vendas(request: Request):
     """
@@ -89,12 +90,7 @@ async def listar_vendas(request: Request):
     """
     from datetime import date, timedelta
     log.info(f"[VENDAS] Listando vendas. Headers: {dict(request.headers)}")
-    authorization = request.headers.get("Authorization")
-    empresa_codigo = request.headers.get("x-empresa-codigo")
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
-    if not empresa_codigo:
-        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    
     try:
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()

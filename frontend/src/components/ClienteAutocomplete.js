@@ -57,20 +57,15 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
         console.log('Dados retornados da API:', response.data);
 
         // Mapear os dados retornados para o formato esperado
-        const clientesMapeados = response.data.map(cliente => {
-          console.log('Cliente original:', cliente);
-          const mapeado = {
-            codigo: cliente.cli_codigo || cliente.codigo,
-            nome: cliente.cli_nome || cliente.nome,
-            documento: cliente.cnpj || cliente.CNPJ || cliente.cli_cgc || cliente.cli_cpf || cliente.documento || '', // Tenta cnpj minúsculo primeiro
-            tipo: cliente.cli_tipo || cliente.tipo || 'F',
-            cidade: cliente.cidade || cliente.Cidade || '',
-            uf: cliente.uf || cliente.Uf || '',
-            bairro: cliente.bairro || cliente.Bairro || ''
-          };
-          console.log('Cliente mapeado:', mapeado);
-          return mapeado;
-        });
+        const clientesMapeados = response.data.map(cliente => ({
+          codigo: cliente.cli_codigo || cliente.codigo,
+          nome: cliente.cli_nome || cliente.nome,
+          documento: cliente.cnpj || cliente.CNPJ || cliente.cli_cgc || cliente.cli_cpf || cliente.documento || '', // Tenta cnpj minúsculo primeiro
+          tipo: cliente.cli_tipo || cliente.tipo || 'F',
+          cidade: cliente.cidade || cliente.Cidade || '',
+          uf: cliente.uf || cliente.Uf || '',
+          bairro: cliente.bairro || cliente.Bairro || ''
+        }));
 
         console.log('Dados mapeados:', clientesMapeados);
         setSuggestions(clientesMapeados);

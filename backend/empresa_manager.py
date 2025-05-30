@@ -588,6 +588,30 @@ async def get_empresa_connection(request: Request):
     Obtém uma conexão com a empresa atual do usuário.
     """
     empresa = get_empresa_atual(request)
+    
+    # Verificar se a empresa é válida antes de tentar conectar
+    if empresa.get('empresa_nao_selecionada', False) or not empresa or empresa.get('cli_codigo', 0) == 0:
+        logging.warning("Nenhuma empresa válida selecionada")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Selecione uma empresa válida antes de prosseguir"
+        )
+    
+    # Verificar se os dados mínimos estão presentes
+    if not empresa.get('cli_ip_servidor'):
+        logging.error(f"IP do servidor não configurado para empresa {empresa.get('cli_codigo')}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Configuração da empresa incompleta: IP do servidor não definido"
+        )
+    
+    if not empresa.get('cli_caminho_base') and not empresa.get('cli_nome_base'):
+        logging.error(f"Caminho da base não configurado para empresa {empresa.get('cli_codigo')}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Configuração da empresa incompleta: caminho da base não definido"
+        )
+    
     try:
         # Certificar-se de que a empresa tenha uma porta definida
         if 'cli_porta' not in empresa or not empresa['cli_porta']:

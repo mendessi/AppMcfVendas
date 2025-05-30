@@ -30,30 +30,140 @@ const PedidosList = ({ darkMode }) => {
     setErrorMsg(null);
     try {
       const token = localStorage.getItem('token');
-      const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada');
+      
+      console.log('🔍 DEBUG - Token:', token ? 'Presente' : 'Ausente');
+      
+      // Verificar se o token existe
+      if (!token) {
+        setErrorMsg('Token de autenticação não encontrado. Redirecionando para login...');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+        return;
+      }
+      
+      // Tentar obter a empresa de várias fontes no localStorage
       let empresaCodigo = null;
-      if (empresaSelecionada) {
+      
+      // 1. Tentar obter do localStorage 'empresa_detalhes' (objeto completo)
+      const empresaDetalhes = localStorage.getItem('empresa_detalhes');
+      if (empresaDetalhes) {
         try {
-          const empObj = JSON.parse(empresaSelecionada);
-          empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
-        } catch {
-          empresaCodigo = empresaSelecionada;
+          const empObj = JSON.parse(empresaDetalhes);
+          empresaCodigo = empObj?.cli_codigo;
+          console.log('🔍 DEBUG - Empresa de empresa_detalhes:', empObj);
+        } catch (e) {
+          console.log('🔍 DEBUG - Erro ao parsear empresa_detalhes:', e.message);
         }
       }
+      
+      // 2. Se não encontrou, tentar das outras chaves (como string ou objeto)
+      if (!empresaCodigo) {
+        const empresaSelecionada = localStorage.getItem('empresa') || 
+                                 localStorage.getItem('empresa_atual') || 
+                                 localStorage.getItem('empresa_selecionada');
+        
+        console.log('🔍 DEBUG - Empresa localStorage raw:', empresaSelecionada);
+        
+        if (empresaSelecionada) {
+          try {
+            // Tentar como JSON primeiro
+            const empObj = JSON.parse(empresaSelecionada);
+            empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
+            console.log('🔍 DEBUG - Empresa parseada como JSON:', empObj);
+          } catch {
+            // Se falhar, usar como string diretamente
+            empresaCodigo = empresaSelecionada;
+            console.log('🔍 DEBUG - Empresa como string:', empresaCodigo);
+          }
+        }
+      }
+      
+      // 3. Validar se temos um código de empresa válido
+      if (!empresaCodigo || empresaCodigo === '0' || empresaCodigo === 0) {
+        setErrorMsg('Nenhuma empresa válida selecionada. Mostrando seleção de empresa...');
+        console.log('🚨 DEBUG - Empresa inválida ou ausente:', empresaCodigo);
+        // Limpar empresa do localStorage para forçar seleção
+        localStorage.removeItem('empresa');
+        localStorage.removeItem('empresa_atual');
+        localStorage.removeItem('empresa_selecionada');
+        localStorage.removeItem('empresa_detalhes');
+        setTimeout(() => {
+          window.location.reload(); // Recarregar para mostrar seletor de empresas
+        }, 2000);
+        return;
+      }
+      
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'x-empresa-codigo': empresaCodigo.toString() // Garantir que seja string
       };
-      if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
+      
+      console.log('🔍 DEBUG - Headers finais:', headers);
+      console.log('🔍 DEBUG - Empresa código final:', empresaCodigo);
+      
       const apiUrl = process.env.REACT_APP_API_URL || '';
       // Montar query string de datas
       let url = `${apiUrl}/relatorios/vendas`;
       if (dataInicial && dataFinal) {
         url += `?data_inicial=${dataInicial}&data_final=${dataFinal}`;
       }
+      
+      console.log('🔍 DEBUG - URL final:', url);
+      
       const response = await fetch(url, { headers });
-      if (!response.ok) throw new Error('Erro ao buscar pedidos');
+      
+      console.log('🔍 DEBUG - Response status:', response.status);
+      console.log('🔍 DEBUG - Response ok:', response.ok);
+      
+      if (!response.ok) {
+        // Tentar obter o detalhe do erro da resposta
+        let errorDetail = 'Erro desconhecido';
+        try {
+          const errorData = await response.json();
+          errorDetail = errorData.detail || `Erro ${response.status}: ${response.statusText}`;
+        } catch {
+          errorDetail = `Erro ${response.status}: ${response.statusText}`;
+        }
+        
+        console.error('🚨 ERRO na API:', errorDetail);
+        
+        // Se for erro 401 (Unauthorized), redirecionar para login
+        if (response.status === 401) {
+          console.log('Token expirado, limpando localStorage e redirecionando...');
+          localStorage.removeItem('token');
+          localStorage.removeItem('usuario_id');
+          localStorage.removeItem('usuario_nome');
+          localStorage.removeItem('user');
+          setErrorMsg('Sessão expirada. Redirecionando para login...');
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+          return;
+        }
+        
+        // Se for erro 400 sobre empresa, redirecionar para seleção de empresa
+        if (response.status === 400 && errorDetail.includes('empresa')) {
+          console.log('Problema com empresa selecionada, limpando e recarregando...');
+          setErrorMsg('Problema com a empresa selecionada. Mostrando seleção de empresa...');
+          // Limpar empresa do localStorage para forçar seleção
+          localStorage.removeItem('empresa');
+          localStorage.removeItem('empresa_atual');
+          localStorage.removeItem('empresa_selecionada');
+          localStorage.removeItem('empresa_detalhes');
+          setTimeout(() => {
+            window.location.reload(); // Recarregar para mostrar seletor de empresas
+          }, 2000);
+          return;
+        }
+        
+        throw new Error(errorDetail);
+      }
+      
       const data = await response.json();
+      console.log('✅ DEBUG - Dados recebidos:', data);
+      
       // Mapear os dados para o formato esperado pelo front
       const pedidosFormatados = data.map(venda => ({
         id: venda.ecf_numero,
@@ -79,7 +189,7 @@ const PedidosList = ({ darkMode }) => {
     } catch (error) {
       setPedidos([]);
       setFilteredPedidos([]);
-      setErrorMsg('Erro ao buscar pedidos. Tente novamente.');
+      setErrorMsg(`Erro ao buscar pedidos: ${error.message}`);
       console.error('Erro ao buscar pedidos:', error);
     } finally {
       setLoading(false);

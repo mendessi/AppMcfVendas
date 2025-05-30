@@ -45,6 +45,7 @@ def obter_conexao_cliente(empresa):
     """
     Obtém uma conexão com o banco de dados do cliente.
     """
+    dsn = "Não definido"  # Inicializar para evitar erro no bloco de exception
     try:
         # Importações necessárias para essa função
         import os
@@ -129,7 +130,7 @@ def obter_conexao_cliente(empresa):
             return conn
     except Exception as e:
         logging.error(f"Erro ao conectar ao banco do cliente: {str(e)}")
-        raise Exception(f"Erro ao conectar ao banco Firebird: {str(e)}\nDSN tentado: {dsn}") 
+        raise Exception(f"Erro ao conectar ao banco Firebird: {str(e)}\nDSN tentado: {dsn}")
 
 async def testar_conexao(connection):
     """

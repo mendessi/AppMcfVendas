@@ -198,7 +198,34 @@ function AppContent() {
     return (
       <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
         <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-lg shadow-md w-full max-w-md`}>
-          <h2 className={`text-2xl font-bold text-center ${darkMode ? 'text-blue-400' : 'text-blue-600'} mb-6`}>Força de Vendas</h2>
+          {/* Logo da Empresa */}
+          <div className="flex justify-center items-center mb-6">
+            <img 
+              src={darkMode ? "/images/logo-escuro.png" : "/images/logo-claro.png"}
+              alt="Logo da Empresa"
+              className="max-w-[250px] max-h-[100px] w-auto h-auto object-contain transition-opacity duration-300"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                // Se não encontrar a imagem, mostrar um texto alternativo
+                const parent = e.target.parentElement;
+                if (!parent.querySelector('.logo-fallback')) {
+                  const fallback = document.createElement('div');
+                  fallback.className = `logo-fallback text-center font-bold text-2xl ${darkMode ? 'text-green-400' : 'text-green-600'}`;
+                  fallback.textContent = 'VISÃO360';
+                  parent.appendChild(fallback);
+                }
+              }}
+            />
+          </div>
+          
+          <div className="text-center mb-6">
+            <h2 className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'} mb-2`}>
+              Bem-vindo ao Visão360
+            </h2>
+            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Faça login para acessar sua área
+            </p>
+          </div>
           
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -329,6 +356,26 @@ function AppContent() {
         >
           <div className="h-full overflow-y-auto py-4 px-3 flex flex-col justify-between">
             <div className="space-y-8">
+              {/* Logo da Empresa */}
+              <div className="flex justify-center items-center py-4">
+                <img 
+                  src={darkMode ? "/images/logo-escuro.png" : "/images/logo-claro.png"}
+                  alt="Logo da Empresa"
+                  className="max-w-[200px] max-h-[80px] w-auto h-auto object-contain transition-opacity duration-300"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    // Se não encontrar a imagem, mostrar um texto alternativo
+                    const parent = e.target.parentElement;
+                    if (!parent.querySelector('.logo-fallback')) {
+                      const fallback = document.createElement('div');
+                      fallback.className = `logo-fallback text-center font-bold text-lg ${darkMode ? 'text-blue-400' : 'text-blue-600'}`;
+                      fallback.textContent = 'LOGO';
+                      parent.appendChild(fallback);
+                    }
+                  }}
+                />
+              </div>
+              
               <div>
                 <div className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-2">Empresa</div>
                 <div className={`px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>

@@ -710,7 +710,7 @@ async def get_itens_venda(request: Request, ecf_numero: str):
         cursor = conn.cursor()
         
         try:
-            # Consulta para itens da venda
+            # Consulta para itens da venda com dados do produto
             sql = """
                 SELECT 
                     I.ECF_NUMERO,
@@ -725,13 +725,23 @@ async def get_itens_venda(request: Request, ecf_numero: str):
                 FROM ITVENDA I
                 LEFT JOIN PRODUTO P ON I.PRO_CODIGO = P.PRO_CODIGO
                 WHERE I.ECF_NUMERO = ?
-                ORDER BY I.IEC_SEQUENCIA
+                ORDER BY I.PRO_CODIGO
             """
             
-            log.info(f"[ITENS_VENDA] Executando consulta de itens")
-            cursor.execute(sql, (ecf_numero,))
-            rows = cursor.fetchall()
-            log.info(f"[ITENS_VENDA] Encontrados {len(rows)} itens")
+            log.info(f"[ITENS_VENDA] Executando consulta SQL: {sql}")
+            log.info(f"[ITENS_VENDA] Parâmetro ECF_NUMERO: {ecf_numero}")
+            
+            try:
+                cursor.execute(sql, (ecf_numero,))
+                rows = cursor.fetchall()
+                log.info(f"[ITENS_VENDA] Encontrados {len(rows)} itens")
+            except Exception as sql_error:
+                log.error(f"[ITENS_VENDA] Erro na execução da query SQL: {str(sql_error)}")
+                raise HTTPException(status_code=500, detail=f"Erro na consulta SQL: {str(sql_error)}")
+            
+            if not rows:
+                log.info(f"[ITENS_VENDA] Nenhum item encontrado para venda {ecf_numero}")
+                return []
             
             itens = []
             for idx, row in enumerate(rows):
@@ -750,8 +760,8 @@ async def get_itens_venda(request: Request, ecf_numero: str):
                         "PRO_QUANTIDADE": quantidade,
                         "PRO_VENDA": valor_unitario,
                         "PRO_TOTAL": total,
-                        "PRO_MARCA": row[5] if row[5] is not None else "",
-                        "UNI_CODIGO": row[6] if row[6] is not None else "",
+                        "PRO_MARCA": row[6] if row[6] is not None else "",
+                        "UNI_CODIGO": row[7] if row[7] is not None else "",
                         "ESTOQUE_ATUAL": estoque
                     }
                     itens.append(item)
@@ -981,8 +991,8 @@ async def buscar_produtos(request: Request, q: str = ""):
                     "pro_venda": valor_unitario,
                     "pro_vendapz": valor_prazo,
                     "pro_descprovlr": valor_minimo,
-                    "pro_marca": row[5] or "",
-                    "uni_codigo": row[6] or "",
+                    "PRO_MARCA": row[6] if row[6] is not None else "",
+                    "UNI_CODIGO": row[7] if row[7] is not None else "",
                     "pro_quantidade": estoque,
                     "pro_imagem": row[8] or ""
                 }

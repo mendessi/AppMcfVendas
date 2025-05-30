@@ -206,8 +206,8 @@ const OrcamentoForm = ({ numero, darkMode }) => {
         p.codigo === codigo
           ? {
               ...p,
-              quantidade: quantidade,
-              valor_total: quantidade * p.valor_unitario
+              quantidade: parseFloat(quantidade) || 1,
+              valor_total: parseFloat(quantidade) * p.valor_unitario
             }
           : p
       )
@@ -370,9 +370,10 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                     <td className="px-6 py-4 whitespace-nowrap text-right">
                       <input
                         type="number"
-                        min="1"
+                        min="0.01"
+                        step="0.01"
                         value={produto.quantidade}
-                        onChange={(e) => handleQuantidadeChange(produto.codigo, parseInt(e.target.value) || 1)}
+                        onChange={(e) => handleQuantidadeChange(produto.codigo, e.target.value)}
                         className={`w-20 text-right rounded-md ${
                           darkMode
                             ? "bg-gray-600 border-gray-500 text-white"

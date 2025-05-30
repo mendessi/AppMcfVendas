@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiEdit2, FiTrash2, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiEye } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiEye, FiPrinter } from 'react-icons/fi';
 import api from '../services/api';
 
 const OrcamentosList = ({ darkMode }) => {
@@ -299,6 +299,48 @@ const OrcamentosList = ({ darkMode }) => {
   };
 
   const totalizadores = calcularTotalizadores();
+
+  // Função para imprimir orçamento
+  const handleImprimir = async (numeroOrcamento) => {
+    try {
+      // Obter token e empresa como nas outras requisições
+      const token = localStorage.getItem('token');
+      const empresaCodigo = localStorage.getItem('empresa_atual');
+      
+      if (!token) {
+        alert('Você precisa estar logado para imprimir o orçamento.');
+        return;
+      }
+      
+      // Fazer a requisição com os cabeçalhos corretos
+      const response = await api.get(`/orcamentos/${numeroOrcamento}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'x-empresa-codigo': empresaCodigo,
+          'Content-Type': 'application/json'
+        },
+        responseType: 'text' // Porque esperamos HTML
+      });
+      
+      // Abrir nova janela com o HTML retornado
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      if (printWindow) {
+        printWindow.document.open();
+        printWindow.document.write(response.data);
+        printWindow.document.close();
+      } else {
+        alert('Por favor, permita pop-ups para imprimir o orçamento.');
+      }
+      
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      if (error.response?.status === 401) {
+        alert('Sessão expirada. Faça login novamente.');
+      } else {
+        alert('Erro ao gerar PDF do orçamento: ' + (error.response?.data?.detail || error.message));
+      }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -622,15 +664,28 @@ const OrcamentosList = ({ darkMode }) => {
                         </span>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => toggleOrcamentoDetails(orcamento.numero)}
-                          className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded hover:${
-                            darkMode ? 'bg-blue-700' : 'bg-blue-700'
-                          } ${darkMode ? 'text-blue-300 hover:text-white' : 'text-blue-600 hover:text-white'} transition-colors duration-200`}
-                        >
-                          {expandedOrcamento === orcamento.numero ? <FiChevronUp /> : <FiChevronDown />}
-                          <FiEye className="ml-1" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => toggleOrcamentoDetails(orcamento.numero)}
+                            className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded hover:${
+                              darkMode ? 'bg-blue-700' : 'bg-blue-700'
+                            } ${darkMode ? 'text-blue-300 hover:text-white' : 'text-blue-600 hover:text-white'} transition-colors duration-200`}
+                            title="Ver detalhes"
+                          >
+                            {expandedOrcamento === orcamento.numero ? <FiChevronUp /> : <FiChevronDown />}
+                            <FiEye className="ml-1" />
+                          </button>
+                          
+                          <button
+                            onClick={() => handleImprimir(orcamento.numero)}
+                            className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded hover:${
+                              darkMode ? 'bg-green-700' : 'bg-green-700'
+                            } ${darkMode ? 'text-green-300 hover:text-white' : 'text-green-600 hover:text-white'} transition-colors duration-200`}
+                            title="Imprimir orçamento"
+                          >
+                            <FiPrinter />
+                          </button>
+                        </div>
                       </td>
                     </tr>
 

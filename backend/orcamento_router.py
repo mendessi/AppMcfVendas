@@ -10,6 +10,7 @@ Se precisar fazer alterações:
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Request, Body
+from fastapi.responses import HTMLResponse
 from typing import Any, List, Optional, Dict
 from pydantic import BaseModel
 import database  # Seu módulo de conexão
@@ -377,76 +378,424 @@ async def obter_itens_orcamento(numero: int, request: Request):
             {"codigo": "002", "descricao": "Produto Exemplo 2", "quantidade": 1, "valor": 750.0}
         ]
 
-from fastapi import Request
-from empresa_manager import get_empresa_connection
-
-@router.post("/orcamentos")
-def criar_orcamento(orcamento: OrcamentoCreate):
-    conn = database.get_db()
-    cursor = conn.cursor()
+@router.get("/orcamentos/{numero}/pdf")
+async def gerar_pdf_orcamento(numero: int, request: Request):
+    """
+    Endpoint para gerar PDF do orçamento finalizado.
+    Usa a query SQL fornecida para buscar dados da empresa.
+    """
+    logging.info(f"Gerando PDF para orçamento {numero}")
     try:
-        # 1. Buscar próximo número sequencial
-        cursor.execute("SELECT COD_PROXVALOR FROM CODIGO WHERE COD_TABELA = 'ORCAMENT' AND COD_NOMECAMPO = 'ECF_NUMERO'")
-        row = cursor.fetchone()
-        if row:
-            orcamento_numero = int(row[0])
-        else:
-            # Se não existir, criar com valor inicial 1
-            orcamento_numero = 1
-            cursor.execute("INSERT INTO CODIGO (COD_TABELA, COD_NOMECAMPO, COD_PROXVALOR) VALUES (?, ?, ?)", ('ORCAMENT', 'ECF_NUMERO', orcamento_numero + 1))
-
-        # 2. Inserir cabeçalho na ORCAMENT
-        cursor.execute("""
-            INSERT INTO ORCAMENT (
-                ECF_NUMERO, ECF_DATA, CLI_CODIGO, NOME, ECF_TAB_COD,
-                ECF_FPG_COD, ECF_TOTAL, DATA_VALIDADE, PAR_PARAMETRO,
-                VEN_CODIGO, ECF_OBS, ECF_ESPECIE, EMP_CODIGO, ECF_DESCONTO
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            orcamento_numero,
-            orcamento.data_orcamento,
-            orcamento.cliente_codigo,
-            orcamento.nome_cliente,
-            orcamento.tabela_codigo,
-            orcamento.formapag_codigo,
-            orcamento.valor_total,
-            orcamento.data_validade,
-            0,  # PAR_PARAMETRO: aguardando
-            orcamento.vendedor_codigo,
-            orcamento.observacao,
-            orcamento.especie,
-            1,  # EMP_CODIGO: fixo como 1
-            orcamento.desconto
-        ))
-
-        # 3. Inserir itens na ITORC
-        for idx, produto in enumerate(orcamento.produtos, 1):
-            cursor.execute("""
-                INSERT INTO ITORC (
-                    ECF_NUMERO, IEC_SEQUENCIA, PRO_CODIGO, PRO_DESCRICAO,
-                    PRO_QUANTIDADE, PRO_VENDA, IOR_TOTAL, PRO_IMAGEM
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                orcamento_numero,
-                idx,
-                produto.codigo,
-                produto.descricao,
-                produto.quantidade,
-                produto.valor_unitario,
-                produto.valor_total,
-                produto.imagem
-            ))
-
-        # 4. Atualizar próximo valor em CODIGO
-        cursor.execute("UPDATE CODIGO SET COD_PROXVALOR = ? WHERE COD_TABELA = 'ORCAMENT' AND COD_NOMECAMPO = 'ECF_NUMERO'", (orcamento_numero + 1,))
-
-        # 5. Commit
-        conn.commit()
-        return {"success": True, "message": f"Orçamento #{orcamento_numero} criado com sucesso."}
+        conn = await get_empresa_connection(request)
+        if not conn:
+            logging.error("Conexão com o banco não foi estabelecida")
+            raise HTTPException(status_code=500, detail="Erro de conexão com o banco")
+            
+        cursor = conn.cursor()
+        try:
+            # 1. Buscar dados da empresa usando a query fornecida
+            empresa_query = """
+                SELECT EMPRESA.emp_nome, empresa.emp_cnpj, empresa.emp_cpf,
+                  empresa.emp_uf, empresa.emp_ie, municipio.muni_descricao,
+                  empresa.emp_im, empresa.emp_suframa,
+                  empresa.emp_nome_fantasia, empresa.emp_cep, empresa.emp_end, 
+                  empresa.emp_num, empresa.emp_compl, empresa.emp_bairro, 
+                  empresa.emp_fone, empresa.emp_fax, empresa.emp_email
+                  FROM EMPRESA
+                  Join municipio on municipio.muni_codigo = Empresa.cod_mun
+                  And empresa.emp_cod = (Select Paramet.par_emp_padrao from Paramet)
+            """
+            cursor.execute(empresa_query)
+            empresa_row = cursor.fetchone()
+            
+            if not empresa_row:
+                logging.warning("Dados da empresa não encontrados")
+                empresa_data = {
+                    'nome': 'EMPRESA NÃO CONFIGURADA',
+                    'cnpj': '',
+                    'ie': '',
+                    'endereco': '',
+                    'cidade': '',
+                    'uf': '',
+                    'cep': '',
+                    'fone': '',
+                    'email': ''
+                }
+            else:
+                empresa_data = {
+                    'nome': empresa_row[0] or '',
+                    'cnpj': empresa_row[1] or '',
+                    'cpf': empresa_row[2] or '',
+                    'uf': empresa_row[3] or '',
+                    'ie': empresa_row[4] or '',
+                    'cidade': empresa_row[5] or '',
+                    'im': empresa_row[6] or '',
+                    'suframa': empresa_row[7] or '',
+                    'nome_fantasia': empresa_row[8] or '',
+                    'cep': empresa_row[9] or '',
+                    'endereco': empresa_row[10] or '',
+                    'numero': empresa_row[11] or '',
+                    'complemento': empresa_row[12] or '',
+                    'bairro': empresa_row[13] or '',
+                    'fone': empresa_row[14] or '',
+                    'fax': empresa_row[15] or '',
+                    'email': empresa_row[16] or ''
+                }
+            
+            # 2. Buscar dados do orçamento
+            orcamento_query = """
+                SELECT 
+                    O.ECF_NUMERO, O.CLI_CODIGO, O.NOME as cliente_nome, O.ECF_DATA,
+                    O.ECF_TOTAL, O.ECF_FPG_COD, O.ECF_TAB_COD, O.VEN_CODIGO,
+                    O.ECF_DESCONTO, O.DATA_VALIDADE, O.ECF_OBS, O.ECF_ESPECIE,
+                    V.VEN_NOME as vendedor_nome,
+                    F.FPG_NOME as forma_pagamento,
+                    T.TAB_NOME as tabela_preco,
+                    C.ENDERECO, C.BAIRRO, C.CEP, C.CIDADE, C.UF,
+                    C.tel_whatsapp, C.CNPJ, C.INSCRICAO_ESTADUAL
+                FROM ORCAMENT O
+                LEFT JOIN VENDEDOR V ON O.VEN_CODIGO = V.VEN_CODIGO
+                LEFT JOIN FORMAPAG F ON O.ECF_FPG_COD = F.FPG_COD
+                LEFT JOIN TABPRECO T ON O.ECF_TAB_COD = T.TAB_COD
+                LEFT JOIN CLIENTES C ON O.CLI_CODIGO = C.CLI_CODIGO
+                WHERE O.ECF_NUMERO = ?
+            """
+            cursor.execute(orcamento_query, (numero,))
+            orcamento_row = cursor.fetchone()
+            
+            if not orcamento_row:
+                raise HTTPException(status_code=404, detail=f"Orçamento {numero} não encontrado")
+            
+            orcamento_data = {
+                'numero': orcamento_row[0],
+                'cliente_codigo': orcamento_row[1],
+                'cliente_nome': orcamento_row[2] or '',
+                'data': orcamento_row[3].strftime('%d/%m/%Y') if orcamento_row[3] else '',
+                'valor_total': float(orcamento_row[4]) if orcamento_row[4] else 0.0,
+                'desconto': float(orcamento_row[8]) if orcamento_row[8] else 0.0,
+                'validade': orcamento_row[9].strftime('%d/%m/%Y') if orcamento_row[9] else '',
+                'observacao': orcamento_row[10] or '',
+                'especie': orcamento_row[11] or '',
+                'vendedor_nome': orcamento_row[12] or '',
+                'forma_pagamento': orcamento_row[13] or '',
+                'tabela_preco': orcamento_row[14] or '',
+                'cliente_endereco': orcamento_row[15] or '',
+                'cliente_bairro': orcamento_row[16] or '',
+                'cliente_cep': orcamento_row[17] or '',
+                'cliente_cidade': orcamento_row[18] or '',
+                'cliente_uf': orcamento_row[19] or '',
+                'cliente_fone': orcamento_row[20] or '',
+                'cliente_cnpj': orcamento_row[21] or '',
+                'cliente_ie': orcamento_row[22] or ''
+            }
+            
+            # 3. Buscar itens do orçamento
+            itens_query = """
+                SELECT 
+                    I.PRO_CODIGO, I.PRO_DESCRICAO, I.PRO_QUANTIDADE,
+                    I.PRO_VENDA, I.IOR_TOTAL,
+                    P.PRO_MARCA, P.UNI_CODIGO
+                FROM ITORC I
+                LEFT JOIN PRODUTO P ON I.PRO_CODIGO = P.PRO_CODIGO
+                WHERE I.ECF_NUMERO = ?
+                ORDER BY I.IEC_SEQUENCIA
+            """
+            cursor.execute(itens_query, (numero,))
+            itens_rows = cursor.fetchall()
+            
+            itens_data = []
+            for item_row in itens_rows:
+                itens_data.append({
+                    'codigo': item_row[0] or '',
+                    'descricao': item_row[1] or '',
+                    'quantidade': float(item_row[2]) if item_row[2] else 0.0,
+                    'valor_unitario': float(item_row[3]) if item_row[3] else 0.0,
+                    'valor_total': float(item_row[4]) if item_row[4] else 0.0,
+                    'marca': item_row[5] or '',
+                    'unidade': item_row[6] or 'UN'
+                })
+            
+            # 4. Gerar HTML do PDF
+            html_content = gerar_html_pdf(empresa_data, orcamento_data, itens_data)
+            
+            return HTMLResponse(content=html_content)
+            
+        finally:
+            cursor.close()
+            conn.close()
+            
     except Exception as e:
-        conn.rollback()
-        logging.error(f"Erro ao criar orçamento: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro ao criar orçamento: {str(e)}")
-    finally:
-        cursor.close()
-        conn.close()
+        logging.error(f"Erro ao gerar PDF do orçamento: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar PDF: {str(e)}")
+
+def gerar_html_pdf(empresa_data, orcamento_data, itens_data):
+    """
+    Gera o HTML para impressão do orçamento baseado no layout fornecido.
+    """
+    # Calcular totais corretos
+    total_bruto = sum(item['valor_total'] for item in itens_data)
+    desconto_valor = orcamento_data['desconto']  # Valor direto do ECF_DESCONTO
+    total_liquido = total_bruto - desconto_valor
+    
+    # Montar endereço completo da empresa
+    endereco_empresa = f"{empresa_data['endereco']}"
+    if empresa_data['numero']:
+        endereco_empresa += f", {empresa_data['numero']}"
+    if empresa_data['complemento']:
+        endereco_empresa += f" - {empresa_data['complemento']}"
+    
+    cidade_empresa = f"{empresa_data['cidade']} - {empresa_data['uf']}"
+    if empresa_data['cep']:
+        cidade_empresa = f"{empresa_data['bairro']} - CEP: {empresa_data['cep']}<br>{cidade_empresa}"
+    
+    # Montar endereço do cliente
+    endereco_cliente = orcamento_data['cliente_endereco']
+    if orcamento_data['cliente_bairro']:
+        endereco_cliente += f", {orcamento_data['cliente_bairro']}"
+    if orcamento_data['cliente_cep']:
+        endereco_cliente += f" - CEP: {orcamento_data['cliente_cep']}"
+    if orcamento_data['cliente_cidade']:
+        endereco_cliente += f"<br>{orcamento_data['cliente_cidade']} - {orcamento_data['cliente_uf']}"
+    
+    # Gerar linhas da tabela de itens
+    itens_html = ""
+    for item in itens_data:
+        itens_html += f"""
+        <tr>
+            <td>{item['codigo']}</td>
+            <td>{item['descricao']}</td>
+            <td>{item['marca']}</td>
+            <td>{item['unidade']}</td>
+            <td class="number">{item['quantidade']:.2f}</td>
+            <td class="number">R$ {item['valor_unitario']:.2f}</td>
+            <td class="number">R$ {item['valor_total']:.2f}</td>
+        </tr>
+        """
+    
+    html_template = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Orçamento #{orcamento_data['numero']}</title>
+        <style>
+            body {{ 
+                font-family: Arial, sans-serif; 
+                margin: 20px; 
+                font-size: 12px;
+                line-height: 1.4;
+            }}
+            .header {{ 
+                text-align: center; 
+                margin-bottom: 30px; 
+                border-bottom: 2px solid #333;
+                padding-bottom: 20px;
+            }}
+            .empresa-info {{
+                margin-bottom: 15px;
+            }}
+            .empresa-nome {{ 
+                font-size: 24px; 
+                font-weight: bold; 
+                margin-bottom: 10px;
+                color: #333;
+            }}
+            .empresa-dados {{
+                font-size: 11px;
+                margin-bottom: 8px;
+                color: #555;
+            }}
+            .empresa-endereco {{
+                font-size: 11px;
+                color: #555;
+                line-height: 1.3;
+            }}
+            .relatorio-titulo {{
+                font-size: 16px;
+                font-weight: bold;
+                color: #666;
+            }}
+            .pedido-info {{ 
+                display: flex; 
+                justify-content: space-between; 
+                margin-bottom: 20px; 
+            }}
+            .pedido-info div {{ 
+                flex: 1; 
+            }}
+            .cliente-info {{ 
+                background-color: #f5f5f5; 
+                padding: 15px; 
+                margin-bottom: 20px; 
+                border-radius: 5px;
+            }}
+            .cliente-info h3 {{ 
+                margin-top: 0; 
+                color: #333;
+            }}
+            .itens-table {{ 
+                width: 100%; 
+                border-collapse: collapse; 
+                margin-bottom: 20px; 
+            }}
+            .itens-table th, .itens-table td {{ 
+                border: 1px solid #ddd; 
+                padding: 8px; 
+                text-align: left; 
+            }}
+            .itens-table th {{ 
+                background-color: #f2f2f2; 
+                font-weight: bold;
+            }}
+            .itens-table td.number {{ 
+                text-align: right; 
+            }}
+            .total-section {{ 
+                margin-top: 20px; 
+                border: 2px solid #333;
+                background-color: #f9f9f9;
+                width: 300px;
+                margin-left: auto;
+                margin-right: 0;
+            }}
+            .total-section h3 {{
+                margin: 0;
+                padding: 10px;
+                color: #fff;
+                text-align: center;
+                background-color: #333;
+                font-size: 14px;
+            }}
+            .resumo-linha {{
+                display: flex;
+                justify-content: space-between;
+                margin: 0;
+                padding: 8px 15px;
+                border-bottom: 1px solid #ddd;
+                background-color: #fff;
+            }}
+            .resumo-linha:last-of-type {{
+                border-bottom: none;
+            }}
+            .total-final {{ 
+                display: flex;
+                justify-content: space-between;
+                margin: 0;
+                padding: 12px 15px;
+                background-color: #333;
+                color: #fff;
+                font-size: 16px;
+                font-weight: bold;
+            }}
+            .total-final span {{
+                color: #fff;
+            }}
+            .observacoes {{
+                margin-top: 20px;
+                padding: 15px;
+                background-color: #f9f9f9;
+                border-radius: 5px;
+            }}
+            .assinatura {{
+                margin-top: 40px;
+                border-top: 1px solid #333;
+                padding-top: 20px;
+                text-align: center;
+            }}
+            @media print {{
+                body {{ margin: 0; }}
+                .no-print {{ display: none; }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="empresa-info">
+                <div class="empresa-nome">{empresa_data['nome']}</div>
+                <div class="empresa-dados">
+                    <strong>CNPJ:</strong> {empresa_data['cnpj']}<br>
+                    <strong>IE:</strong> {empresa_data['ie']}<br>
+                    {f"<strong>IM:</strong> {empresa_data['im']}<br>" if empresa_data['im'] else ""}
+                </div>
+                <div class="empresa-endereco">
+                    {endereco_empresa}<br>
+                    {cidade_empresa}<br>
+                    <strong>Fone:</strong> {empresa_data['fone']} - <strong>Email:</strong> {empresa_data['email']}
+                </div>
+            </div>
+            <div class="relatorio-titulo">Orçamento N° {int(orcamento_data['numero']):05d}</div>
+        </div>
+
+        <div class="pedido-info">
+            <div>
+                <strong>Usuário de Emissão:</strong> {orcamento_data['vendedor_nome']}<br>
+                <strong>Data:</strong> {orcamento_data['data']}<br>
+                <strong>Validade:</strong> {orcamento_data['validade']}<br>
+                <strong>Espécie:</strong> {orcamento_data['especie']}<br>
+            </div>
+            <div>
+                <strong>Vendedor:</strong> {orcamento_data['vendedor_nome']}<br>
+                <strong>Forma de Pagamento:</strong> {orcamento_data['forma_pagamento']}<br>
+                <strong>Tabela:</strong> {orcamento_data['tabela_preco']}<br>
+            </div>
+        </div>
+
+        <div class="cliente-info">
+            <h3>Informações do Cliente</h3>
+            <div style="display: flex; justify-content: space-between;">
+                <div style="flex: 1;">
+                    <strong>Cliente:</strong> {orcamento_data['cliente_nome']}<br>
+                    <strong>CNPJ/CPF:</strong> {orcamento_data['cliente_cnpj']}<br>
+                    <strong>Endereço:</strong> {endereco_cliente}<br>
+                </div>
+                <div style="flex: 1;">
+                    <strong>Fantasia:</strong> {orcamento_data['cliente_nome']}<br>
+                    <strong>IE:</strong> {orcamento_data['cliente_ie']}<br>
+                    <strong>Fone:</strong> {orcamento_data['cliente_fone']}<br>
+                </div>
+            </div>
+        </div>
+
+        <table class="itens-table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Descrição</th>
+                    <th>Marca</th>
+                    <th>Unidade</th>
+                    <th>Quantidade</th>
+                    <th>Preço Unit.</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {itens_html}
+            </tbody>
+        </table>
+
+        <div class="total-section">
+            <h3>RESUMO FINANCEIRO</h3>
+            <div class="resumo-linha"><strong>Total Bruto:</strong> <span>R$ {total_bruto:.2f}</span></div>
+            <div class="resumo-linha"><strong>Desconto:</strong> <span>R$ {desconto_valor:.2f}</span></div>
+            <div class="total-final">
+                <strong>TOTAL LÍQUIDO:</strong> <span><strong>R$ {total_liquido:.2f}</strong></span>
+            </div>
+        </div>
+
+        {f'<div class="observacoes"><h3>Observações</h3><p>{orcamento_data["observacao"]}</p></div>' if orcamento_data['observacao'] else ''}
+
+        <div class="assinatura">
+            <p>_______________________________________</p>
+            <p><strong>Assinatura do Cliente</strong></p>
+        </div>
+
+        <script>
+            window.onload = function() {{ 
+                setTimeout(() => window.print(), 500); 
+            }};
+        </script>
+    </body>
+    </html>
+    """
+    
+    return html_template

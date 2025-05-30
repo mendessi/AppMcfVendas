@@ -13,7 +13,7 @@ import OrcamentoHeader from './components/OrcamentoHeader';
 import useIsMobile from './components/useIsMobile';
 import ProdutoAutocomplete from './components/ProdutoAutocomplete';
 import api from './services/api';
-import { FiPrinter, FiX, FiCheck, FiCopy } from 'react-icons/fi';
+import { FiPrinter, FiX, FiCheck, FiCopy, FiPlus } from 'react-icons/fi';
 
 const ESPECIE_OPCOES = [
   { value: '0', label: 'Dinheiro' },
@@ -195,7 +195,7 @@ function OrcamentoForm({ darkMode = false }) {
   };
 
   const handleQuantidadeChange = (idx, value) => {
-    const novaQtd = parseInt(value) || 1;
+    const novaQtd = parseFloat(value) || 1;
     const novosProdutos = produtos.map((p, i) =>
       i === idx ? { ...p, quantidade: novaQtd, valor_total: novaQtd * p.valor_unitario } : p
     );
@@ -304,9 +304,49 @@ function OrcamentoForm({ darkMode = false }) {
   };
 
   // Handler para imprimir orçamento
-  const handleImprimir = () => {
-    // TODO: Implementar lógica de impressão
-    window.print();
+  const handleImprimir = async () => {
+    if (orcamentoSalvo?.numero_orcamento) {
+      try {
+        // Obter token e empresa como nas outras requisições
+        const token = localStorage.getItem('token');
+        const empresaCodigo = localStorage.getItem('empresa_atual');
+        
+        if (!token) {
+          alert('Você precisa estar logado para imprimir o orçamento.');
+          return;
+        }
+        
+        // Fazer a requisição com os cabeçalhos corretos
+        const response = await api.get(`/orcamentos/${orcamentoSalvo.numero_orcamento}/pdf`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'x-empresa-codigo': empresaCodigo,
+            'Content-Type': 'application/json'
+          },
+          responseType: 'text' // Porque esperamos HTML
+        });
+        
+        // Abrir nova janela com o HTML retornado
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        if (printWindow) {
+          printWindow.document.open();
+          printWindow.document.write(response.data);
+          printWindow.document.close();
+        } else {
+          alert('Por favor, permita pop-ups para imprimir o orçamento.');
+        }
+        
+      } catch (error) {
+        console.error('Erro ao gerar PDF:', error);
+        if (error.response?.status === 401) {
+          alert('Sessão expirada. Faça login novamente.');
+        } else {
+          alert('Erro ao gerar PDF do orçamento: ' + (error.response?.data?.detail || error.message));
+        }
+      }
+    } else {
+      alert('Número do orçamento não encontrado. Salve o orçamento primeiro.');
+    }
   };
 
   // Função para limpar formulário completo (incluindo estados de modal)
@@ -453,15 +493,15 @@ function OrcamentoForm({ darkMode = false }) {
   return (
     <div className={
       isMobile
-        ? 'orcamento-form w-full bg-gray-800 rounded-xl shadow-lg p-2 mt-2 mb-4'
-        : 'orcamento-form w-full max-w-7xl mx-auto bg-gray-800 rounded-xl shadow-lg p-8 mt-8 mb-8 flex flex-col min-h-[80vh]'
+        ? `orcamento-form w-full ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-2 mt-2 mb-4`
+        : `orcamento-form w-full max-w-7xl mx-auto ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-8 mt-8 mb-8 flex flex-col min-h-[80vh]`
     }>
-      <h2 className="text-2xl font-bold mb-6 text-center text-white">Novo Orçamento</h2>
+      <h2 className={`text-2xl font-bold mb-6 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Novo Orçamento</h2>
       {/* Cabeçalho do orçamento: accordion no mobile, aberto no desktop */}
       {isMobile ? (
         <div className="mb-4">
           <button
-            className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-gray-900 text-gray-200 font-semibold border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-900 text-gray-200 border-gray-700' : 'bg-gray-100 text-gray-800 border-gray-300'} font-semibold border focus:outline-none focus:ring-2 focus:ring-blue-500 transition`}
             onClick={() => setHeaderOpen(v => !v)}
             aria-expanded={headerOpen}
           >
@@ -505,7 +545,7 @@ function OrcamentoForm({ darkMode = false }) {
       )}
       {/* Itens do orçamento */}
       <div className="mb-8 flex-1">
-        <h3 className="text-lg font-semibold mb-4 text-white">Itens</h3>
+        <h3 className={`text-lg font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-800'}`}>Itens</h3>
         <div className="flex flex-col sm:flex-row gap-2 mb-2">
           <div className="flex-1">
             <ProdutoAutocomplete 
@@ -549,7 +589,8 @@ function OrcamentoForm({ darkMode = false }) {
                   <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Qtd</label>
                   <input
                     type="number"
-                    min={1}
+                    min="0.01"
+                    step="0.01"
                     value={p.quantidade}
                     ref={el => quantidadeRefs.current[idx] = el}
                     onChange={e => handleQuantidadeChange(idx, e.target.value)}
@@ -597,12 +638,12 @@ function OrcamentoForm({ darkMode = false }) {
         </div>
       </div>
       {/* Totais */}
-      <div className="bg-gray-900 rounded-lg p-4 mb-6">
+      <div className={`${darkMode ? 'bg-gray-900' : 'bg-gray-100'} rounded-lg p-4 mb-6`}>
         <div className="space-y-2">
           {/* Linha de subtotal */}
           <div className="flex justify-between items-center">
-            <span className="text-gray-300 font-medium">Subtotal:</span>
-            <span className="text-gray-100 font-semibold">
+            <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium`}>Subtotal:</span>
+            <span className={`${darkMode ? 'text-gray-100' : 'text-gray-900'} font-semibold`}>
               {parseFloat(subtotal).toLocaleString('pt-BR', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
@@ -613,17 +654,17 @@ function OrcamentoForm({ darkMode = false }) {
           {/* Linha de desconto */}
           <div className="flex justify-between items-center">
             <div className="flex items-center">
-              <span className="text-gray-300 font-medium">Desconto:</span>
+              <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium`}>Desconto:</span>
               <input
                 type="number"
                 min={0}
                 step={0.01}
                 value={desconto}
                 onChange={e => setDesconto(parseFloat(e.target.value) || 0)}
-                className="ml-2 w-24 px-2 py-1 rounded bg-gray-800 text-gray-100 border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className={`ml-2 w-24 px-2 py-1 rounded border focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${darkMode ? 'bg-gray-800 text-gray-100 border-gray-600' : 'bg-white text-gray-900 border-gray-300'}`}
               />
             </div>
-            <span className="text-gray-100 font-semibold">
+            <span className={`${darkMode ? 'text-gray-100' : 'text-gray-900'} font-semibold`}>
               {parseFloat(desconto).toLocaleString('pt-BR', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
@@ -632,9 +673,9 @@ function OrcamentoForm({ darkMode = false }) {
           </div>
           
           {/* Linha de total */}
-          <div className="flex justify-between items-center pt-2 border-t border-gray-700">
-            <span className="text-blue-400 font-bold text-lg">TOTAL:</span>
-            <span className="text-blue-400 font-bold text-xl">
+          <div className="flex justify-between items-center border-t pt-2">
+            <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'} font-bold text-lg`}>TOTAL:</span>
+            <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'} font-bold text-xl`}>
               {parseFloat(total).toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL',
@@ -673,15 +714,15 @@ function OrcamentoForm({ darkMode = false }) {
       {/* Modal de Confirmação */}
       {showConfirmation && (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto`}>
             <div className="p-6">
-              <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-700">
-                <h3 className="text-2xl font-bold text-white">
+              <div className={`flex justify-between items-center mb-6 pb-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                <h3 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   {orcamentoSalvo ? 'Orçamento Salvo!' : 'Confirmar Orçamento'}
                 </h3>
                 <button
                   onClick={handleFecharConfirmacao}
-                  className="text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-700"
+                  className={`${darkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'} p-1 rounded-full`}
                 >
                   <FiX className="w-6 h-6" />
                 </button>
@@ -690,31 +731,31 @@ function OrcamentoForm({ darkMode = false }) {
               {!orcamentoSalvo ? (
                 <>
                   <div className="mb-8">
-                    <h4 className="text-lg font-semibold text-gray-300 mb-4">Resumo do Orçamento</h4>
-                    <div className="bg-gray-700 rounded-lg p-5 space-y-3">
-                      <p className="text-gray-300 border-b border-gray-600 pb-2">
+                    <h4 className={`text-lg font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-4`}>Resumo do Orçamento</h4>
+                    <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-lg p-5 space-y-3`}>
+                      <p className={`${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-700 border-gray-300'} border-b pb-2`}>
                         <span className="font-medium">Cliente:</span>{' '}
-                        <span className="text-white">
+                        <span className={`${darkMode ? 'text-white' : 'text-gray-900'}`}>
                           {getNomeCliente(cliente)}
                         </span>
                       </p>
-                      <p className="text-gray-300 border-b border-gray-600 pb-2">
+                      <p className={`${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-700 border-gray-300'} border-b pb-2`}>
                         <span className="font-medium">Itens:</span>{' '}
-                        <span className="text-white">{produtos.length}</span>
+                        <span className={`${darkMode ? 'text-white' : 'text-gray-900'}`}>{produtos.length}</span>
                       </p>
-                      <p className="text-gray-300 border-b border-gray-600 pb-2">
+                      <p className={`${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-700 border-gray-300'} border-b pb-2`}>
                         <span className="font-medium">Valor Total:</span>{' '}
-                        <span className="text-blue-400 font-bold">
+                        <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'} font-bold`}>
                           {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-700">
+                  <div className="flex justify-end gap-4">
                     <button
                       onClick={handleFecharConfirmacao}
-                      className="px-6 py-2.5 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition font-medium"
+                      className={`px-6 py-2.5 ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-300 hover:bg-gray-400'} ${darkMode ? 'text-white' : 'text-gray-800'} rounded-lg transition font-medium`}
                     >
                       Cancelar
                     </button>
@@ -728,57 +769,39 @@ function OrcamentoForm({ darkMode = false }) {
                   </div>
                 </>
               ) : (
-                <div className="text-center py-4">
-                  <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <FiCheck className="w-10 h-10 text-green-600" />
-                  </div>
-                  <h4 className="text-2xl font-bold text-green-400 mb-3">Orçamento Salvo com Sucesso!</h4>
-                  <p className="text-gray-300 mb-8 text-lg">O orçamento foi salvo com sucesso no sistema.</p>
-                  
-                  <div className="bg-gray-700 rounded-xl p-6 mb-8 text-left max-w-md mx-auto">
-                    <p className="text-gray-300 mb-3">
-                      <span className="font-medium">Número do Orçamento:</span>
-                    </p>
-                    <p className="text-3xl font-bold text-white mb-6 text-center">
-                      {orcamentoSalvo.numero_orcamento}
-                    </p>
-                    <div className="space-y-2">
-                      <p className="text-gray-300">
-                        <span className="font-medium">Cliente:</span>{' '}
-                        <span className="text-white">
-                          {typeof orcamentoSalvo.cliente === 'string' ? orcamentoSalvo.cliente : getNomeCliente(cliente)}
-                        </span>
-                      </p>
-                      <p className="text-gray-300">
-                        <span className="font-medium">Valor Total:</span>{' '}
-                        <span className="text-green-400 font-bold">{orcamentoSalvo.valor_total}</span>
-                      </p>
-                      <p className="text-gray-300">
-                        <span className="font-medium">Data:</span>{' '}
-                        <span className="text-white">{orcamentoSalvo.data}</span>
-                      </p>
+                <div className="text-center">
+                  <div className="mb-6">
+                    <div className={`w-16 h-16 mx-auto ${darkMode ? 'bg-green-900' : 'bg-green-100'} rounded-full flex items-center justify-center mb-4`}>
+                      <FiCheck className={`w-8 h-8 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
                     </div>
+                    <h4 className={`text-xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'} mb-2`}>
+                      Orçamento #{orcamentoSalvo?.numero_orcamento} criado com sucesso!
+                    </h4>
+                    <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                      O orçamento foi salvo e está disponível para consulta.
+                    </p>
                   </div>
                   
                   <div className="flex flex-col sm:flex-row justify-center gap-3">
                     <button
                       onClick={handleCopiarNumero}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition flex items-center justify-center gap-2 font-medium"
+                      className={`px-5 py-2.5 ${darkMode ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-lg transition flex items-center justify-center gap-2 font-medium`}
                     >
                       <FiCopy className="w-4 h-4" />
                       Copiar Número
                     </button>
                     <button
                       onClick={handleImprimir}
-                      className="px-5 py-2.5 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition flex items-center justify-center gap-2 font-medium"
+                      className={`px-5 py-2.5 ${darkMode ? 'bg-green-600 hover:bg-green-500' : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition flex items-center justify-center gap-2 font-medium`}
                     >
                       <FiPrinter className="w-4 h-4" />
                       Imprimir
                     </button>
                     <button
                       onClick={handleNovoOrcamento}
-                      className="px-5 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition flex items-center justify-center gap-2 font-medium"
+                      className={`px-5 py-2.5 ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-300 hover:bg-gray-400'} ${darkMode ? 'text-white' : 'text-gray-800'} rounded-lg transition flex items-center justify-center gap-2 font-medium`}
                     >
+                      <FiPlus className="w-4 h-4" />
                       Novo Orçamento
                     </button>
                   </div>
@@ -792,16 +815,16 @@ function OrcamentoForm({ darkMode = false }) {
       {/* Modal de confirmação para itens já adicionados */}
       {confirmacaoVisivel && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Produto já adicionado</h3>
-            <p className="mb-4 text-gray-700">
+          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 max-w-md w-full`}>
+            <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-4`}>Produto já adicionado</h3>
+            <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
               O produto <strong>{produtoSelecionadoConfirmacao?.pro_descricao || produtoSelecionadoConfirmacao?.descricao}</strong> já está no orçamento.
               Deseja editar a quantidade?
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={handleCancelarNavegacao}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${darkMode ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-700 bg-gray-200 hover:bg-gray-300'}`}
               >
                 Cancelar
               </button>

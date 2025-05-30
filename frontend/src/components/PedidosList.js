@@ -257,28 +257,61 @@ const PedidosList = ({ darkMode }) => {
       if (pedido && (!pedido.itens || pedido.itens.length === 0)) {
         try {
           const token = localStorage.getItem('token');
-          const empresaSelecionada = localStorage.getItem('empresa') || localStorage.getItem('empresa_atual') || localStorage.getItem('empresa_selecionada');
-          let empresaCodigo = null;
-          if (empresaSelecionada) {
+          
+          // Obter código da empresa usando a mesma abordagem do buscarPedidos
+          let empresaCodigo = localStorage.getItem('empresa_detalhes');
+          
+          if (empresaCodigo) {
             try {
-              const empObj = JSON.parse(empresaSelecionada);
-              empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
+              const empObj = JSON.parse(empresaCodigo);
+              empresaCodigo = empObj?.cli_codigo;
             } catch {
-              empresaCodigo = empresaSelecionada;
+              empresaCodigo = null;
             }
           }
+          
+          // Se não encontrou, tentar das outras chaves
+          if (!empresaCodigo) {
+            const empresaSelecionada = localStorage.getItem('empresa') || 
+                                     localStorage.getItem('empresa_atual') || 
+                                     localStorage.getItem('empresa_selecionada');
+            
+            if (empresaSelecionada) {
+              try {
+                const empObj = JSON.parse(empresaSelecionada);
+                empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
+              } catch {
+                empresaCodigo = empresaSelecionada;
+              }
+            }
+          }
+          
+          // Validar se temos um código de empresa válido
+          if (!empresaCodigo || empresaCodigo === '0' || empresaCodigo === 0) {
+            console.error('Nenhuma empresa válida selecionada para buscar itens');
+            return;
+          }
+          
           const headers = {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
+            'x-empresa-codigo': empresaCodigo.toString()
           };
-          if (empresaCodigo) headers['x-empresa-codigo'] = empresaCodigo;
+          
           const apiUrl = process.env.REACT_APP_API_URL || '';
           const response = await fetch(`${apiUrl}/relatorios/vendas/${pedidoId}/itens`, { headers });
-          if (!response.ok) throw new Error('Erro ao buscar itens do pedido');
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Erro ao buscar itens:', errorData);
+            throw new Error(errorData.detail || 'Erro ao buscar itens do pedido');
+          }
+          
           const itens = await response.json();
           setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, itens } : p));
         } catch (e) {
-          // Tratar erro se necessário
+          console.error('Erro completo ao buscar itens:', e);
+          // Opcionalmente mostrar erro para o usuário
         }
       }
     }
@@ -469,7 +502,7 @@ const PedidosList = ({ darkMode }) => {
                           className={darkMode ? "text-blue-400 hover:text-blue-300 mr-3" : "text-blue-600 hover:text-blue-900 mr-3"}
                           onClick={() => togglePedidoDetails(pedido.id)}
                         >
-                          {expandedPedido === pedido.id ? 'Ocultar' : 'Detalhes'}
+                          {expandedPedido === pedido.id ? '🙈' : '👁️'}
                         </button>
                       </td>
                     </tr>
@@ -479,16 +512,17 @@ const PedidosList = ({ darkMode }) => {
                           <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
                             <h3 className="font-bold mb-2">Itens do Pedido #{pedido.id}</h3>
                             {pedido.itens && pedido.itens.length > 0 ? (
-                              <table className="w-full text-xs mt-2">
+                              <table className="w-full text-xs mt-2 border border-gray-300 rounded">
                                 <thead>
-                                  <tr>
-                                    <th>Código</th>
-                                    <th>Descrição</th>
-                                    <th>Marca</th>
-                                    <th>Unidade</th>
-                                    <th>Qtd</th>
-                                    <th>Preço</th>
-                                    <th>Estoque</th>
+                                  <tr className={`${darkMode ? "bg-gray-600" : "bg-gray-200"}`}>
+                                    <th className="px-2 py-1 text-center border-r">Código</th>
+                                    <th className="px-2 py-1 text-left border-r">Descrição</th>
+                                    <th className="px-2 py-1 text-center border-r">Marca</th>
+                                    <th className="px-2 py-1 text-center border-r">Unidade</th>
+                                    <th className="px-2 py-1 text-center border-r">Qtd</th>
+                                    <th className="px-2 py-1 text-center border-r">Preço Unit.</th>
+                                    <th className="px-2 py-1 text-center border-r">Total</th>
+                                    <th className="px-2 py-1 text-center">Estoque</th>
                                   </tr>
                                 </thead>
                                 <tbody>
@@ -500,15 +534,17 @@ const PedidosList = ({ darkMode }) => {
                                       return novo;
                                     };
                                     const nitem = norm(item);
+                                    const total = (parseFloat(nitem.PRO_QUANTIDADE) || 0) * (parseFloat(nitem.PRO_VENDA) || 0);
                                     return (
-                                      <tr key={idx}>
-                                        <td>{nitem.PRO_CODIGO}</td>
-                                        <td>{nitem.PRO_DESCRICAO}</td>
-                                        <td>{nitem.PRO_MARCA}</td>
-                                        <td>{nitem.UNI_CODIGO}</td>
-                                        <td>{nitem.PRO_QUANTIDADE}</td>
-                                        <td>{formatCurrency(nitem.PRO_VENDA)}</td>
-                                        <td>{nitem.ESTOQUE_ATUAL}</td>
+                                      <tr key={idx} className={`border-b ${darkMode ? "border-gray-600" : "border-gray-200"} hover:${darkMode ? "bg-gray-650" : "bg-gray-100"}`}>
+                                        <td className="px-2 py-1 text-center border-r">{nitem.PRO_CODIGO}</td>
+                                        <td className="px-2 py-1 text-left border-r">{nitem.PRO_DESCRICAO}</td>
+                                        <td className="px-2 py-1 text-center border-r">{nitem.PRO_MARCA || '-'}</td>
+                                        <td className="px-2 py-1 text-center border-r">{nitem.UNI_CODIGO || '-'}</td>
+                                        <td className="px-2 py-1 text-center border-r">{parseFloat(nitem.PRO_QUANTIDADE).toFixed(2)}</td>
+                                        <td className="px-2 py-1 text-center border-r">{formatCurrency(nitem.PRO_VENDA)}</td>
+                                        <td className="px-2 py-1 text-center font-semibold border-r text-green-600">{formatCurrency(total.toFixed(2))}</td>
+                                        <td className="px-2 py-1 text-center">{parseFloat(nitem.ESTOQUE_ATUAL || 0).toFixed(2)}</td>
                                       </tr>
                                     );
                                   })}
@@ -564,7 +600,7 @@ const PedidosList = ({ darkMode }) => {
                       className={`px-3 py-1 rounded ${darkMode ? "bg-blue-900 text-blue-300 hover:bg-blue-800" : "bg-blue-100 text-blue-700 hover:bg-blue-200"}`}
                       onClick={() => togglePedidoDetails(pedido.id)}
                     >
-                      {expandedPedido === pedido.id ? 'Ocultar' : 'Detalhes'}
+                      {expandedPedido === pedido.id ? '🙈' : '👁️'}
                     </button>
                   </div>
                 </div>
@@ -579,21 +615,49 @@ const PedidosList = ({ darkMode }) => {
                     
                     <div className="mt-3">
                       <p className={`font-semibold mb-2 ${darkMode ? "text-white" : "text-gray-900"}`}>Itens do Pedido:</p>
-                      {pedido.itens.length > 0 ? (
+                      {pedido.itens && pedido.itens.length > 0 ? (
                         <div className="space-y-2">
-                          {pedido.itens.map((item, index) => (
-                            <div key={index} className={`p-2 rounded ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
-                              <div className="flex justify-between">
-                                <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{item.produto_descricao}</span>
-                                <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(item.valor_total)}</span>
+                          {pedido.itens.map((item, index) => {
+                            // Normaliza as chaves para garantir compatibilidade maiúsculo/minúsculo
+                            const norm = (obj) => {
+                              const novo = {};
+                              Object.keys(obj).forEach(k => novo[k.toUpperCase()] = obj[k]);
+                              return novo;
+                            };
+                            const nitem = norm(item);
+                            const total = (parseFloat(nitem.PRO_QUANTIDADE) || 0) * (parseFloat(nitem.PRO_VENDA) || 0);
+                            
+                            return (
+                              <div key={index} className={`p-3 rounded ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+                                <div className="flex justify-between items-start mb-2">
+                                  <div className="flex-1">
+                                    <span className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>
+                                      {nitem.PRO_DESCRICAO}
+                                    </span>
+                                    <div className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"} mt-1`}>
+                                      Código: {nitem.PRO_CODIGO} | Marca: {nitem.PRO_MARCA || '-'}
+                                    </div>
+                                  </div>
+                                  <span className={`font-bold ${darkMode ? "text-white" : "text-gray-900"} ml-2 text-green-600`}>
+                                    {formatCurrency(total.toFixed(2))}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div className={darkMode ? "text-gray-400" : "text-gray-500"}>
+                                    Qtd: {parseFloat(nitem.PRO_QUANTIDADE).toFixed(2)} {nitem.UNI_CODIGO || ''}
+                                  </div>
+                                  <div className={darkMode ? "text-gray-400" : "text-gray-500"}>
+                                    Preço: {formatCurrency(nitem.PRO_VENDA)}
+                                  </div>
+                                  <div className={darkMode ? "text-gray-400" : "text-gray-500"}>
+                                    Estoque: {parseFloat(nitem.ESTOQUE_ATUAL || 0).toFixed(2)}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex justify-between text-sm mt-1">
-                                <span className={darkMode ? "text-gray-400" : "text-gray-500"}>{item.quantidade} x {formatCurrency(item.preco_unitario)}</span>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                           <div className="flex justify-between font-bold mt-2 pt-2 border-t border-dashed border-gray-300">
-                            <span className={darkMode ? "text-white" : "text-gray-900"}>Total:</span>
+                            <span className={darkMode ? "text-white" : "text-gray-900"}>Total do Pedido:</span>
                             <span className={darkMode ? "text-white" : "text-gray-900"}>{formatCurrency(pedido.valor_total)}</span>
                           </div>
                         </div>

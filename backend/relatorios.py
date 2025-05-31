@@ -80,6 +80,109 @@ class FormaPagamento(BaseModel):
     """Modelo para forma de pagamento"""
     FPG_COD: int
 
+# ===== FUNÇÃO HELPER GLOBAL PARA FILTRO DE VENDEDOR =====
+async def obter_filtro_vendedor(request: Request) -> tuple[str, bool, str]:
+    """
+    Função helper global para obter filtro de vendedor automaticamente.
+    
+    Returns:
+        tuple: (filtro_sql, filtro_aplicado, codigo_vendedor)
+    """
+    try:
+        # Obter o token da requisição
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return "", False, ""
+        
+        token = auth_header.replace("Bearer ", "")
+        
+        # Decodificar o token
+        from auth import SECRET_KEY, ALGORITHM
+        from jose import jwt
+        
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            usuario_email = payload.get("sub")
+            usuario_nivel = payload.get("nivel")
+            
+            # Se não for vendedor, não aplica filtro
+            if not usuario_nivel or usuario_nivel.lower() != 'vendedor':
+                log.info(f"🔄 SEM FILTRO - Usuário não é vendedor (nível: {usuario_nivel})")
+                return "", False, ""
+                
+        except Exception as jwt_err:
+            log.error(f"Erro ao decodificar token JWT: {str(jwt_err)}")
+            return "", False, ""
+        
+        # Obter código da empresa
+        empresa_codigo = request.headers.get("x-empresa-codigo")
+        if not empresa_codigo:
+            log.warning("🔄 SEM FILTRO - Código da empresa não fornecido")
+            return "", False, ""
+        
+        # Buscar código do vendedor na base da empresa
+        try:
+            from conexao_firebird import obter_conexao_controladora, obter_conexao_cliente
+            
+            # Buscar dados da empresa
+            conn_ctrl = obter_conexao_controladora()
+            cursor_ctrl = conn_ctrl.cursor()
+            
+            cursor_ctrl.execute("""
+                SELECT CLI_CODIGO, CLI_NOME, CLI_CAMINHO_BASE, CLI_IP_SERVIDOR, 
+                       CLI_NOME_BASE, CLI_PORTA 
+                FROM CLIENTES 
+                WHERE CLI_CODIGO = ?
+            """, (int(empresa_codigo),))
+            
+            empresa_dados = cursor_ctrl.fetchone()
+            conn_ctrl.close()
+            
+            if not empresa_dados:
+                log.warning(f"🔄 SEM FILTRO - Empresa {empresa_codigo} não encontrada")
+                return "", False, ""
+            
+            # Montar dados da empresa
+            empresa_dict = {
+                'cli_codigo': empresa_dados[0],
+                'cli_nome': empresa_dados[1],
+                'cli_caminho_base': empresa_dados[2],
+                'cli_ip_servidor': empresa_dados[3],
+                'cli_nome_base': empresa_dados[4],
+                'cli_porta': empresa_dados[5] or '3050'
+            }
+            
+            # Conectar na base da empresa e buscar vendedor
+            conn = obter_conexao_cliente(empresa_dict)
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT VEN_CODIGO, VEN_NOME FROM VENDEDOR 
+                WHERE VEN_EMAIL = ?
+            """, (usuario_email,))
+            
+            vendedor = cursor.fetchone()
+            conn.close()
+            
+            if vendedor:
+                codigo_vendedor = str(vendedor[0]).strip()
+                nome_vendedor = vendedor[1].strip() if vendedor[1] else ""
+                filtro_sql = f" AND VENDAS.VEN_CODIGO = '{codigo_vendedor}'"
+                
+                log.info(f"🎯 FILTRO APLICADO: Vendedor {codigo_vendedor} ({nome_vendedor})")
+                return filtro_sql, True, codigo_vendedor
+            else:
+                log.warning(f"🔄 SEM FILTRO - Vendedor não encontrado para email {usuario_email}")
+                return "", False, ""
+                
+        except Exception as e:
+            log.error(f"Erro ao buscar código do vendedor: {str(e)}")
+            return "", False, ""
+    
+    except Exception as e:
+        log.error(f"Erro geral na função obter_filtro_vendedor: {str(e)}")
+        return "", False, ""
+
 @router.get("/vendas")
 async def listar_vendas(request: Request):
     """
@@ -167,6 +270,7 @@ async def listar_vendas(request: Request):
 async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
     """
     Endpoint para obter estatísticas gerais para o Dashboard, incluindo vendas do dia, do mês, etc.
+    Aplica filtro por vendedor automaticamente se o usuário logado for um vendedor.
     """
     log.info(f"Recebendo requisição para dashboard-stats com data_inicial={data_inicial} e data_final={data_final}")
     
@@ -199,24 +303,28 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
             
         log.info(f"Período de consulta: {data_inicial} a {data_final}")
         
+        # ===== USAR FUNÇÃO HELPER GLOBAL =====
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request)
+
         # Obter a conexão com o banco da empresa selecionada
         empresa = get_empresa_atual(request)
         if not empresa:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                               detail="Empresa não encontrada. Selecione uma empresa válida.")
-        
+
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
         stats = DashboardStats()
-        
+
         try:
             # Consulta para vendas do dia
-            sql_vendas_dia = """
+            sql_vendas_dia = f"""
                 SELECT COALESCE(SUM(ECF_TOTAL), 0)
                 FROM VENDAS
                 WHERE VENDAS.ecf_cancelada = 'N'
                 AND VENDAS.ecf_concluida = 'S'
                 AND CAST(VENDAS.ecf_data AS DATE) = CAST(? AS DATE)
+                {filtro_vendedor}
             """
             cursor.execute(sql_vendas_dia, (data_hoje,))
             row = cursor.fetchone()
@@ -224,12 +332,13 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
                 stats.vendas_dia = float(row[0])
             
             # Consulta para vendas do mês
-            sql_vendas_mes = """
+            sql_vendas_mes = f"""
                 SELECT COALESCE(SUM(ECF_TOTAL), 0)
                 FROM VENDAS
                 WHERE VENDAS.ecf_cancelada = 'N'
                 AND VENDAS.ecf_concluida = 'S'
                 AND CAST(VENDAS.ecf_data AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                {filtro_vendedor}
             """
             cursor.execute(sql_vendas_mes, (data_inicial, data_final))
             row = cursor.fetchone()
@@ -237,7 +346,7 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
                 stats.vendas_mes = float(row[0])
             
             # Consulta para vendas autenticadas e não autenticadas
-            sql_vendas_auth = """
+            sql_vendas_auth = f"""
                 SELECT 
                     COALESCE(SUM(CASE WHEN ECF_CX_DATA IS NOT NULL THEN ECF_TOTAL ELSE 0 END), 0) as VENDAS_AUTH,
                     COALESCE(SUM(CASE WHEN ECF_CX_DATA IS NULL THEN ECF_TOTAL ELSE 0 END), 0) as VENDAS_NAO_AUTH
@@ -245,6 +354,7 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
                 WHERE VENDAS.ecf_cancelada = 'N'
                 AND VENDAS.ecf_concluida = 'S'
                 AND CAST(VENDAS.ecf_data AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                {filtro_vendedor}
             """
             cursor.execute(sql_vendas_auth, (data_inicial, data_final))
             row = cursor.fetchone()
@@ -252,14 +362,14 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
                 stats.vendas_autenticadas = float(row[0] or 0)
                 stats.vendas_nao_autenticadas = float(row[1] or 0)
             
-            # Consulta para total de clientes
+            # Consulta para total de clientes (sem filtro de vendedor)
             sql_total_clientes = "SELECT COUNT(*) FROM CLIENTES"
             cursor.execute(sql_total_clientes)
             row = cursor.fetchone()
             if row and row[0] is not None:
                 stats.total_clientes = int(row[0])
             
-            # Consulta para total de produtos
+            # Consulta para total de produtos (sem filtro de vendedor)
             sql_total_produtos = "SELECT COUNT(*) FROM PRODUTO"
             cursor.execute(sql_total_produtos)
             row = cursor.fetchone()
@@ -267,18 +377,29 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
                 stats.total_produtos = int(row[0])
             
             # Consulta para total de pedidos no período
-            sql_total_pedidos = """
+            sql_total_pedidos = f"""
                 SELECT COUNT(*), COALESCE(SUM(ECF_TOTAL), 0)
                 FROM VENDAS
                 WHERE VENDAS.ecf_cancelada = 'N'
                 AND VENDAS.ecf_concluida = 'S'
                 AND CAST(VENDAS.ecf_data AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                {filtro_vendedor}
             """
             cursor.execute(sql_total_pedidos, (data_inicial, data_final))
             row = cursor.fetchone()
             if row:
                 stats.total_pedidos = int(row[0] or 0)
                 stats.valor_total_pedidos = float(row[1] or 0)
+            
+            # Log do resultado
+            if filtro_aplicado:
+                log.info(f"✅ ESTATÍSTICAS FILTRADAS PARA VENDEDOR {codigo_vendedor}:")
+                log.info(f"   💰 Vendas do dia: R$ {stats.vendas_dia:.2f}")
+                log.info(f"   💰 Vendas do mês: R$ {stats.vendas_mes:.2f}")
+                log.info(f"   📦 Total de pedidos: {stats.total_pedidos}")
+            else:
+                log.info(f"📊 ESTATÍSTICAS GERAIS (sem filtro):")
+                log.info(f"   💰 Vendas do mês: R$ {stats.vendas_mes:.2f}")
             
             return stats
             
@@ -459,6 +580,7 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
 async def get_vendas_por_dia(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
     """
     Endpoint para retornar as vendas agrupadas por dia no período informado.
+    Aplica filtro por vendedor automaticamente se o usuário logado for um vendedor.
     """
     log.info(f"Recebendo requisição para vendas-por-dia com data_inicial={data_inicial} e data_final={data_final}")
     
@@ -474,6 +596,9 @@ async def get_vendas_por_dia(request: Request, data_inicial: Optional[str] = Non
                 proximo_mes = date(hoje.year, hoje.month + 1, 1)
             data_final = (proximo_mes - timedelta(days=1)).isoformat()
             
+        # ===== USAR FUNÇÃO HELPER GLOBAL =====
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request)
+            
         # Obter a conexão com o banco da empresa selecionada
         empresa = get_empresa_atual(request)
         if not empresa:
@@ -483,8 +608,8 @@ async def get_vendas_por_dia(request: Request, data_inicial: Optional[str] = Non
         cursor = conn.cursor()
         
         try:
-            # Consulta para vendas por dia
-            sql = """
+            # Consulta para vendas por dia COM FILTRO DE VENDEDOR
+            sql = f"""
                 SELECT 
                     CAST(ECF_DATA AS DATE) as DATA,
                     COUNT(*) as QUANTIDADE,
@@ -493,6 +618,7 @@ async def get_vendas_por_dia(request: Request, data_inicial: Optional[str] = Non
                 WHERE ECF_CANCELADA = 'N'
                 AND ECF_CONCLUIDA = 'S'
                 AND CAST(ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                {filtro_vendedor}
                 GROUP BY CAST(ECF_DATA AS DATE)
                 ORDER BY DATA
             """
@@ -508,6 +634,12 @@ async def get_vendas_por_dia(request: Request, data_inicial: Optional[str] = Non
                     total=float(row[2] or 0)
                 )
                 vendas_por_dia.append(venda)
+            
+            # Log do resultado
+            if filtro_aplicado:
+                log.info(f"✅ VENDAS POR DIA FILTRADAS PARA VENDEDOR {codigo_vendedor}: {len(vendas_por_dia)} registros")
+            else:
+                log.info(f"📊 VENDAS POR DIA GERAIS (sem filtro): {len(vendas_por_dia)} registros")
             
             return vendas_por_dia
             

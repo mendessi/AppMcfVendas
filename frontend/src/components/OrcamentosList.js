@@ -623,121 +623,253 @@ const OrcamentosList = ({ darkMode }) => {
           Nenhum orçamento encontrado
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className={`min-w-full divide-y ${
-            darkMode ? "divide-gray-700" : "divide-gray-200"
-          }`}>
-            <thead className={darkMode ? "bg-gray-700" : "bg-gray-50"}>
-              <tr>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>N°</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Data</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Cliente</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Vendedor</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Forma Pagto</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Tabela</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Valor</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Status</th>
-                <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Ações</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${darkMode ? "divide-gray-600" : "divide-gray-200"}`}>
-              {orcamentosFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan="9" className={`px-6 py-4 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                    Nenhum orçamento encontrado
-                  </td>
-                </tr>
-              ) : (
-                orcamentosFiltrados.map((orcamento) => (
-                  <React.Fragment key={orcamento.id}>
-                    <tr className={`hover:${darkMode ? 'bg-gray-700' : 'bg-gray-50'} cursor-pointer ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.numero}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{formatarData(orcamento.data)}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.cliente_nome}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.vendedor || '-'}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.forma_pagamento || '-'}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.tabela || '-'}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">{formatarValor(orcamento.valor_total)}</td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(orcamento.status)}`}>
-                          {orcamento.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => toggleOrcamentoDetails(orcamento.numero)}
-                            className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded hover:${
-                              darkMode ? 'bg-blue-700' : 'bg-blue-700'
-                            } ${darkMode ? 'text-blue-300 hover:text-white' : 'text-blue-600 hover:text-white'} transition-colors duration-200`}
-                            title="Ver detalhes"
-                          >
-                            {expandedOrcamento === orcamento.numero ? <FiChevronUp /> : <FiChevronDown />}
-                            <FiEye className="ml-1" />
-                          </button>
-                          
-                          <button
-                            onClick={() => handleImprimir(orcamento.numero)}
-                            className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded hover:${
-                              darkMode ? 'bg-green-700' : 'bg-green-700'
-                            } ${darkMode ? 'text-green-300 hover:text-white' : 'text-green-600 hover:text-white'} transition-colors duration-200`}
-                            title="Imprimir orçamento"
-                          >
-                            <FiPrinter />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-
-                    {/* Linha expandida com itens do orçamento */}
-                    {expandedOrcamento === orcamento.numero && (
-                      <tr className={darkMode ? "bg-gray-800" : "bg-gray-100"}>
-                        <td colSpan="9" className="px-4 py-4">
-                          <div className="space-y-4">
-                            <h4 className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>
-                              Itens do Orçamento #{orcamento.numero}
-                            </h4>
-                            
-                            {orcamento.itens && orcamento.itens.length > 0 ? (
-                              <div className="overflow-x-auto">
-                                <table className={`min-w-full divide-y ${darkMode ? "divide-gray-600" : "divide-gray-200"}`}>
-                                  <thead className={darkMode ? "bg-gray-700" : "bg-gray-50"}>
-                                    <tr>
-                                      <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Código</th>
-                                      <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Descrição</th>
-                                      <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Qtd</th>
-                                      <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Valor Unit.</th>
-                                      <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Total</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className={`divide-y ${darkMode ? "divide-gray-600" : "divide-gray-200"}`}>
-                                    {orcamento.itens.map((item, index) => (
-                                      <tr key={index} className={darkMode ? "text-gray-100" : "text-gray-900"}>
-                                        <td className="px-3 py-2 text-xs">{item.codigo}</td>
-                                        <td className="px-3 py-2 text-xs">{item.descricao}</td>
-                                        <td className="px-3 py-2 text-xs">{item.quantidade}</td>
-                                        <td className="px-3 py-2 text-xs">{formatarValor(item.valor || item.valor_unitario || 0)}</td>
-                                        <td className="px-3 py-2 text-xs">{formatarValor((item.quantidade || 0) * (item.valor || item.valor_unitario || 0))}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+        <>
+          {/* Cards para Mobile */}
+          <div className="md:hidden space-y-4">
+            {orcamentosFiltrados.length === 0 ? (
+              <div className={`text-center py-8 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                Nenhum orçamento encontrado
+              </div>
+            ) : (
+              orcamentosFiltrados.map((orcamento) => (
+                <div key={orcamento.id} className={`rounded-lg shadow-md p-4 ${darkMode ? "bg-gray-700" : "bg-white"}`}>
+                  {/* Cabeçalho do Card */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                        Orçamento #{orcamento.numero}
+                      </h3>
+                      <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                        {formatarData(orcamento.data)}
+                      </p>
+                    </div>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(orcamento.status)}`}>
+                      {orcamento.status}
+                    </span>
+                  </div>
+                  
+                  {/* Informações do Cliente */}
+                  <div className="mb-3">
+                    <p className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      {orcamento.cliente_nome}
+                    </p>
+                    {orcamento.vendedor && (
+                      <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                        Vendedor: {orcamento.vendedor}
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Grid de Informações */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                      <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Forma Pagto</p>
+                      <p className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                        {orcamento.forma_pagamento || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Tabela</p>
+                      <p className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                        {orcamento.tabela || '-'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Valor Total */}
+                  <div className="flex justify-between items-center mb-4">
+                    <span className={`text-lg font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}>
+                      {formatarValor(orcamento.valor_total)}
+                    </span>
+                  </div>
+                  
+                  {/* Ações */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => toggleOrcamentoDetails(orcamento.numero)}
+                      className={`flex-1 flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded ${
+                        expandedOrcamento === orcamento.numero
+                          ? darkMode ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white'
+                          : darkMode ? 'bg-gray-600 text-gray-300 hover:bg-blue-700' : 'bg-gray-200 text-gray-700 hover:bg-blue-600 hover:text-white'
+                      } transition-colors duration-200`}
+                    >
+                      {expandedOrcamento === orcamento.numero ? <FiChevronUp className="mr-1" /> : <FiChevronDown className="mr-1" />}
+                      {expandedOrcamento === orcamento.numero ? 'Ocultar' : 'Detalhes'}
+                    </button>
+                    
+                    <button
+                      onClick={() => handleImprimir(orcamento.numero)}
+                      className={`px-3 py-2 border border-transparent text-sm font-medium rounded hover:${
+                        darkMode ? 'bg-green-700' : 'bg-green-700'
+                      } ${darkMode ? 'text-green-300 hover:text-white' : 'text-green-600 hover:text-white'} transition-colors duration-200`}
+                      title="Imprimir orçamento"
+                    >
+                      <FiPrinter />
+                    </button>
+                  </div>
+                  
+                  {/* Detalhes Expandidos */}
+                  {expandedOrcamento === orcamento.numero && (
+                    <div className="mt-4 pt-4 border-t border-gray-600">
+                      <h4 className={`font-medium mb-3 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                        Itens do Orçamento
+                      </h4>
+                      
+                      {orcamento.itens && orcamento.itens.length > 0 ? (
+                        <div className="space-y-2">
+                          {orcamento.itens.map((item, index) => (
+                            <div key={index} className={`p-3 rounded ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+                              <div className="flex justify-between items-start mb-1">
+                                <p className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                                  {item.codigo}
+                                </p>
+                                <p className={`text-sm font-bold ${darkMode ? "text-green-400" : "text-green-600"}`}>
+                                  {formatarValor((item.quantidade || 0) * (item.valor || item.valor_unitario || 0))}
+                                </p>
                               </div>
-                            ) : (
-                              <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                                Nenhum item encontrado para este orçamento.
+                              <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"} mb-2`}>
+                                {item.descricao}
                               </p>
-                            )}
+                              <div className="flex justify-between text-xs">
+                                <span className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                                  Qtd: {item.quantidade}
+                                </span>
+                                <span className={darkMode ? "text-gray-400" : "text-gray-600"}>
+                                  Unit: {formatarValor(item.valor || item.valor_unitario || 0)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                          Nenhum item encontrado para este orçamento.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+          
+          {/* Tabela para Desktop */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className={`min-w-full divide-y ${
+              darkMode ? "divide-gray-700" : "divide-gray-200"
+            }`}>
+              <thead className={darkMode ? "bg-gray-700" : "bg-gray-50"}>
+                <tr>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>N°</th>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Data</th>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Cliente</th>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Vendedor</th>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Forma Pagto</th>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Tabela</th>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Valor</th>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Status</th>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Ações</th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${darkMode ? "divide-gray-600" : "divide-gray-200"}`}>
+                {orcamentosFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan="9" className={`px-6 py-4 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                      Nenhum orçamento encontrado
+                    </td>
+                  </tr>
+                ) : (
+                  orcamentosFiltrados.map((orcamento) => (
+                    <React.Fragment key={orcamento.id}>
+                      <tr className={`hover:${darkMode ? 'bg-gray-700' : 'bg-gray-50'} cursor-pointer ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.numero}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">{formatarData(orcamento.data)}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.cliente_nome}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.vendedor || '-'}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.forma_pagamento || '-'}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.tabela || '-'}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">{formatarValor(orcamento.valor_total)}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(orcamento.status)}`}>
+                            {orcamento.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleOrcamentoDetails(orcamento.numero)}
+                              className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded hover:${
+                                darkMode ? 'bg-blue-700' : 'bg-blue-700'
+                              } ${darkMode ? 'text-blue-300 hover:text-white' : 'text-blue-600 hover:text-white'} transition-colors duration-200`}
+                              title="Ver detalhes"
+                            >
+                              {expandedOrcamento === orcamento.numero ? <FiChevronUp /> : <FiChevronDown />}
+                              <FiEye className="ml-1" />
+                            </button>
+                            
+                            <button
+                              onClick={() => handleImprimir(orcamento.numero)}
+                              className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded hover:${
+                                darkMode ? 'bg-green-700' : 'bg-green-700'
+                              } ${darkMode ? 'text-green-300 hover:text-white' : 'text-green-600 hover:text-white'} transition-colors duration-200`}
+                              title="Imprimir orçamento"
+                            >
+                              <FiPrinter />
+                            </button>
                           </div>
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+
+                      {/* Linha expandida com itens do orçamento */}
+                      {expandedOrcamento === orcamento.numero && (
+                        <tr className={darkMode ? "bg-gray-800" : "bg-gray-100"}>
+                          <td colSpan="9" className="px-4 py-4">
+                            <div className="space-y-4">
+                              <h4 className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>
+                                Itens do Orçamento #{orcamento.numero}
+                              </h4>
+                              
+                              {orcamento.itens && orcamento.itens.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                  <table className={`min-w-full divide-y ${darkMode ? "divide-gray-600" : "divide-gray-200"}`}>
+                                    <thead className={darkMode ? "bg-gray-700" : "bg-gray-50"}>
+                                      <tr>
+                                        <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Código</th>
+                                        <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Descrição</th>
+                                        <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Qtd</th>
+                                        <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Valor Unit.</th>
+                                        <th className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Total</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className={`divide-y ${darkMode ? "divide-gray-600" : "divide-gray-200"}`}>
+                                      {orcamento.itens.map((item, index) => (
+                                        <tr key={index} className={darkMode ? "text-gray-100" : "text-gray-900"}>
+                                          <td className="px-3 py-2 text-xs">{item.codigo}</td>
+                                          <td className="px-3 py-2 text-xs">{item.descricao}</td>
+                                          <td className="px-3 py-2 text-xs">{item.quantidade}</td>
+                                          <td className="px-3 py-2 text-xs">{formatarValor(item.valor || item.valor_unitario || 0)}</td>
+                                          <td className="px-3 py-2 text-xs">{formatarValor((item.quantidade || 0) * (item.valor || item.valor_unitario || 0))}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                                  Nenhum item encontrado para este orçamento.
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

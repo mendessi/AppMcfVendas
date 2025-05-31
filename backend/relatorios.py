@@ -81,9 +81,13 @@ class FormaPagamento(BaseModel):
     FPG_COD: int
 
 # ===== FUNÇÃO HELPER GLOBAL PARA FILTRO DE VENDEDOR =====
-async def obter_filtro_vendedor(request: Request) -> tuple[str, bool, str]:
+async def obter_filtro_vendedor(request: Request, alias_tabela: str = "VENDAS") -> tuple[str, bool, str]:
     """
     Função helper global para obter filtro de vendedor automaticamente.
+    
+    Args:
+        request: Requisição HTTP
+        alias_tabela: Alias da tabela VENDAS na consulta SQL (ex: "VENDAS", "VD", "V")
     
     Returns:
         tuple: (filtro_sql, filtro_aplicado, codigo_vendedor)
@@ -167,9 +171,9 @@ async def obter_filtro_vendedor(request: Request) -> tuple[str, bool, str]:
             if vendedor:
                 codigo_vendedor = str(vendedor[0]).strip()
                 nome_vendedor = vendedor[1].strip() if vendedor[1] else ""
-                filtro_sql = f" AND VENDAS.VEN_CODIGO = '{codigo_vendedor}'"
+                filtro_sql = f" AND {alias_tabela}.VEN_CODIGO = '{codigo_vendedor}'"
                 
-                log.info(f"🎯 FILTRO APLICADO: Vendedor {codigo_vendedor} ({nome_vendedor})")
+                log.info(f"🎯 FILTRO APLICADO: Vendedor {codigo_vendedor} ({nome_vendedor}) - Alias: {alias_tabela}")
                 return filtro_sql, True, codigo_vendedor
             else:
                 log.warning(f"🔄 SEM FILTRO - Vendedor não encontrado para email {usuario_email}")
@@ -304,7 +308,7 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
         log.info(f"Período de consulta: {data_inicial} a {data_final}")
         
         # ===== USAR FUNÇÃO HELPER GLOBAL =====
-        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request)
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VD")
 
         # Obter a conexão com o banco da empresa selecionada
         empresa = get_empresa_atual(request)
@@ -420,6 +424,7 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
 async def get_top_vendedores(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
     """
     Endpoint para obter os top vendedores com maior volume de vendas no período.
+    Se o usuário logado for um vendedor, retorna apenas os dados dele.
     """
     log.info(f"Recebendo requisição para top-vendedores com data_inicial={data_inicial} e data_final={data_final}")
     
@@ -435,6 +440,9 @@ async def get_top_vendedores(request: Request, data_inicial: Optional[str] = Non
                 proximo_mes = date(hoje.year, hoje.month + 1, 1)
             data_final = (proximo_mes - timedelta(days=1)).isoformat()
             
+        # ===== APLICAR FILTRO DE VENDEDOR =====
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VD")
+            
         # Obter a conexão com o banco da empresa selecionada
         empresa = get_empresa_atual(request)
         if not empresa:
@@ -444,8 +452,8 @@ async def get_top_vendedores(request: Request, data_inicial: Optional[str] = Non
         cursor = conn.cursor()
         
         try:
-            # Consulta para top vendedores
-            sql = """
+            # Consulta para top vendedores COM FILTRO
+            sql = f"""
                 SELECT 
                     V.VEN_NOME,
                     V.VEN_CODIGO,
@@ -457,6 +465,7 @@ async def get_top_vendedores(request: Request, data_inicial: Optional[str] = Non
                 WHERE VD.ECF_CANCELADA = 'N'
                 AND VD.ECF_CONCLUIDA = 'S'
                 AND CAST(VD.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                {filtro_vendedor}
                 GROUP BY V.VEN_NOME, V.VEN_CODIGO, V.VEN_META
                 ORDER BY TOTAL DESC
             """
@@ -475,10 +484,17 @@ async def get_top_vendedores(request: Request, data_inicial: Optional[str] = Non
                 )
                 top_vendedores.append(vendedor)
             
+            # Log para debug
+            if filtro_aplicado:
+                log.info(f"🎯 TOP VENDEDORES FILTRADO: Vendedor {codigo_vendedor} - {len(top_vendedores)} resultado(s)")
+            else:
+                log.info(f"📊 TOP VENDEDORES GERAL: {len(top_vendedores)} vendedores encontrados")
+            
             return TopVendedoresResponse(
                 data_inicial=data_inicial,
                 data_final=data_final,
-                top_vendedores=top_vendedores
+                top_vendedores=top_vendedores,
+                filtro_vendedor_aplicado=filtro_aplicado
             )
             
         except Exception as e:
@@ -498,6 +514,7 @@ async def get_top_vendedores(request: Request, data_inicial: Optional[str] = Non
 async def get_top_clientes(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
     """
     Endpoint para obter os top clientes com maior volume de compras no período.
+    Se o usuário logado for um vendedor, filtra apenas os clientes dele.
     """
     log.info(f"Recebendo requisição para top-clientes com data_inicial={data_inicial} e data_final={data_final}")
     
@@ -513,6 +530,9 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
                 proximo_mes = date(hoje.year, hoje.month + 1, 1)
             data_final = (proximo_mes - timedelta(days=1)).isoformat()
             
+        # ===== APLICAR FILTRO DE VENDEDOR =====
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "V")
+            
         # Obter a conexão com o banco da empresa selecionada
         empresa = get_empresa_atual(request)
         if not empresa:
@@ -522,8 +542,8 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
         cursor = conn.cursor()
         
         try:
-            # Consulta para top clientes
-            sql = """
+            # Consulta para top clientes COM FILTRO DE VENDEDOR
+            sql = f"""
                 SELECT FIRST 10
                     C.CLI_NOME,
                     C.CLI_CODIGO,
@@ -537,6 +557,7 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
                 WHERE V.ECF_CANCELADA = 'N'
                 AND V.ECF_CONCLUIDA = 'S'
                 AND CAST(V.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                {filtro_vendedor}
                 GROUP BY C.CLI_NOME, C.CLI_CODIGO, C.CIDADE, C.UF
                 ORDER BY TOTAL DESC
             """
@@ -556,6 +577,12 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
                     ecf_data=row[6].isoformat() if row[6] else None
                 )
                 top_clientes.append(cliente)
+            
+            # Log para debug
+            if filtro_aplicado:
+                log.info(f"🎯 TOP CLIENTES FILTRADO: Vendedor {codigo_vendedor} - {len(top_clientes)} cliente(s)")
+            else:
+                log.info(f"📊 TOP CLIENTES GERAL: {len(top_clientes)} clientes encontrados")
             
             return TopClientesResponse(
                 data_inicial=data_inicial,
@@ -597,7 +624,7 @@ async def get_vendas_por_dia(request: Request, data_inicial: Optional[str] = Non
             data_final = (proximo_mes - timedelta(days=1)).isoformat()
             
         # ===== USAR FUNÇÃO HELPER GLOBAL =====
-        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request)
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VENDAS")
             
         # Obter a conexão com o banco da empresa selecionada
         empresa = get_empresa_atual(request)
@@ -1182,23 +1209,38 @@ async def verificar_estrutura_produto(request: Request):
 
 @router.get("/top-produtos")
 async def top_produtos(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
+    """
+    Endpoint para obter os top produtos com maior volume de vendas no período.
+    Se o usuário logado for um vendedor, filtra apenas os produtos vendidos por ele.
+    """
+    log.info(f"Recebendo requisição para top-produtos com data_inicial={data_inicial} e data_final={data_final}")
+    
     try:
-        # Obter parâmetros da query string
-        data_inicial = request.query_params.get('data_inicial')
-        data_final = request.query_params.get('data_final')
-        
-        if not data_inicial or not data_final:
-            return JSONResponse({'error': 'Data inicial e final são obrigatórias'}), 400
+        # Definir datas padrão se não fornecidas
+        hoje = date.today()
+        if not data_inicial:
+            data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+        if not data_final:
+            if hoje.month == 12:
+                proximo_mes = date(hoje.year + 1, 1, 1)
+            else:
+                proximo_mes = date(hoje.year, hoje.month + 1, 1)
+            data_final = (proximo_mes - timedelta(days=1)).isoformat()
+            
+        # ===== APLICAR FILTRO DE VENDEDOR =====
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VENDAS")
 
-        # Conectar ao banco de dados
+        # Obter a conexão com o banco da empresa selecionada
+        empresa = get_empresa_atual(request)
+        if not empresa:
+            raise HTTPException(status_code=404, detail="Empresa não encontrada")
+
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
 
-        # Buscar top produtos por valor
         try:
-            logging.info("Buscando top produtos por valor (com estoque e mínimo)")
-            cursor.execute(
-                f"""
+            # Consulta para top produtos COM FILTRO DE VENDEDOR
+            sql = f"""
                 SELECT FIRST 10 
                     PRODUTO.PRO_CODIGO,
                     PRODUTO.PRO_DESCRICAO,
@@ -1210,12 +1252,13 @@ async def top_produtos(request: Request, data_inicial: Optional[str] = None, dat
                      AND VENDAS.ECF_CANCELADA = 'N'
                      AND VENDAS.ECF_CONCLUIDA = 'S'
                 JOIN PRODUTO ON PRODUTO.PRO_CODIGO = ITVENDA.PRO_CODIGO
-                WHERE VENDAS.ECF_DATA BETWEEN ? AND ?
+                WHERE CAST(VENDAS.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                {filtro_vendedor}
                 GROUP BY PRODUTO.PRO_CODIGO, PRODUTO.PRO_DESCRICAO, PRODUTO.PRO_QUANTIDADE, PRODUTO.PRO_MINIMA
                 ORDER BY TOTAL DESC
-                """,
-                (data_inicial, data_final),
-            )
+            """
+            
+            cursor.execute(sql, (data_inicial, data_final))
             produtos = cursor.fetchall() or []
             
             # Converter para lista de dicionários
@@ -1229,18 +1272,26 @@ async def top_produtos(request: Request, data_inicial: Optional[str] = None, dat
                     'EST_MINIMO': float(produto[4] or 0)
                 })
             
+            # Log para debug
+            if filtro_aplicado:
+                log.info(f"🎯 TOP PRODUTOS FILTRADO: Vendedor {codigo_vendedor} - {len(resultado)} produto(s)")
+            else:
+                log.info(f"📊 TOP PRODUTOS GERAL: {len(resultado)} produtos encontrados")
+            
             return resultado
             
         except Exception as e:
-            logging.error(f"Erro ao buscar top produtos por valor: {e}")
-            return JSONResponse({'error': str(e)}), 500
+            log.error(f"Erro ao buscar top produtos: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Erro ao buscar top produtos: {str(e)}")
         finally:
-            cursor.close()
-            conn.close()
-
+            try:
+                conn.close()
+            except:
+                pass
+            
     except Exception as e:
-        logging.error(f"Erro ao buscar top produtos: {e}")
-        return JSONResponse({'error': str(e)}), 500
+        log.error(f"Erro geral ao buscar top produtos: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro geral: {str(e)}")
 
 @router.get("/tabelas-preco")
 async def get_tabelas_preco(request: Request, search: str = "", empresa: str = None):

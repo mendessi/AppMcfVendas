@@ -1078,19 +1078,37 @@ async def listar_formas_pagamento(request: Request):
 @router.get("/listar_vendedores")
 async def listar_vendedores(request: Request):
     """
-    Endpoint para listar todos os vendedores.
+    Endpoint para listar todos os vendedores ATIVOS.
+    Retorna apenas vendedores onde ven_ativo = 0 (ativo)
     """
     try:
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
         
-        sql = """
-            SELECT 
-                VEN_CODIGO as codigo,
-                VEN_NOME as nome
-            FROM VENDEDOR
-            ORDER BY VEN_NOME
-        """
+        # Verificar se a coluna ven_ativo existe
+        cursor.execute("SELECT FIRST 1 * FROM VENDEDOR")
+        colunas = [col[0].lower() for col in cursor.description]
+        tem_ven_ativo = "ven_ativo" in colunas
+        
+        if tem_ven_ativo:
+            sql = """
+                SELECT 
+                    VEN_CODIGO,
+                    VEN_NOME
+                FROM VENDEDOR
+                WHERE VEN_ATIVO = 0
+                ORDER BY VEN_NOME
+            """
+            log.info("🎯 VENDEDORES - Buscando apenas vendedores ATIVOS (ven_ativo = 0)")
+        else:
+            sql = """
+                SELECT 
+                    VEN_CODIGO,
+                    VEN_NOME
+                FROM VENDEDOR
+                ORDER BY VEN_NOME
+            """
+            log.info("⚠️ VENDEDORES - Campo ven_ativo não existe, buscando todos")
         
         cursor.execute(sql)
         rows = cursor.fetchall()
@@ -1098,10 +1116,16 @@ async def listar_vendedores(request: Request):
         vendedores = []
         for row in rows:
             vendedor = {
-                "codigo": row[0],
-                "nome": row[1] or ""
+                "VEN_CODIGO": row[0],
+                "VEN_NOME": row[1] or ""
             }
             vendedores.append(vendedor)
+        
+        log.info(f"🎯 VENDEDORES ENCONTRADOS: {len(vendedores)} vendedor(es) ativo(s)")
+        
+        # Log dos primeiros vendedores para debug
+        for i, v in enumerate(vendedores[:3]):
+            log.info(f"   {i+1}. {v['VEN_CODIGO']} - {v['VEN_NOME']}")
             
         return vendedores
         

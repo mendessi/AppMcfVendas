@@ -24,6 +24,47 @@ const PedidosList = ({ darkMode }) => {
   const [usuarioAtual, setUsuarioAtual] = useState(null);
   const [filtroVendedorBloqueado, setFiltroVendedorBloqueado] = useState(false);
 
+  // ===== CSS PARA DROPDOWN VENDEDORES =====
+  const dropdownStyles = `
+    .vendedor-dropdown option {
+      padding: 8px 12px !important;
+      margin: 2px 0 !important;
+      ${darkMode ? `
+        background-color: #374151 !important;
+        color: #ffffff !important;
+        border: 1px solid #4b5563 !important;
+      ` : `
+        background-color: #ffffff !important;
+        color: #1f2937 !important;
+        border: 1px solid #d1d5db !important;
+      `}
+    }
+    .vendedor-dropdown option:hover {
+      ${darkMode ? `
+        background-color: #4b5563 !important;
+        color: #60a5fa !important;
+      ` : `
+        background-color: #f3f4f6 !important;
+        color: #1d4ed8 !important;
+      `}
+    }
+    .vendedor-dropdown:focus {
+      outline: 2px solid #3b82f6 !important;
+      outline-offset: 2px !important;
+    }
+  `;
+
+  // Inserir estilos CSS no head
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.textContent = dropdownStyles;
+    document.head.appendChild(styleElement);
+    
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, [darkMode, dropdownStyles]);
+
   // Remover busca automática ao abrir no mobile
   useEffect(() => {
     buscarVendedores(); // Buscar vendedores primeiro
@@ -462,16 +503,48 @@ const PedidosList = ({ darkMode }) => {
         <div>
           <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Vendedor</label>
           <select
-            className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"} ${filtroVendedorBloqueado ? 'cursor-not-allowed opacity-75' : ''}`}
+            className={`
+              vendedor-dropdown
+              p-2 border rounded w-full min-w-[200px]
+              ${darkMode 
+                ? "bg-gray-700 border-gray-600 text-white" 
+                : "bg-white border-gray-300 text-gray-700"
+              } 
+              ${filtroVendedorBloqueado ? 'cursor-not-allowed opacity-75' : ''}
+              focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+              text-sm font-medium
+              hover:border-gray-400
+              transition-all duration-200
+            `}
+            style={{
+              // Estilos para as opções do dropdown
+              fontSize: '14px',
+              fontWeight: '500',
+              lineHeight: '1.5',
+              ...(darkMode ? {
+                colorScheme: 'dark'
+              } : {})
+            }}
             value={vendedorSelecionado}
             onChange={e => setVendedorSelecionado(e.target.value)}
             disabled={filtroVendedorBloqueado}
             title={filtroVendedorBloqueado ? 'Como VENDEDOR, você só pode ver suas próprias vendas' : 'Selecione um vendedor ou "Todos"'}
           >
-            {!filtroVendedorBloqueado && <option value="">Todos</option>}
+            {!filtroVendedorBloqueado && (
+              <option 
+                value=""
+                className={darkMode ? "bg-gray-700 text-white" : "bg-white text-gray-700"}
+              >
+                📋 Todos os vendedores
+              </option>
+            )}
             {vendedores.map(vendedor => (
-              <option key={vendedor.VEN_CODIGO} value={vendedor.VEN_CODIGO}>
-                {vendedor.VEN_NOME}
+              <option 
+                key={vendedor.VEN_CODIGO} 
+                value={vendedor.VEN_CODIGO}
+                className={darkMode ? "bg-gray-700 text-white font-medium" : "bg-white text-gray-700 font-medium"}
+              >
+                👤 {vendedor.VEN_NOME} (#{vendedor.VEN_CODIGO})
               </option>
             ))}
           </select>
@@ -480,6 +553,10 @@ const PedidosList = ({ darkMode }) => {
               🔒 Filtro automático: {usuarioAtual.nivel}
             </p>
           )}
+          {/* Debug info */}
+          <p className={`text-xs mt-1 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+            {vendedores.length} vendedor(es) ativo(s)
+          </p>
         </div>
         <div>
           <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Autenticação</label>

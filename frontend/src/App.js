@@ -5,7 +5,7 @@ import './App.css';
 import { API_URL, AUTH_CONFIG, ROUTES } from './config';
 
 // Ícones
-import { FiMenu, FiX, FiHome, FiUsers, FiPackage, FiShoppingCart, FiPlusCircle, FiLogOut, FiMoon, FiSun, FiGrid, FiClipboard } from 'react-icons/fi';
+import { FiMenu, FiX, FiHome, FiUsers, FiPackage, FiShoppingCart, FiPlusCircle, FiLogOut, FiMoon, FiSun, FiGrid, FiClipboard, FiChevronLeft } from 'react-icons/fi';
 import OrcamentoForm from './OrcamentoForm';
 import OrcamentosList from './components/OrcamentosList';
 
@@ -36,7 +36,15 @@ function AppContent() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    // Verificar preferência salva do usuário, padrão para aberto no desktop
+    const saved = localStorage.getItem('sidebarOpen');
+    if (saved !== null) {
+      return JSON.parse(saved);
+    }
+    // Padrão: aberto no desktop, fechado no mobile
+    return window.innerWidth >= 768;
+  });
   const [darkMode, setDarkMode] = useState(true); // Modo dark ativado por padrão
   const [showVendedorWelcome, setShowVendedorWelcome] = useState(false);
   const [vendedorWelcomeData, setVendedorWelcomeData] = useState(null);
@@ -301,7 +309,10 @@ function AppContent() {
   };
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    const newSidebarState = !sidebarOpen;
+    setSidebarOpen(newSidebarState);
+    // Salvar preferência do usuário
+    localStorage.setItem('sidebarOpen', JSON.stringify(newSidebarState));
   };
 
   const toggleDarkMode = () => {
@@ -565,6 +576,17 @@ function AppContent() {
         >
           <div className="h-full overflow-y-auto py-4 px-3 flex flex-col justify-between">
             <div className="space-y-8">
+              {/* Botão para recolher menu - visível apenas no desktop */}
+              <div className="hidden md:flex justify-end">
+                <button
+                  onClick={toggleSidebar}
+                  className={`p-2 rounded-md transition-colors duration-200 ${darkMode ? 'hover:bg-gray-700 text-gray-400 hover:text-white' : 'hover:bg-gray-200 text-gray-600 hover:text-gray-800'}`}
+                  title="Recolher menu"
+                >
+                  <FiChevronLeft className="h-5 w-5" />
+                </button>
+              </div>
+              
               {/* Logo da Empresa */}
               <div className="flex justify-center items-center py-4">
                 <img 
@@ -673,7 +695,7 @@ function AppContent() {
         </div>
 
         {/* Conteúdo principal */}
-        <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
+        <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'md:ml-0'}`}>
           <main className="container mx-auto px-4 py-8">
             <Routes>
               <Route path="/" element={<Dashboard user={user} darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />

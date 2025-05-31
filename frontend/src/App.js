@@ -36,8 +36,10 @@ function AppContent() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(true); // Modo dark ativado por padrão
+  const [showVendedorWelcome, setShowVendedorWelcome] = useState(false);
+  const [vendedorWelcomeData, setVendedorWelcomeData] = useState(null);
 
   // Verificar se o usuário está logado ao carregar a página
   useEffect(() => {
@@ -89,6 +91,25 @@ function AppContent() {
           try {
             const detalhes = JSON.parse(empresaDetalhes);
             setEmpresaSelecionada(detalhes);
+            
+            // Se for vendedor E tem código, mostrar boas-vindas
+            if (user.nivel === 'VENDEDOR' && user.codigo_vendedor) {
+              console.log('Mostrando boas-vindas para vendedor com cache:', user.codigo_vendedor);
+              setVendedorWelcomeData({
+                email: user.username,
+                codigo: user.codigo_vendedor,
+                nomeVendedor: user.nome_vendedor,
+                nomeEmpresa: detalhes.cli_nome || 'Empresa Logada'
+              });
+              setShowVendedorWelcome(true);
+              
+              // Ocultar após 6 segundos (cache)
+              setTimeout(() => {
+                setShowVendedorWelcome(false);
+                setVendedorWelcomeData(null);
+              }, 6000);
+            }
+            
           } catch (error) {
             console.error('Erro ao carregar detalhes da empresa:', error);
           }
@@ -176,7 +197,7 @@ function AppContent() {
     localStorage.removeItem(AUTH_CONFIG.empresaKey);
   };
 
-  const handleSelectEmpresa = (empresa) => {
+  const handleSelectEmpresa = async (empresa) => {
     console.log('Empresa selecionada no App:', empresa);
     setEmpresaSelecionada(empresa);
     
@@ -196,6 +217,87 @@ function AppContent() {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       axios.defaults.headers.common['x-empresa-codigo'] = empresaCodigo;
     }
+    
+    // Se o usuário for VENDEDOR, buscar código do vendedor na base da empresa
+    if (user?.nivel === 'VENDEDOR') {
+      await buscarCodigoVendedor(empresaCodigo);
+    }
+  };
+
+  const buscarCodigoVendedor = async (empresaCodigo) => {
+    try {
+      console.log('Buscando código do vendedor para empresa:', empresaCodigo);
+      
+      // Usar o token armazenado no localStorage (mesmo padrão do EmpresaSelector)
+      const token = localStorage.getItem('token');
+      
+      // Configurar o cabeçalho de autorização para o axios (mesmo padrão)
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      axios.defaults.headers.common['Content-Type'] = 'application/json';
+      
+      // Adicionar o cabeçalho x-empresa-codigo (mesmo padrão)
+      axios.defaults.headers.common['x-empresa-codigo'] = empresaCodigo;
+      
+      const response = await axios.post(`${API_URL}${ROUTES.buscarCodigoVendedor}`);
+      
+      const data = response.data;
+      console.log('Resposta busca código vendedor:', data);
+      
+      if (data.codigo_vendedor) {
+        // Atualizar o estado do usuário com o código do vendedor
+        const updatedUser = {
+          ...user,
+          codigo_vendedor: data.codigo_vendedor,
+          nome_vendedor: data.nome_vendedor
+        };
+        
+        setUser(updatedUser);
+        localStorage.setItem(AUTH_CONFIG.userKey, JSON.stringify(updatedUser));
+        
+        console.log('Código do vendedor encontrado:', data.codigo_vendedor);
+        
+        // Mostrar tela de boas-vindas para vendedor
+        setVendedorWelcomeData({
+          email: user.username,
+          codigo: data.codigo_vendedor,
+          nomeVendedor: data.nome_vendedor,
+          nomeEmpresa: empresaSelecionada?.cli_nome || 'Empresa Selecionada'
+        });
+        setShowVendedorWelcome(true);
+        
+        // Ocultar tela de boas-vindas após 6 segundos
+        setTimeout(() => {
+          setShowVendedorWelcome(false);
+          setVendedorWelcomeData(null);
+        }, 6000);
+        
+      } else {
+        console.log('Código do vendedor não encontrado:', data.message);
+        
+        // Limpar código anterior se existir
+        const updatedUser = {
+          ...user,
+          codigo_vendedor: null,
+          nome_vendedor: null
+        };
+        
+        setUser(updatedUser);
+        localStorage.setItem(AUTH_CONFIG.userKey, JSON.stringify(updatedUser));
+      }
+      
+    } catch (error) {
+      console.error('Erro ao buscar código do vendedor:', error);
+      
+      // Em caso de erro, limpar código do vendedor
+      const updatedUser = {
+        ...user,
+        codigo_vendedor: null,
+        nome_vendedor: null
+      };
+      
+      setUser(updatedUser);
+      localStorage.setItem(AUTH_CONFIG.userKey, JSON.stringify(updatedUser));
+    }
   };
 
   const toggleSidebar = () => {
@@ -206,8 +308,74 @@ function AppContent() {
     setDarkMode(!darkMode);
   };
 
+  const limparCacheCompleto = () => {
+    // Limpar TUDO do localStorage
+    localStorage.clear();
+    
+    // Resetar todos os estados
+    setUser(null);
+    setIsLoggedIn(false);
+    setEmpresaSelecionada(null);
+    setShowVendedorWelcome(false);
+    setVendedorWelcomeData(null);
+    
+    console.log('Cache completamente limpo!');
+    
+    // Recarregar a página para garantir estado limpo
+    window.location.reload();
+  };
+
   // Variáveis para controlar o fluxo de navegação
   const isFullyAuthenticated = isLoggedIn && empresaSelecionada;
+  
+  // Tela de Boas-vindas para Vendedor
+  if (showVendedorWelcome && vendedorWelcomeData) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
+        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} p-8 rounded-lg shadow-lg max-w-md w-full mx-4 text-center`}>
+          {/* Ícone de Check ou Vendedor */}
+          <div className="mb-6">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+          </div>
+          
+          {/* Título */}
+          <h2 className={`text-2xl font-bold mb-4 ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+            Bem-vindo!
+          </h2>
+          
+          {/* Mensagem Principal */}
+          <div className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+            <p className="text-lg mb-2">
+              Olá, <span className="font-semibold text-blue-500">{vendedorWelcomeData.email}</span>
+            </p>
+            <p className="text-xl font-bold mb-3">
+              Código: <span className="text-green-500">({vendedorWelcomeData.codigo})</span>
+            </p>
+            <p className="text-sm">
+              Você será redirecionado para a empresa
+            </p>
+            <p className="text-sm font-semibold">
+              {vendedorWelcomeData.nomeEmpresa}
+            </p>
+          </div>
+          
+          {/* Loading Indicator */}
+          <div className="flex justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+          </div>
+          
+          {/* Texto de Carregamento */}
+          <p className={`text-sm mt-3 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+            Carregando sua área...
+          </p>
+        </div>
+      </div>
+    );
+  }
   
   // Tela de Login
   if (!isLoggedIn) {
@@ -292,10 +460,17 @@ function AppContent() {
           <div className="mt-6 text-center">
             <button
               onClick={toggleDarkMode}
-              className={`text-sm ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'}`}
+              className={`text-sm ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'} mr-4`}
             >
               {darkMode ? <FiSun className="inline mr-1" /> : <FiMoon className="inline mr-1" />}
               {darkMode ? 'Modo Claro' : 'Modo Escuro'}
+            </button>
+            
+            <button
+              onClick={limparCacheCompleto}
+              className={`text-sm ${darkMode ? 'text-red-400 hover:text-red-300' : 'text-red-600 hover:text-red-500'}`}
+            >
+              🗑️ Limpar Cache
             </button>
           </div>
         </div>
@@ -360,6 +535,9 @@ function AppContent() {
                       : darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'
                   }`}>
                     Nível: {user?.nivel || 'N/A'}
+                    {user?.nivel === 'VENDEDOR' && user?.codigo_vendedor && (
+                      <span className="ml-1">({user.codigo_vendedor})</span>
+                    )}
                   </span>
                 </div>
               )}

@@ -291,26 +291,8 @@ async def login(response: Response, form_data: UserLogin):
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         expires = datetime.utcnow() + access_token_expires
         
-        # Se o usuário é um vendedor, adicionar o código do vendedor ao token
+        # Para vendedores, o código será buscado após selecionar a empresa
         codigo_vendedor = None
-        if user["nivel"] and user["nivel"].lower() == 'vendedor':
-            # Buscar o código do vendedor
-            try:
-                conn = obter_conexao_controladora()
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT VEN_CODIGO FROM VENDEDOR
-                    WHERE USUARIO_ID = ?
-                """, (user["id"],))
-                
-                ven_codigo = cursor.fetchone()
-                conn.close()
-                
-                if ven_codigo:
-                    codigo_vendedor = ven_codigo[0]
-                    logging.info(f"Adicionando código de vendedor {ven_codigo[0]} ao token JWT")
-            except Exception as e:
-                logging.error(f"Erro ao buscar código do vendedor: {str(e)}")
         
         token_data = {
             "sub": user["email"],
@@ -320,24 +302,6 @@ async def login(response: Response, form_data: UserLogin):
             "codigo_vendedor": codigo_vendedor,
             "exp": expires
         }
-        # Se for vendedor mas não tem código de vendedor, verificar se há um código na tabela usuarios_app
-        if user["nivel"] == "VENDEDOR" and token_data["codigo_vendedor"] is None:
-            try:
-                conn = obter_conexao_controladora()
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT CODIGO_VENDEDOR FROM USUARIOS_APP 
-                    WHERE ID = ?
-                """, (user["id"],))
-                
-                resultado = cursor.fetchone()
-                conn.close()
-                
-                if resultado and resultado[0]:
-                    token_data["codigo_vendedor"] = resultado[0]
-                    logging.info(f"Código de vendedor obtido da tabela USUARIOS_APP: {resultado[0]}")
-            except Exception as e:
-                logging.error(f"Erro ao buscar código do vendedor na tabela USUARIOS_APP: {str(e)}")
         
         logging.info(f"Gerando token com dados: {token_data}")
         access_token = criar_token_acesso(
@@ -352,7 +316,7 @@ async def login(response: Response, form_data: UserLogin):
             "usuario_id": user["id"],
             "usuario_nome": user["nome"],
             "usuario_nivel": user["nivel"],
-            "codigo_vendedor": user["codigo_vendedor"]
+            "codigo_vendedor": codigo_vendedor
         }
     except Exception as e:
         logging.error(f"Erro no login: {str(e)}")
@@ -428,6 +392,141 @@ async def listar_empresas_usuario(request: Request):
 
 # Middleware de autenticação
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+@router.post("/buscar-codigo-vendedor")
+async def buscar_codigo_vendedor(request: Request):
+    """
+    Busca o código do vendedor na base da empresa selecionada.
+    """
+    try:
+        # Obtém o token da requisição
+        authorization = request.headers.get("Authorization")
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Não autorizado",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        token = authorization.replace("Bearer ", "")
+        
+        # Decodifica o token
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            usuario_email = payload.get("sub")
+            usuario_nivel = payload.get("nivel")
+            if not usuario_email:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token inválido",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+        except JWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token inválido",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Verifica se é vendedor
+        if not usuario_nivel or usuario_nivel.lower() != 'vendedor':
+            return {"codigo_vendedor": None, "message": "Usuário não é vendedor"}
+        
+        # Obtém o código da empresa do header
+        empresa_codigo = request.headers.get("x-empresa-codigo")
+        if not empresa_codigo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Código da empresa não fornecido"
+            )
+        
+        # Busca o código do vendedor na base da empresa
+        try:
+            from conexao_firebird import obter_conexao_cliente, obter_conexao_controladora
+            
+            # Converter empresa_codigo para inteiro
+            empresa_id = int(empresa_codigo)
+            logging.info(f"Buscando dados da empresa {empresa_id}")
+            
+            # Primeiro buscar dados completos da empresa na base controladora
+            conn_ctrl = obter_conexao_controladora()
+            cursor_ctrl = conn_ctrl.cursor()
+            
+            cursor_ctrl.execute("""
+                SELECT CLI_CODIGO, CLI_NOME, CLI_CAMINHO_BASE, CLI_IP_SERVIDOR, 
+                       CLI_NOME_BASE, CLI_PORTA 
+                FROM CLIENTES 
+                WHERE CLI_CODIGO = ?
+            """, (empresa_id,))
+            
+            empresa_dados = cursor_ctrl.fetchone()
+            conn_ctrl.close()
+            
+            if not empresa_dados:
+                logging.error(f"Empresa {empresa_id} não encontrada na base controladora")
+                return {
+                    "codigo_vendedor": None,
+                    "message": f"Empresa {empresa_id} não encontrada"
+                }
+            
+            # Montar dicionário da empresa
+            empresa_dict = {
+                'cli_codigo': empresa_dados[0],
+                'cli_nome': empresa_dados[1],
+                'cli_caminho_base': empresa_dados[2],
+                'cli_ip_servidor': empresa_dados[3],
+                'cli_nome_base': empresa_dados[4],
+                'cli_porta': empresa_dados[5] or '3050'
+            }
+            
+            logging.info(f"Dados da empresa {empresa_id}: {empresa_dict['cli_nome']}")
+            
+            # Conectar na base da empresa
+            conn = obter_conexao_cliente(empresa_dict)
+            cursor = conn.cursor()
+            
+            # Busca por email
+            cursor.execute("""
+                SELECT VEN_CODIGO, VEN_NOME FROM VENDEDOR 
+                WHERE VEN_EMAIL = ?
+            """, (usuario_email,))
+            
+            vendedor = cursor.fetchone()
+            conn.close()
+            
+            if vendedor:
+                codigo_vendedor = str(vendedor[0]).strip()
+                nome_vendedor = vendedor[1].strip() if vendedor[1] else ""
+                logging.info(f"Código do vendedor encontrado na empresa {empresa_codigo}: {codigo_vendedor} - {nome_vendedor}")
+                return {
+                    "codigo_vendedor": codigo_vendedor,
+                    "nome_vendedor": nome_vendedor,
+                    "message": "Código encontrado com sucesso"
+                }
+            else:
+                logging.warning(f"Código do vendedor não encontrado na empresa {empresa_codigo} para email {usuario_email}")
+                return {
+                    "codigo_vendedor": None,
+                    "message": "Código do vendedor não encontrado nesta empresa"
+                }
+                
+        except Exception as e:
+            logging.error(f"Erro ao buscar código do vendedor na empresa {empresa_codigo}: {str(e)}")
+            # Em caso de erro na conexão, retornar null ao invés de erro 500
+            logging.warning(f"Falha na conexão com empresa {empresa_codigo}, retornando código null")
+            return {
+                "codigo_vendedor": None,
+                "message": f"Erro na conexão com a empresa: {str(e)}"
+            }
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Erro geral ao buscar código do vendedor: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro interno: {str(e)}"
+        )
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     """

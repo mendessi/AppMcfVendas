@@ -1,33 +1,34 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-import mock_response
+# Comentando imports problemáticos
+# import mock_response
 # Importar o router de mock para teste sem CORS
-from mock_response import mock_router
+# from mock_response import mock_router
 # Importar o router de informações da empresa
 from empresa_info import router as empresa_info_router
 # Importar o router de relatórios
 from relatorios import router as relatorios_router
 # Importar o router de teste de empresa
-from teste_empresa import router as teste_empresa_router
+# from teste_empresa import router as teste_empresa_router
 # Importar o router de teste de seleção
-from teste_selecionar import router as teste_selecionar_router
+# from teste_selecionar import router as teste_selecionar_router
 # Importar o router de teste de cabeçalhos
-from teste_cabecalhos import router as teste_cabecalhos_router
+# from teste_cabecalhos import router as teste_cabecalhos_router
 # Importar o router de teste de conexão
-from teste_conexao import router as teste_conexao_router
+# from teste_conexao import router as teste_conexao_router
 # Importar o router de teste empresa CRUD
-from teste_empresa_crud import router as teste_empresa_crud_router
+# from teste_empresa_crud import router as teste_empresa_crud_router
 # Importar o router de teste de seleção com session
-from teste_selecao_session import router as teste_selecao_session_router
+# from teste_selecao_session import router as teste_selecao_session_router
 # Importar o router de teste session simples
-from teste_session_simples import router as teste_session_simples_router
+# from teste_session_simples import router as teste_session_simples_router
 # Importar o router de teste de conexão de empresa
-from teste_conexao_api import router as teste_conexao_api_router
+# from teste_conexao_api import router as teste_conexao_api_router
 # Importar o router de informações detalhadas da empresa
 from empresa_info_detalhada import router as empresa_info_detalhada_router
 # Importar o router de teste SQL da empresa
-from teste_sql_empresa import router as teste_sql_empresa_router
+# from teste_sql_empresa import router as teste_sql_empresa_router
 from typing import List, Optional, Dict, Any
 import models
 import database
@@ -164,7 +165,7 @@ app.add_middleware(CustomCORSMiddleware)
 app.include_router(auth_router)
 
 # Inclui as rotas de mock
-app.include_router(mock_router)
+# app.include_router(mock_router)
 
 # Inclui as rotas de informações da empresa
 app.include_router(empresa_info_router)
@@ -173,34 +174,34 @@ app.include_router(empresa_info_router)
 app.include_router(relatorios_router)
 
 # Inclui as rotas de teste de empresa
-app.include_router(teste_empresa_router)
+# app.include_router(teste_empresa_router)
 
 # Inclui as rotas de teste de seleção
-app.include_router(teste_selecionar_router)
+# app.include_router(teste_selecionar_router)
 
 # Inclui as rotas de teste de cabeçalhos
-app.include_router(teste_cabecalhos_router)
+# app.include_router(teste_cabecalhos_router)
 
 # Inclui as rotas de teste de conexão
-app.include_router(teste_conexao_router)
+# app.include_router(teste_conexao_router)
 
 # Inclui as rotas de teste empresa CRUD
-app.include_router(teste_empresa_crud_router)
+# app.include_router(teste_empresa_crud_router)
 
 # Inclui as rotas de teste de seleção com session
-app.include_router(teste_selecao_session_router)
+# app.include_router(teste_selecao_session_router)
 
 # Inclui as rotas de teste session simples
-app.include_router(teste_session_simples_router)
+# app.include_router(teste_session_simples_router)
 
 # Inclui as rotas de teste de conexão de empresa
-app.include_router(teste_conexao_api_router)
+# app.include_router(teste_conexao_api_router)
 
 # Inclui as rotas de informações detalhadas da empresa
 app.include_router(empresa_info_detalhada_router)
 
 # Inclui as rotas de teste SQL da empresa
-app.include_router(teste_sql_empresa_router)
+# app.include_router(teste_sql_empresa_router)
 
 # Inclui as rotas de orçamentos
 app.include_router(orcamento_router, tags=["Orçamentos"])

@@ -21,6 +21,7 @@ export const AUTH_CONFIG = {
 export const ROUTES = {
     login: '/login',
     empresas: '/empresas',
+    buscarCodigoVendedor: '/buscar-codigo-vendedor',
     dashboard: '/dashboard',
     clientes: '/clientes',
     produtos: '/produtos',

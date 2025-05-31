@@ -57,6 +57,22 @@ function AppContent() {
     const empresaDetalhes = localStorage.getItem('empresa_detalhes');
 
     if (token && user) {
+      // VERIFICAR SE OS DADOS DO USUÁRIO ESTÃO COMPLETOS (COM NÍVEL)
+      if (!user.nivel) {
+        console.log('Dados do usuário estão incompletos (sem nível). Forçando novo login...');
+        // Limpar dados antigos e forçar novo login
+        localStorage.removeItem(AUTH_CONFIG.tokenKey);
+        localStorage.removeItem(AUTH_CONFIG.userKey);
+        localStorage.removeItem('usuario_id');
+        localStorage.removeItem('usuario_nome');
+        localStorage.removeItem(AUTH_CONFIG.empresaKey);
+        localStorage.removeItem('empresa_detalhes');
+        setUser(null);
+        setIsLoggedIn(false);
+        setEmpresaSelecionada(null);
+        return;
+      }
+      
       console.log('Usuário já está logado:', user);
       setUser(user);
       setIsLoggedIn(true);
@@ -332,7 +348,22 @@ function AppContent() {
             <h1 className="ml-4 text-xl font-semibold">Força de Vendas</h1>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="hidden md:inline-block">{user?.name}</span>
+            <div className="inline-block">
+              {user?.username && (
+                <div className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2`}>
+                  <span className="truncate max-w-[120px] sm:max-w-none">{user.username}</span>
+                  <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                    user?.nivel === 'VENDEDOR' 
+                      ? darkMode ? 'bg-green-700 text-green-200' : 'bg-green-100 text-green-800'
+                      : user?.nivel === 'MASTER' || user?.nivel === 'admin'
+                      ? darkMode ? 'bg-blue-700 text-blue-200' : 'bg-blue-100 text-blue-800'
+                      : darkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    Nível: {user?.nivel || 'N/A'}
+                  </span>
+                </div>
+              )}
+            </div>
             <button
               onClick={toggleDarkMode}
               className={`p-2 rounded-md ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'}`}

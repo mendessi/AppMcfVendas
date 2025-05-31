@@ -17,12 +17,102 @@ const PedidosList = ({ darkMode }) => {
   });
   const [errorMsg, setErrorMsg] = useState(null);
   const [filtroAutenticacao, setFiltroAutenticacao] = useState('todas'); // 'todas', 'autenticadas', 'nao_autenticadas'
+  
+  // ===== NOVOS ESTADOS PARA FILTRO DE VENDEDOR =====
+  const [vendedores, setVendedores] = useState([]);
+  const [vendedorSelecionado, setVendedorSelecionado] = useState('');
+  const [usuarioAtual, setUsuarioAtual] = useState(null);
+  const [filtroVendedorBloqueado, setFiltroVendedorBloqueado] = useState(false);
 
   // Remover busca automática ao abrir no mobile
   useEffect(() => {
+    buscarVendedores(); // Buscar vendedores primeiro
+    verificarUsuarioLogado(); // Verificar nível do usuário
     buscarPedidos(); // Sempre busca pedidos ao abrir a tela, independente do tamanho da tela
     // eslint-disable-next-line
   }, []);
+
+  // ===== FUNÇÃO PARA VERIFICAR USUÁRIO LOGADO =====
+  const verificarUsuarioLogado = () => {
+    try {
+      const userString = localStorage.getItem('user');
+      if (userString) {
+        const user = JSON.parse(userString);
+        setUsuarioAtual(user);
+        
+        // Se é VENDEDOR, bloqueia o filtro e seleciona automaticamente
+        if (user.nivel === 'VENDEDOR') {
+          setFiltroVendedorBloqueado(true);
+          setVendedorSelecionado(user.codigo_vendedor || '');
+          console.log('🎯 USUÁRIO VENDEDOR detectado:', user.codigo_vendedor);
+        } else {
+          setFiltroVendedorBloqueado(false);
+          console.log('🎯 USUÁRIO ADMIN/GERENTE detectado:', user.nivel);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar usuário logado:', error);
+    }
+  };
+
+  // ===== FUNÇÃO PARA BUSCAR VENDEDORES =====
+  const buscarVendedores = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const empresaCodigo = obterEmpresaCodigo();
+      if (!empresaCodigo) return;
+
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'x-empresa-codigo': empresaCodigo.toString()
+      };
+
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const response = await fetch(`${apiUrl}/relatorios/listar_vendedores`, { headers });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVendedores(data);
+        console.log('🎯 VENDEDORES carregados:', data.length);
+      } else {
+        console.error('Erro ao buscar vendedores:', response.status);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar vendedores:', error);
+    }
+  };
+
+  // ===== FUNÇÃO HELPER PARA OBTER CÓDIGO DA EMPRESA =====
+  const obterEmpresaCodigo = () => {
+    // Tentar obter do localStorage 'empresa_detalhes' (objeto completo)
+    const empresaDetalhes = localStorage.getItem('empresa_detalhes');
+    if (empresaDetalhes) {
+      try {
+        const empObj = JSON.parse(empresaDetalhes);
+        return empObj?.cli_codigo;
+      } catch (e) {
+        console.log('Erro ao parsear empresa_detalhes:', e.message);
+      }
+    }
+
+    // Se não encontrou, tentar das outras chaves
+    const empresaSelecionada = localStorage.getItem('empresa') || 
+                             localStorage.getItem('empresa_atual') || 
+                             localStorage.getItem('empresa_selecionada');
+    
+    if (empresaSelecionada) {
+      try {
+        const empObj = JSON.parse(empresaSelecionada);
+        return empObj?.cli_codigo || empObj?.codigo;
+      } catch {
+        return empresaSelecionada;
+      }
+    }
+    return null;
+  };
 
   // Busca só será feita ao clicar em "Buscar" no mobile
   const buscarPedidos = async () => {
@@ -42,44 +132,9 @@ const PedidosList = ({ darkMode }) => {
         return;
       }
       
-      // Tentar obter a empresa de várias fontes no localStorage
-      let empresaCodigo = null;
+      const empresaCodigo = obterEmpresaCodigo();
       
-      // 1. Tentar obter do localStorage 'empresa_detalhes' (objeto completo)
-      const empresaDetalhes = localStorage.getItem('empresa_detalhes');
-      if (empresaDetalhes) {
-        try {
-          const empObj = JSON.parse(empresaDetalhes);
-          empresaCodigo = empObj?.cli_codigo;
-          console.log('🔍 DEBUG - Empresa de empresa_detalhes:', empObj);
-        } catch (e) {
-          console.log('🔍 DEBUG - Erro ao parsear empresa_detalhes:', e.message);
-        }
-      }
-      
-      // 2. Se não encontrou, tentar das outras chaves (como string ou objeto)
-      if (!empresaCodigo) {
-        const empresaSelecionada = localStorage.getItem('empresa') || 
-                                 localStorage.getItem('empresa_atual') || 
-                                 localStorage.getItem('empresa_selecionada');
-        
-        console.log('🔍 DEBUG - Empresa localStorage raw:', empresaSelecionada);
-        
-        if (empresaSelecionada) {
-          try {
-            // Tentar como JSON primeiro
-            const empObj = JSON.parse(empresaSelecionada);
-            empresaCodigo = empObj?.cli_codigo || empObj?.codigo;
-            console.log('🔍 DEBUG - Empresa parseada como JSON:', empObj);
-          } catch {
-            // Se falhar, usar como string diretamente
-            empresaCodigo = empresaSelecionada;
-            console.log('🔍 DEBUG - Empresa como string:', empresaCodigo);
-          }
-        }
-      }
-      
-      // 3. Validar se temos um código de empresa válido
+      // Validar se temos um código de empresa válido
       if (!empresaCodigo || empresaCodigo === '0' || empresaCodigo === 0) {
         setErrorMsg('Nenhuma empresa válida selecionada. Mostrando seleção de empresa...');
         console.log('🚨 DEBUG - Empresa inválida ou ausente:', empresaCodigo);
@@ -104,10 +159,23 @@ const PedidosList = ({ darkMode }) => {
       console.log('🔍 DEBUG - Empresa código final:', empresaCodigo);
       
       const apiUrl = process.env.REACT_APP_API_URL || '';
-      // Montar query string de datas
-      let url = `${apiUrl}/relatorios/vendas`;
+      
+      // ===== MONTAR QUERY STRING COM FILTROS =====
+      const params = new URLSearchParams();
       if (dataInicial && dataFinal) {
-        url += `?data_inicial=${dataInicial}&data_final=${dataFinal}`;
+        params.append('data_inicial', dataInicial);
+        params.append('data_final', dataFinal);
+      }
+      
+      // ===== INCLUIR FILTRO DE VENDEDOR =====
+      if (vendedorSelecionado && vendedorSelecionado !== 'todos') {
+        params.append('vendedor_codigo', vendedorSelecionado);
+        console.log('🎯 VENDAS - Aplicando filtro de vendedor:', vendedorSelecionado);
+      }
+      
+      let url = `${apiUrl}/relatorios/vendas`;
+      if (params.toString()) {
+        url += `?${params.toString()}`;
       }
       
       console.log('🔍 DEBUG - URL final:', url);
@@ -164,8 +232,20 @@ const PedidosList = ({ darkMode }) => {
       const data = await response.json();
       console.log('✅ DEBUG - Dados recebidos:', data);
       
+      // ===== PROCESSAR RESPOSTA ATUALIZADA =====
+      let vendas = [];
+      if (data.vendas) {
+        // Resposta nova (com objeto)
+        vendas = data.vendas;
+        console.log('🎯 RESPOSTA NOVA - Total:', data.total_registros, 'Filtro aplicado:', data.filtro_vendedor_aplicado);
+      } else if (Array.isArray(data)) {
+        // Resposta antiga (array direto)
+        vendas = data;
+        console.log('🎯 RESPOSTA ANTIGA - Total:', data.length);
+      }
+      
       // Mapear os dados para o formato esperado pelo front
-      const pedidosFormatados = data.map(venda => ({
+      const pedidosFormatados = vendas.map(venda => ({
         id: venda.ecf_numero,
         cliente_id: venda.cli_codigo,
         cliente_nome: venda.nome,
@@ -177,6 +257,7 @@ const PedidosList = ({ darkMode }) => {
         autenticada: !!venda.ecf_cx_data,
         forma_pagamento: venda.fpg_nome || '',
         vendedor: venda.ven_nome || '',
+        vendedor_codigo: venda.ven_codigo || '',
         itens: [], // será preenchido ao expandir
       }));
       setPedidos(pedidosFormatados);
@@ -246,6 +327,17 @@ const PedidosList = ({ darkMode }) => {
   useEffect(() => {
     aplicarFiltros(pedidos, searchTerm, filtroAutenticacao);
   }, [searchTerm, filtroAutenticacao, pedidos]);
+
+  // ===== EFEITO PARA RE-BUSCAR QUANDO VENDEDOR MUDAR =====
+  useEffect(() => {
+    // Só re-busca se já carregou uma vez e o vendedor mudou
+    // Evita busca dupla no carregamento inicial
+    if (!loading && vendedorSelecionado !== '' && pedidos.length >= 0) {
+      console.log('🎯 VENDEDOR ALTERADO - Re-buscando vendas para:', vendedorSelecionado || 'TODOS');
+      buscarPedidos();
+    }
+    // eslint-disable-next-line
+  }, [vendedorSelecionado]);
 
   const togglePedidoDetails = async (pedidoId) => {
     if (expandedPedido === pedidoId) {
@@ -366,6 +458,28 @@ const PedidosList = ({ darkMode }) => {
             value={dataFinal}
             onChange={e => setDataFinal(e.target.value)}
           />
+        </div>
+        <div>
+          <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Vendedor</label>
+          <select
+            className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"} ${filtroVendedorBloqueado ? 'cursor-not-allowed opacity-75' : ''}`}
+            value={vendedorSelecionado}
+            onChange={e => setVendedorSelecionado(e.target.value)}
+            disabled={filtroVendedorBloqueado}
+            title={filtroVendedorBloqueado ? 'Como VENDEDOR, você só pode ver suas próprias vendas' : 'Selecione um vendedor ou "Todos"'}
+          >
+            {!filtroVendedorBloqueado && <option value="">Todos</option>}
+            {vendedores.map(vendedor => (
+              <option key={vendedor.VEN_CODIGO} value={vendedor.VEN_CODIGO}>
+                {vendedor.VEN_NOME}
+              </option>
+            ))}
+          </select>
+          {filtroVendedorBloqueado && usuarioAtual && (
+            <p className={`text-xs mt-1 ${darkMode ? "text-yellow-400" : "text-yellow-600"}`}>
+              🔒 Filtro automático: {usuarioAtual.nivel}
+            </p>
+          )}
         </div>
         <div>
           <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Autenticação</label>

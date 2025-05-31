@@ -190,17 +190,40 @@ async def obter_filtro_vendedor(request: Request, alias_tabela: str = "VENDAS") 
 @router.get("/vendas")
 async def listar_vendas(request: Request):
     """
-    Lista todas as vendas, com filtros opcionais por cliente, data_inicial e data_final.
+    Lista todas as vendas, com filtros opcionais por cliente, vendedor, data_inicial e data_final.
     Parâmetros query:
       - cli_codigo: filtra por cliente
+      - vendedor_codigo: filtra por vendedor
       - data_inicial, data_final: período (padrão: mês atual)
+      
+    Se o usuário logado for VENDEDOR, aplica filtro automático pelo seu código.
+    Se for ADMIN/GERENTE, pode usar vendedor_codigo=null para "todos" ou especificar um código.
     """
     from datetime import date, timedelta
     log.info(f"[VENDAS] Listando vendas. Headers: {dict(request.headers)}")
     
     try:
+        # ===== OBTER FILTRO DE VENDEDOR =====
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VENDAS")
+        
+        # ===== PARÂMETRO VENDEDOR_CODIGO DA QUERY =====
+        vendedor_codigo_query = request.query_params.get('vendedor_codigo')
+        
+        # Se o usuário é VENDEDOR, ignora o parâmetro da query e usa o código dele
+        if filtro_aplicado:
+            vendedor_codigo_final = codigo_vendedor
+            log.info(f"🎯 VENDAS - Usuário VENDEDOR {codigo_vendedor}: filtro automático aplicado")
+        else:
+            # Se é ADMIN/GERENTE, usa o parâmetro da query se fornecido
+            vendedor_codigo_final = vendedor_codigo_query
+            if vendedor_codigo_final:
+                log.info(f"🎯 VENDAS - Usuário ADMIN/GERENTE: filtro por vendedor {vendedor_codigo_final}")
+            else:
+                log.info(f"🎯 VENDAS - Usuário ADMIN/GERENTE: exibindo todas as vendas")
+        
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
+        
         # Descobrir coluna de data válida
         cursor.execute("SELECT FIRST 1 * FROM VENDAS")
         colunas_vendas = [col[0].lower() for col in cursor.description]
@@ -208,9 +231,11 @@ async def listar_vendas(request: Request):
         if not date_column:
             conn.close()
             raise HTTPException(status_code=400, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
+        
         hoje = date.today()
         data_inicial = request.query_params.get('data_inicial')
         data_final = request.query_params.get('data_final')
+        
         if not data_inicial:
             data_inicial = date(hoje.year, hoje.month, 1).isoformat()
         if not data_final:
@@ -219,8 +244,10 @@ async def listar_vendas(request: Request):
             else:
                 proximo_mes = date(hoje.year, hoje.month + 1, 1)
             data_final = (proximo_mes - timedelta(days=1)).isoformat()
+            
         cli_codigo = request.query_params.get('cli_codigo')
-        log.info(f"Filtro de data: {date_column} entre {data_inicial} e {data_final}. Cliente: {cli_codigo}")
+        log.info(f"Filtro de data: {date_column} entre {data_inicial} e {data_final}. Cliente: {cli_codigo}. Vendedor: {vendedor_codigo_final}")
+        
         # Verificar se a coluna ECF_CX_DATA existe na tabela VENDAS
         existe_ecf_cx_data = "ecf_cx_data" in colunas_vendas
         log.info(f"Coluna ECF_CX_DATA existe? {existe_ecf_cx_data}")
@@ -236,7 +263,8 @@ async def listar_vendas(request: Request):
               TABPRECO.TAB_NOME,         -- Nome da Tabela de Preço
               FORMAPAG.FPG_NOME,         -- Nome da Forma de Pagamento
               VENDAS.ECF_CAIXA,          -- Caixa que autenticou
-              VENDAS.ECF_DESCONTO        -- Valor do Desconto
+              VENDAS.ECF_DESCONTO,       -- Valor do Desconto
+              VENDAS.VEN_CODIGO          -- Código do Vendedor
               {', VENDAS.ECF_CX_DATA' if existe_ecf_cx_data else ''}         -- Data de autenticação no caixa
             FROM
               VENDAS
@@ -251,15 +279,36 @@ async def listar_vendas(request: Request):
               AND VENDAS.ECF_CONCLUIDA = 'S'
               AND CAST(VENDAS.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
         '''
+        
         params = [data_inicial, data_final]
+        
+        # ===== APLICAR FILTRO DE CLIENTE =====
         if cli_codigo:
             sql += " AND VENDAS.CLI_CODIGO = ?"
             params.append(cli_codigo)
+        
+        # ===== APLICAR FILTRO DE VENDEDOR =====
+        if vendedor_codigo_final:
+            sql += " AND VENDAS.VEN_CODIGO = ?"
+            params.append(vendedor_codigo_final)
+            
         sql += " ORDER BY VENDAS.ECF_NUMERO DESC"
+        
         cursor.execute(sql, tuple(params))
         columns = [col[0].lower() for col in cursor.description]
         vendas = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        return vendas
+        
+        log.info(f"🎯 VENDAS LISTADAS: {len(vendas)} resultado(s) para vendedor {vendedor_codigo_final or 'TODOS'}")
+        
+        return {
+            "vendas": vendas,
+            "filtro_vendedor_aplicado": filtro_aplicado,
+            "codigo_vendedor": codigo_vendedor,
+            "vendedor_selecionado": vendedor_codigo_final,
+            "total_registros": len(vendas),
+            "periodo": {"data_inicial": data_inicial, "data_final": data_final}
+        }
+        
     except Exception as e:
         import traceback
         log.error(f"Erro ao listar vendas: {e}\n{traceback.format_exc()}")

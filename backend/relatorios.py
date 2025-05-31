@@ -532,6 +532,12 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
             
         # ===== APLICAR FILTRO DE VENDEDOR =====
         filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "V")
+        
+        # Log detalhado do filtro
+        log.info(f"🔍 TOP CLIENTES - Debug do filtro:")
+        log.info(f"   📄 Filtro SQL: '{filtro_vendedor}'")
+        log.info(f"   ✅ Filtro aplicado: {filtro_aplicado}")
+        log.info(f"   🔢 Código vendedor: '{codigo_vendedor}'")
             
         # Obter a conexão com o banco da empresa selecionada
         empresa = get_empresa_atual(request)
@@ -561,6 +567,11 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
                 GROUP BY C.CLI_NOME, C.CLI_CODIGO, C.CIDADE, C.UF
                 ORDER BY TOTAL DESC
             """
+            
+            # Log da SQL final que será executada
+            log.info(f"🔍 TOP CLIENTES - SQL Final:")
+            log.info(f"   Query: {sql}")
+            log.info(f"   Parâmetros: data_inicial='{data_inicial}', data_final='{data_final}'")
             
             cursor.execute(sql, (data_inicial, data_final))
             rows = cursor.fetchall()

@@ -8,6 +8,16 @@ const VendasPorDiaChart = ({ empresaSelecionada, dataInicial, dataFinal, darkMod
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
 
+  // Função para extrair apenas o dia da data
+  const formatarDia = (dataCompleta) => {
+    try {
+      const data = new Date(dataCompleta);
+      return data.getDate().toString().padStart(2, '0'); // Retorna "06", "15", etc.
+    } catch (error) {
+      return dataCompleta; // Retorna a data original se houver erro
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -29,7 +39,15 @@ const VendasPorDiaChart = ({ empresaSelecionada, dataInicial, dataFinal, darkMod
           headers,
           params,
         });
-        setDados(response.data);
+        
+        // Processar os dados para incluir formatação do dia
+        const dadosProcessados = response.data.map(item => ({
+          ...item,
+          dataCompleta: item.data, // Manter a data completa para o tooltip
+          data: formatarDia(item.data) // Apenas o dia para o eixo X
+        }));
+        
+        setDados(dadosProcessados);
       } catch (err) {
         setErro('Erro ao buscar dados do gráfico de vendas diárias.');
       } finally {
@@ -68,7 +86,13 @@ const VendasPorDiaChart = ({ empresaSelecionada, dataInicial, dataFinal, darkMod
               <Tooltip
                 contentStyle={{ background: darkMode ? '#222' : '#fff', borderRadius: 8, fontSize: 14 }}
                 formatter={(value) => formatCurrency(value)}
-                labelFormatter={(label) => `Data: ${label}`}
+                labelFormatter={(label, payload) => {
+                  // Mostrar a data completa no tooltip
+                  if (payload && payload[0] && payload[0].payload.dataCompleta) {
+                    return `Data: ${payload[0].payload.dataCompleta}`;
+                  }
+                  return `Dia: ${label}`;
+                }}
               />
               <Line type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={3} dot={{ r: 5, stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 7 }} />
             </LineChart>

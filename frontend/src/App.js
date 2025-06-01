@@ -653,7 +653,7 @@ function AppContent() {
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
                       <FiClipboard className="mr-3 h-5 w-5" />
-                      <span>Orçamento</span>
+                      <span>Pedido de Venda</span>
                     </Link>
                   </li>
                   <li className="mb-2">
@@ -663,7 +663,7 @@ function AppContent() {
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
                       <FiClipboard className="mr-3 h-5 w-5" />
-                      <span>Listar Orçamentos</span>
+                      <span>Listar Pedidos de Venda</span>
                     </Link>
                   </li>
                 </ul>

@@ -68,6 +68,9 @@ function OrcamentoForm({ darkMode = false }) {
   // Estado para rastrear o último item inserido (sempre será o índice 0)
   const [ultimoItemInserido, setUltimoItemInserido] = useState(null);
 
+  // Novo estado para controlar o alerta de preço mínimo
+  const [alertaPrecoMinimo, setAlertaPrecoMinimo] = useState(null);
+
   // useEffect para limpar campos ao entrar na tela
   useEffect(() => {
     console.log('Componente OrcamentoForm montado - limpando campos...');
@@ -183,12 +186,50 @@ function OrcamentoForm({ darkMode = false }) {
     setProdutos(novosProdutos);
   };
 
+  // Função para validar preço mínimo
+  const validarPrecoMinimo = (valor, precoMinimo, index) => {
+    if (parseFloat(valor) < parseFloat(precoMinimo)) {
+      setAlertaPrecoMinimo({
+        index,
+        mensagem: 'Atenção! O preço está abaixo do valor mínimo permitido.',
+        precoMinimo
+      });
+      return false;
+    }
+    return true;
+  };
+
+  // Handler para alteração do valor unitário com validação
   const handleValorUnitarioChange = (idx, value) => {
     const novoValor = parseFloat(value) || 0;
     const novosProdutos = produtos.map((p, i) =>
       i === idx ? { ...p, valor_unitario: novoValor, valor_total: novoValor * p.quantidade } : p
     );
     setProdutos(novosProdutos);
+  };
+
+  // Nova função para validar ao terminar a edição
+  const validarPrecoAoTerminar = (idx) => {
+    const produtoAtual = produtos[idx];
+    const valorAtual = parseFloat(produtoAtual.valor_unitario) || 0;
+    const precoMinimo = parseFloat(produtoAtual.preco_minimo) || 0;
+
+    if (valorAtual < precoMinimo) {
+      setAlertaPrecoMinimo({
+        index: idx,
+        mensagem: 'O preço informado está abaixo do valor mínimo permitido para este produto.',
+        precoMinimo
+      });
+      
+      // Restaura o valor mínimo
+      const novosProdutos = [...produtos];
+      novosProdutos[idx] = {
+        ...novosProdutos[idx],
+        valor_unitario: precoMinimo,
+        valor_total: precoMinimo * produtoAtual.quantidade
+      };
+      setProdutos(novosProdutos);
+    }
   };
 
   // Handler para adicionar produto direto (sem precisar clicar em Adicionar Produto)
@@ -219,30 +260,29 @@ function OrcamentoForm({ darkMode = false }) {
       const codigoProduto = produto.pro_codigo || produto.codigo;
       const novoItem = {
         codigo: codigoProduto,
-        pro_codigo: codigoProduto, // Garantir que pro_codigo está definido
+        pro_codigo: codigoProduto,
         descricao: produto.pro_descricao || produto.descricao,
         quantidade: 1,
         valor_unitario: valorUnit,
         valor_total: valorUnit * 1,
-        imagem: produto.pro_imagem || produto.imagem || ''
+        imagem: produto.pro_imagem || produto.imagem || '',
+        estoque_atual: produto.PRO_QUANTIDADE || 0,
+        estoque_minimo: produto.pro_minimo_estoque || 0,
+        preco_minimo: produto.pro_descprovlr || 0
       };
       const novosProdutos = [novoItem, ...produtos];
       setProdutos(novosProdutos);
       
-      // Marca este produto como o último inserido
       setUltimoItemInserido(codigoProduto);
       
-      // Remove o destaque após 3 segundos
       setTimeout(() => {
         setUltimoItemInserido(null);
       }, 3000);
       
-      // Foca no novo item após a atualização do estado
       setTimeout(() => {
-        scrollToProduto(0); // Novo item sempre estará no índice 0
+        scrollToProduto(0);
       }, 100);
     } else if (!options.scrollToExisting) {
-      // Se o produto já existe e não é apenas para navegar, aumenta a quantidade
       const novosProdutos = [...produtos];
       const index = produtos.findIndex(p => 
         p.codigo === (produto.pro_codigo || produto.codigo) ||
@@ -258,10 +298,8 @@ function OrcamentoForm({ darkMode = false }) {
         };
         setProdutos(novosProdutos);
         
-        // Marca este produto como o último modificado
         setUltimoItemInserido(codigoProduto);
         
-        // Remove o destaque após 3 segundos
         setTimeout(() => {
           setUltimoItemInserido(null);
         }, 3000);
@@ -523,7 +561,7 @@ function OrcamentoForm({ darkMode = false }) {
 
   // Carregar dados do cache quando disponível
   useEffect(() => {
-    if (orcamentoDoCache) {
+    if (orcamentoDoCache && location.state?.forcarCarregamento) {
       setCliente(orcamentoDoCache.cliente);
       setTabela(orcamentoDoCache.tabela || '');
       setFormaPagamento(orcamentoDoCache.formaPagamento || '');
@@ -536,8 +574,11 @@ function OrcamentoForm({ darkMode = false }) {
       
       // Após carregar, remove do cache
       OrcamentoCache.removerCache(orcamentoDoCache.id);
+
+      // Limpa o state da navegação para não recarregar se a página for atualizada
+      navigate(location.pathname, { replace: true });
     }
-  }, [orcamentoDoCache]);
+  }, [orcamentoDoCache, location.state?.forcarCarregamento]);
 
   // TODO: Buscar clientes, tabelas, formas de pagamento, vendedores, produtos via API
   // TODO: Implementar autocomplete e selects reais
@@ -640,32 +681,98 @@ function OrcamentoForm({ darkMode = false }) {
                       ? 'bg-gray-800 border-gray-700' 
                       : 'bg-white border-gray-200'
                   } 
-                  border rounded-lg shadow-sm p-3 flex flex-col gap-3 transition-all duration-300
+                  border rounded-lg shadow-sm p-4 flex flex-col gap-4 transition-all duration-300
                   ${isUltimoInserido ? 'animate-pulse' : ''}
                 `}
               >
                 <div className="flex items-center justify-between">
-                  <div className={`font-medium text-sm ${
-                    isUltimoInserido 
-                      ? darkMode ? 'text-green-300' : 'text-green-700'
-                      : darkMode ? 'text-gray-300' : 'text-gray-900'
-                  }`}>
-                    {p.codigo}
+                  <div className="flex items-center gap-3">
+                    <div className={`font-medium text-sm px-3 py-1 rounded-full ${
+                      darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {p.codigo}
+                    </div>
                     {isUltimoInserido && (
-                      <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                      <span className={`px-2 py-1 text-xs rounded-full ${
                         darkMode ? 'bg-green-600 text-white' : 'bg-green-200 text-green-800'
                       }`}>
                         NOVO
                       </span>
                     )}
+                    
+                    {/* Estoque Atual */}
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Estoque:
+                      </span>
+                      <span className={`px-2 py-1 text-sm rounded font-medium ${
+                        parseFloat(p.estoque_atual) <= 0
+                          ? darkMode 
+                            ? 'bg-red-900/30 text-red-400 border border-red-700'
+                            : 'bg-red-100 text-red-700 border border-red-200'
+                          : parseFloat(p.estoque_atual) <= parseFloat(p.estoque_minimo)
+                            ? darkMode
+                              ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-700'
+                              : 'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                            : darkMode 
+                              ? 'bg-gray-700 text-gray-300' 
+                              : 'bg-gray-100 text-gray-700'
+                      }`}>
+                        {parseFloat(p.estoque_atual).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+
+                    {/* Preço Mínimo com Tooltip */}
+                    <div className="relative group">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          Mínimo:
+                        </span>
+                        <span className={`px-2 py-1 text-sm rounded font-medium ${
+                          parseFloat(p.valor_unitario) <= parseFloat(p.preco_minimo)
+                            ? darkMode
+                              ? 'bg-red-900/30 text-red-400 border border-red-700'
+                              : 'bg-red-100 text-red-700 border border-red-200'
+                            : darkMode 
+                              ? 'bg-gray-700 text-gray-300'
+                              : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {parseFloat(p.preco_minimo).toLocaleString('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                          })}
+                        </span>
+                      </div>
+                      
+                      {/* Tooltip de alerta sobre preço mínimo */}
+                      <div className={`absolute z-10 w-64 px-4 py-3 mt-2 text-sm rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none ${
+                        darkMode
+                          ? 'bg-yellow-900/50 border border-yellow-700 text-yellow-300'
+                          : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+                      }`}>
+                        <div className="flex items-start gap-2">
+                          <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
+                            darkMode ? 'text-yellow-500' : 'text-yellow-500'
+                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <p>
+                            Utilize o preço mínimo com moderação. Vendas frequentes no valor mínimo podem impactar a rentabilidade do negócio.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                  
                   <button 
                     type="button" 
                     onClick={() => handleRemoverProduto(idx)} 
-                    className={`${darkMode ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' : 'text-red-500 hover:text-red-700 hover:bg-red-50'} rounded p-1 transition-all`}
+                    className={`${darkMode ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20' : 'text-red-500 hover:text-red-700 hover:bg-red-50'} rounded p-1.5 transition-all`}
                     title="Remover produto"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -679,52 +786,107 @@ function OrcamentoForm({ darkMode = false }) {
                   {p.descricao}
                 </div>
                 
-                <div className="grid grid-cols-3 gap-3 items-end">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="flex flex-col">
-                    <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Qtd</label>
-                    <input
-                      type="number"
-                      min="0.01"
-                      step="0.01"
-                      value={p.quantidade}
-                      ref={el => quantidadeRefs.current[idx] = el}
-                      onChange={e => handleQuantidadeChange(idx, e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' || e.key === 'Tab') {
-                          e.preventDefault();
-                          if (precoRefs.current[idx]) precoRefs.current[idx].focus();
-                        }
-                      }}
-                      className={`w-full px-2 py-2 rounded border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} focus:outline-none focus:ring-1 text-center font-medium`}
-                    />
-                  </div>
-                  <div className="flex flex-col">
-                    <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Valor Unit.</label>
-                    <input
-                      type="number"
-                      min={0}
-                      step={0.01}
-                      value={p.valor_unitario}
-                      ref={el => precoRefs.current[idx] = el}
-                      onChange={e => handleValorUnitarioChange(idx, e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          if (quantidadeRefs.current[idx + 1]) {
+                    <label className={`text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Quantidade
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={p.quantidade}
+                        ref={el => quantidadeRefs.current[idx] = el}
+                        onChange={e => handleQuantidadeChange(idx, e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' || e.key === 'Tab') {
                             e.preventDefault();
-                            quantidadeRefs.current[idx + 1].focus();
+                            if (precoRefs.current[idx]) precoRefs.current[idx].focus();
                           }
-                        }
-                      }}
-                      className={`w-full px-2 py-2 rounded border ${darkMode ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} focus:outline-none focus:ring-1 text-right font-medium`}
-                    />
+                        }}
+                        className={`w-full h-12 px-4 py-2 rounded border text-center font-semibold text-xl ${
+                          darkMode 
+                            ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' 
+                            : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
+                        } focus:outline-none focus:ring-2 shadow-sm hover:border-blue-400 transition-colors`}
+                      />
+                      <div className={`absolute -top-2 right-2 text-xs px-2 py-0.5 rounded ${
+                        darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'
+                      } font-medium`}>
+                        un
+                      </div>
+                    </div>
                   </div>
+
                   <div className="flex flex-col">
-                    <label className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total</label>
-                    <div className={`px-2 py-2 border rounded text-right font-semibold ${darkMode ? 'bg-blue-900/20 border-blue-800 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
-                      R$ {parseFloat(p.valor_total).toLocaleString('pt-BR', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                      })}
+                    <label className={`text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Valor Unitário
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={p.valor_unitario}
+                        ref={el => precoRefs.current[idx] = el}
+                        onChange={e => handleValorUnitarioChange(idx, e.target.value)}
+                        onBlur={() => validarPrecoAoTerminar(idx)}
+                        onFocus={e => e.target.select()}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' || e.key === 'Tab') {
+                            validarPrecoAoTerminar(idx);
+                            if (e.key === 'Enter' && quantidadeRefs.current[idx + 1]) {
+                              e.preventDefault();
+                              quantidadeRefs.current[idx + 1].focus();
+                            } else if (e.key === 'Tab') {
+                              e.preventDefault();
+                              e.target.select();
+                            }
+                          }
+                        }}
+                        className={`w-full h-12 px-4 py-2 rounded border text-right font-semibold text-xl ${
+                          parseFloat(p.valor_unitario) < parseFloat(p.preco_minimo)
+                            ? darkMode
+                              ? 'bg-red-900/20 border-red-700 text-red-400'
+                              : 'bg-red-50 border-red-300 text-red-700'
+                            : darkMode 
+                              ? 'bg-gray-700 border-gray-600 text-white'
+                              : 'bg-white border-gray-300 text-gray-900'
+                        } focus:outline-none focus:ring-2 ${
+                          parseFloat(p.valor_unitario) < parseFloat(p.preco_minimo)
+                            ? 'focus:ring-red-500 focus:border-red-500'
+                            : 'focus:ring-blue-500 focus:border-blue-500'
+                        } transition-colors`}
+                      />
+                      <div className={`absolute -top-2 right-2 text-xs px-2 py-0.5 rounded ${
+                        darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'
+                      } font-medium`}>
+                        R$
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col">
+                    <label className={`text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Total do Item
+                    </label>
+                    <div className="relative">
+                      <div className={`h-12 px-4 py-2 border rounded text-right font-bold text-xl ${
+                        darkMode 
+                          ? 'bg-blue-900/20 border-blue-800 text-blue-300' 
+                          : 'bg-blue-50 border-blue-200 text-blue-700'
+                      } shadow-sm`}>
+                        {parseFloat(p.valor_total).toLocaleString('pt-BR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </div>
+                      <div className={`absolute -top-2 right-2 text-xs px-2 py-0.5 rounded ${
+                        darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'
+                      } font-medium`}>
+                        R$
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -826,140 +988,143 @@ function OrcamentoForm({ darkMode = false }) {
         </button>
       </div>
 
-      {/* Modal de Confirmação */}
-      {showConfirmation && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto`}>
-            <div className="p-6">
-              <div className={`flex justify-between items-center mb-6 pb-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                <h3 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {orcamentoSalvo ? 'Orçamento Salvo!' : 'Confirmar Orçamento'}
-                </h3>
-                <button
-                  onClick={handleFecharConfirmacao}
-                  className={`${darkMode ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'} p-1 rounded-full`}
-                >
-                  <FiX className="w-6 h-6" />
-                </button>
-              </div>
-
-              {!orcamentoSalvo ? (
-                <>
-                  <div className="mb-8">
-                    <h4 className={`text-lg font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-700'} mb-4`}>Resumo do Orçamento</h4>
-                    <div className={`${darkMode ? 'bg-gray-700' : 'bg-gray-100'} rounded-lg p-5 space-y-3`}>
-                      <p className={`${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-700 border-gray-300'} border-b pb-2`}>
-                        <span className="font-medium">Cliente:</span>{' '}
-                        <span className={`${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {getNomeCliente(cliente)}
-                        </span>
-                      </p>
-                      <p className={`${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-700 border-gray-300'} border-b pb-2`}>
-                        <span className="font-medium">Itens:</span>{' '}
-                        <span className={`${darkMode ? 'text-white' : 'text-gray-900'}`}>{produtos.length}</span>
-                      </p>
-                      <p className={`${darkMode ? 'text-gray-300 border-gray-600' : 'text-gray-700 border-gray-300'} border-b pb-2`}>
-                        <span className="font-medium">Valor Total:</span>{' '}
-                        <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'} font-bold`}>
-                          {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end gap-4">
-                    <button
-                      onClick={handleFecharConfirmacao}
-                      className={`px-6 py-2.5 ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-300 hover:bg-gray-400'} ${darkMode ? 'text-white' : 'text-gray-800'} rounded-lg transition font-medium`}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleSalvar}
-                      className="px-6 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-lg transition font-medium flex items-center justify-center gap-2"
-                    >
-                      <FiCheck className="w-5 h-5" />
-                      Confirmar e Salvar
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center">
-                  <div className="mb-6">
-                    <div className={`w-16 h-16 mx-auto ${darkMode ? 'bg-green-900' : 'bg-green-100'} rounded-full flex items-center justify-center mb-4`}>
-                      <FiCheck className={`w-8 h-8 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
-                    </div>
-                    <h4 className={`text-xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'} mb-2`}>
-                      Orçamento #{orcamentoSalvo?.numero_orcamento} criado com sucesso!
-                    </h4>
-                    <p className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      O orçamento foi salvo e está disponível para consulta.
-                    </p>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row justify-center gap-3">
-                    <button
-                      onClick={handleCopiarNumero}
-                      className={`px-5 py-2.5 ${darkMode ? 'bg-blue-600 hover:bg-blue-500' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded-lg transition flex items-center justify-center gap-2 font-medium`}
-                    >
-                      <FiCopy className="w-4 h-4" />
-                      Copiar Número
-                    </button>
-                    <button
-                      onClick={handleImprimir}
-                      className={`px-5 py-2.5 ${darkMode ? 'bg-green-600 hover:bg-green-500' : 'bg-green-500 hover:bg-green-600'} text-white rounded-lg transition flex items-center justify-center gap-2 font-medium`}
-                    >
-                      <FiPrinter className="w-4 h-4" />
-                      Imprimir
-                    </button>
-                    <button
-                      onClick={handleNovoOrcamento}
-                      className={`px-5 py-2.5 ${darkMode ? 'bg-gray-600 hover:bg-gray-500' : 'bg-gray-300 hover:bg-gray-400'} ${darkMode ? 'text-white' : 'text-gray-800'} rounded-lg transition flex items-center justify-center gap-2 font-medium`}
-                    >
-                      <FiPlus className="w-4 h-4" />
-                      Novo Orçamento
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Modal de confirmação para itens já adicionados */}
+      {/* Modal de Confirmação de Navegação */}
       {confirmacaoVisivel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-6 max-w-md w-full`}>
-            <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-4`}>Produto já adicionado</h3>
-            <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-              O produto <strong>{produtoSelecionadoConfirmacao?.pro_descricao || produtoSelecionadoConfirmacao?.descricao}</strong> já está no orçamento.
-              Deseja editar a quantidade?
-            </p>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`${
+            darkMode ? 'bg-gray-800 border-blue-800' : 'bg-white border-blue-200'
+          } border-2 rounded-xl shadow-2xl w-full max-w-md p-6 mx-4`}>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${
+                  darkMode ? 'bg-blue-900/30' : 'bg-blue-100'
+                }`}>
+                  <svg className={`w-6 h-6 ${
+                    darkMode ? 'text-blue-500' : 'text-blue-600'
+                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className={`text-xl font-bold ${
+                  darkMode ? 'text-blue-400' : 'text-blue-600'
+                }`}>
+                  Item Já Inserido
+                </h3>
+              </div>
+              <button
+                onClick={handleCancelarNavegacao}
+                className={`p-1 rounded-full transition-colors ${
+                  darkMode 
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className="mb-4">
+                Este item já está no pedido. Deseja navegar até ele?
+              </p>
+              <p className="font-medium">
+                {produtoSelecionadoConfirmacao?.descricao || produtoSelecionadoConfirmacao?.pro_descricao}
+              </p>
+            </div>
+            
             <div className="flex justify-end gap-3">
               <button
                 onClick={handleCancelarNavegacao}
-                className={`px-4 py-2 text-sm font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${darkMode ? 'text-gray-300 bg-gray-700 hover:bg-gray-600' : 'text-gray-700 bg-gray-200 hover:bg-gray-300'}`}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  darkMode
+                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
                 Cancelar
               </button>
               <button
                 onClick={handleConfirmarNavegacao}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  darkMode
+                    ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }`}
               >
-                Sim, editar quantidade
+                Ir para o Item
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Cache */}
-      {showCacheModal && (
-        <OrcamentosCache
-          darkMode={darkMode}
-          onClose={() => setShowCacheModal(false)}
-        />
+      {/* Alerta de Preço Mínimo */}
+      {alertaPrecoMinimo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`${
+            darkMode ? 'bg-gray-800 border-red-800' : 'bg-white border-red-200'
+          } border-2 rounded-xl shadow-2xl w-full max-w-md p-6 mx-4`}>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${
+                  darkMode ? 'bg-red-900/30' : 'bg-red-100'
+                }`}>
+                  <svg className={`w-6 h-6 ${
+                    darkMode ? 'text-red-500' : 'text-red-600'
+                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h3 className={`text-xl font-bold ${
+                  darkMode ? 'text-red-400' : 'text-red-600'
+                }`}>
+                  Preço Abaixo do Mínimo
+                </h3>
+              </div>
+              <button
+                onClick={() => setAlertaPrecoMinimo(null)}
+                className={`p-1 rounded-full transition-colors ${
+                  darkMode 
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className="mb-4">
+                O preço informado está abaixo do valor mínimo permitido para este produto.
+              </p>
+              <p className="font-medium">
+                Valor mínimo: {parseFloat(alertaPrecoMinimo.precoMinimo).toLocaleString('pt-BR', {
+                  style: 'currency',
+                  currency: 'BRL'
+                })}
+              </p>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={() => setAlertaPrecoMinimo(null)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  darkMode
+                    ? 'bg-red-900/30 text-red-400 hover:bg-red-900/50'
+                    : 'bg-red-100 text-red-700 hover:bg-red-200'
+                }`}
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -280,6 +280,25 @@ const NovoPedido = ({ darkMode }) => {
       <div className="mb-6">
         <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Novo Pedido</h1>
         <p className={darkMode ? "text-gray-300" : "text-gray-600"}>Preencha os dados para criar um novo pedido</p>
+        
+        {/* Nova mensagem sobre vendas diretas */}
+        <div className={`mt-4 p-4 rounded-lg ${darkMode ? "bg-blue-900/30 border border-blue-700" : "bg-blue-50 border border-blue-200"}`}>
+          <div className="flex items-start gap-3">
+            <div className={`p-2 rounded-full ${darkMode ? "bg-blue-900" : "bg-blue-100"}`}>
+              <svg className={`w-5 h-5 ${darkMode ? "text-blue-400" : "text-blue-600"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className={`text-sm font-semibold mb-1 ${darkMode ? "text-blue-400" : "text-blue-700"}`}>
+                Em breve: Vendas Diretas!
+              </h3>
+              <p className={`text-sm ${darkMode ? "text-blue-300" : "text-blue-600"}`}>
+                Estamos trabalhando em uma atualização que permitirá realizar vendas diretas, sem a necessidade de aprovação prévia do orçamento. Isso tornará seu processo de vendas ainda mais ágil e eficiente!
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit}>

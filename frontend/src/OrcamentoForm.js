@@ -17,6 +17,7 @@ import { FiPrinter, FiX, FiCheck, FiCopy, FiPlus, FiArchive } from 'react-icons/
 import OrcamentosCache from './components/OrcamentosCache';
 import OrcamentoCache from './services/OrcamentoCache';
 import { useNavigate, useLocation } from 'react-router-dom';
+import Toast from './components/Toast';
 
 const ESPECIE_OPCOES = [
   { value: '0', label: 'Dinheiro' },
@@ -70,6 +71,9 @@ function OrcamentoForm({ darkMode = false }) {
 
   // Novo estado para controlar o alerta de preço mínimo
   const [alertaPrecoMinimo, setAlertaPrecoMinimo] = useState(null);
+
+  // Novo estado para controlar o toast
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
   // useEffect para limpar campos ao entrar na tela
   useEffect(() => {
@@ -580,6 +584,97 @@ function OrcamentoForm({ darkMode = false }) {
     }
   }, [orcamentoDoCache, location.state?.forcarCarregamento]);
 
+  // Função para mostrar o toast
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+  };
+
+  // Função para fechar o toast
+  const closeToast = () => {
+    setToast({ show: false, message: '', type: 'success' });
+  };
+
+  // Substituir o alerta de preço mínimo pelo toast
+  const handlePrecoMinimo = (produto, precoMinimo) => {
+    showToast(
+      `Preço mínimo para ${produto.pro_descricao}: ${parseFloat(precoMinimo).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      })}`,
+      'warning'
+    );
+  };
+
+  // Substituir o alerta de item já inserido pelo toast
+  const handleItemJaInserido = (produto) => {
+    showToast(
+      `Item "${produto.pro_descricao}" já está no orçamento`,
+      'info'
+    );
+  };
+
+  const handleProdutoSelecionado = (produto) => {
+    if (!produto) return;
+
+    const produtoJaInserido = produtos.find(p => 
+      p.codigo === produto.pro_codigo || 
+      p.pro_codigo === produto.pro_codigo
+    );
+
+    if (produtoJaInserido) {
+      handleItemJaInserido(produto);
+      const element = document.getElementById(`produto-${produtoJaInserido.codigo || produtoJaInserido.pro_codigo}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('highlight-row');
+        setTimeout(() => element.classList.remove('highlight-row'), 2000);
+      }
+      return;
+    }
+
+    setProdutoSelecionado(produto);
+    setValorUnitario(produto.pro_venda || 0);
+    setQuantidade(1);
+  };
+
+  const handleAdicionarProduto = () => {
+    if (!produtoSelecionado) {
+      showToast('Selecione um produto primeiro', 'error');
+      return;
+    }
+
+    if (quantidade <= 0) {
+      showToast('A quantidade deve ser maior que zero', 'error');
+      return;
+    }
+
+    if (valorUnitario <= 0) {
+      showToast('O valor unitário deve ser maior que zero', 'error');
+      return;
+    }
+
+    // Verificar preço mínimo
+    if (produtoSelecionado.preco_minimo && valorUnitario < produtoSelecionado.preco_minimo) {
+      handlePrecoMinimo(produtoSelecionado, produtoSelecionado.preco_minimo);
+      return;
+    }
+
+    const novoProduto = {
+      codigo: produtoSelecionado.pro_codigo,
+      descricao: produtoSelecionado.pro_descricao,
+      quantidade,
+      valor_unitario: valorUnitario,
+      valor_total: quantidade * valorUnitario,
+      preco_minimo: produtoSelecionado.preco_minimo || 0
+    };
+
+    setProdutos([novoProduto, ...produtos]);
+    setProdutoSelecionado(null);
+    setQuantidade(1);
+    setValorUnitario(0);
+    showToast(`Produto "${novoProduto.descricao}" adicionado com sucesso`, 'success');
+  };
+
   // TODO: Buscar clientes, tabelas, formas de pagamento, vendedores, produtos via API
   // TODO: Implementar autocomplete e selects reais
 
@@ -794,6 +889,8 @@ function OrcamentoForm({ darkMode = false }) {
                     <div className="relative">
                       <input
                         type="number"
+                        inputMode="decimal"
+                        pattern="[0-9]*"
                         min="0.01"
                         step="0.01"
                         value={p.quantidade}
@@ -805,11 +902,16 @@ function OrcamentoForm({ darkMode = false }) {
                             if (precoRefs.current[idx]) precoRefs.current[idx].focus();
                           }
                         }}
-                        className={`w-full h-12 px-4 py-2 rounded border text-center font-semibold text-xl ${
+                        className={`w-full h-12 px-4 py-2 rounded border text-center font-semibold text-base md:text-xl ${
                           darkMode 
                             ? 'bg-gray-700 border-gray-600 text-white focus:ring-blue-400 focus:border-blue-400' 
                             : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
                         } focus:outline-none focus:ring-2 shadow-sm hover:border-blue-400 transition-colors`}
+                        style={{
+                          fontSize: '16px', // Previne zoom no iOS
+                          WebkitAppearance: 'none', // Remove spinner nativo
+                          MozAppearance: 'textfield' // Remove spinner nativo no Firefox
+                        }}
                       />
                       <div className={`absolute -top-2 right-2 text-xs px-2 py-0.5 rounded ${
                         darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'
@@ -826,6 +928,8 @@ function OrcamentoForm({ darkMode = false }) {
                     <div className="relative">
                       <input
                         type="number"
+                        inputMode="decimal"
+                        pattern="[0-9]*"
                         min={0}
                         step={0.01}
                         value={p.valor_unitario}
@@ -845,7 +949,7 @@ function OrcamentoForm({ darkMode = false }) {
                             }
                           }
                         }}
-                        className={`w-full h-12 px-4 py-2 rounded border text-right font-semibold text-xl ${
+                        className={`w-full h-12 px-4 py-2 rounded border text-right font-semibold text-base md:text-xl ${
                           parseFloat(p.valor_unitario) < parseFloat(p.preco_minimo)
                             ? darkMode
                               ? 'bg-red-900/20 border-red-700 text-red-400'
@@ -858,6 +962,11 @@ function OrcamentoForm({ darkMode = false }) {
                             ? 'focus:ring-red-500 focus:border-red-500'
                             : 'focus:ring-blue-500 focus:border-blue-500'
                         } transition-colors`}
+                        style={{
+                          fontSize: '16px', // Previne zoom no iOS
+                          WebkitAppearance: 'none', // Remove spinner nativo
+                          MozAppearance: 'textfield' // Remove spinner nativo no Firefox
+                        }}
                       />
                       <div className={`absolute -top-2 right-2 text-xs px-2 py-0.5 rounded ${
                         darkMode ? 'bg-gray-800 text-gray-400' : 'bg-white text-gray-500'
@@ -988,143 +1097,205 @@ function OrcamentoForm({ darkMode = false }) {
         </button>
       </div>
 
-      {/* Modal de Confirmação de Navegação */}
-      {confirmacaoVisivel && (
+      {/* Manter apenas os modais necessários e o Toast */}
+      {showConfirmation && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className={`${
-            darkMode ? 'bg-gray-800 border-blue-800' : 'bg-white border-blue-200'
+            darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
           } border-2 rounded-xl shadow-2xl w-full max-w-md p-6 mx-4`}>
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${
-                  darkMode ? 'bg-blue-900/30' : 'bg-blue-100'
-                }`}>
-                  <svg className={`w-6 h-6 ${
-                    darkMode ? 'text-blue-500' : 'text-blue-600'
-                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+            {!orcamentoSalvo ? (
+              <>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${
+                      darkMode ? 'bg-blue-900/30' : 'bg-blue-100'
+                    }`}>
+                      <FiCheck className={`w-6 h-6 ${
+                        darkMode ? 'text-blue-400' : 'text-blue-600'
+                      }`} />
+                    </div>
+                    <h3 className={`text-xl font-bold ${
+                      darkMode ? 'text-blue-400' : 'text-blue-600'
+                    }`}>
+                      Confirmar Orçamento
+                    </h3>
+                  </div>
+                  <button
+                    onClick={handleFecharConfirmacao}
+                    className={`p-1 rounded-full transition-colors ${
+                      darkMode 
+                        ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <FiX className="w-5 h-5" />
+                  </button>
                 </div>
-                <h3 className={`text-xl font-bold ${
-                  darkMode ? 'text-blue-400' : 'text-blue-600'
-                }`}>
-                  Item Já Inserido
-                </h3>
-              </div>
-              <button
-                onClick={handleCancelarNavegacao}
-                className={`p-1 rounded-full transition-colors ${
-                  darkMode 
-                    ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              <p className="mb-4">
-                Este item já está no pedido. Deseja navegar até ele?
-              </p>
-              <p className="font-medium">
-                {produtoSelecionadoConfirmacao?.descricao || produtoSelecionadoConfirmacao?.pro_descricao}
-              </p>
-            </div>
-            
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={handleCancelarNavegacao}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  darkMode
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmarNavegacao}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  darkMode
-                    ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
-                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                }`}
-              >
-                Ir para o Item
-              </button>
-            </div>
+                
+                <div className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  <p className="mb-4">
+                    Confirma a finalização do orçamento com os seguintes dados?
+                  </p>
+                  <ul className="space-y-2">
+                    <li>
+                      <span className="font-medium">Cliente:</span> {getNomeCliente(cliente)}
+                    </li>
+                    <li>
+                      <span className="font-medium">Itens:</span> {produtos.length}
+                    </li>
+                    <li>
+                      <span className="font-medium">Total:</span> {total.toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL'
+                      })}
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={handleFecharConfirmacao}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      darkMode
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSalvar}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      darkMode
+                        ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
+                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    } flex items-center gap-2`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <FiCheck className="w-5 h-5" />
+                        Confirmar
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${
+                      darkMode ? 'bg-green-900/30' : 'bg-green-100'
+                    }`}>
+                      <FiCheck className={`w-6 h-6 ${
+                        darkMode ? 'text-green-400' : 'text-green-600'
+                      }`} />
+                    </div>
+                    <h3 className={`text-xl font-bold ${
+                      darkMode ? 'text-green-400' : 'text-green-600'
+                    }`}>
+                      Orçamento Salvo!
+                    </h3>
+                  </div>
+                  <button
+                    onClick={handleFecharConfirmacao}
+                    className={`p-1 rounded-full transition-colors ${
+                      darkMode 
+                        ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <FiX className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  <div className="space-y-2 mb-4">
+                    <p>
+                      <span className="font-medium">Número:</span> {orcamentoSalvo.numero_orcamento}
+                    </p>
+                    <p>
+                      <span className="font-medium">Data:</span> {orcamentoSalvo.data}
+                    </p>
+                    <p>
+                      <span className="font-medium">Cliente:</span> {orcamentoSalvo.cliente}
+                    </p>
+                    <p>
+                      <span className="font-medium">Valor Total:</span> {orcamentoSalvo.valor_total}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handleCopiarNumero}
+                    className={`w-full px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                      darkMode
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <FiCopy className="w-5 h-5" />
+                    Copiar Número
+                  </button>
+                  
+                  <button
+                    onClick={handleImprimir}
+                    className={`w-full px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                      darkMode
+                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <FiPrinter className="w-5 h-5" />
+                    Imprimir
+                  </button>
+                  
+                  <button
+                    onClick={handleNovoOrcamento}
+                    className={`w-full px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
+                      darkMode
+                        ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
+                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                    }`}
+                  >
+                    <FiPlus className="w-5 h-5" />
+                    Novo Orçamento
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* Alerta de Preço Mínimo */}
-      {alertaPrecoMinimo && (
+      {showCacheModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className={`${
-            darkMode ? 'bg-gray-800 border-red-800' : 'bg-white border-red-200'
-          } border-2 rounded-xl shadow-2xl w-full max-w-md p-6 mx-4`}>
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${
-                  darkMode ? 'bg-red-900/30' : 'bg-red-100'
-                }`}>
-                  <svg className={`w-6 h-6 ${
-                    darkMode ? 'text-red-500' : 'text-red-600'
-                  }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <h3 className={`text-xl font-bold ${
-                  darkMode ? 'text-red-400' : 'text-red-600'
-                }`}>
-                  Preço Abaixo do Mínimo
-                </h3>
-              </div>
-              <button
-                onClick={() => setAlertaPrecoMinimo(null)}
-                className={`p-1 rounded-full transition-colors ${
-                  darkMode 
-                    ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              <p className="mb-4">
-                O preço informado está abaixo do valor mínimo permitido para este produto.
-              </p>
-              <p className="font-medium">
-                Valor mínimo: {parseFloat(alertaPrecoMinimo.precoMinimo).toLocaleString('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                })}
-              </p>
-            </div>
-            
-            <div className="flex justify-end">
-              <button
-                onClick={() => setAlertaPrecoMinimo(null)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  darkMode
-                    ? 'bg-red-900/30 text-red-400 hover:bg-red-900/50'
-                    : 'bg-red-100 text-red-700 hover:bg-red-200'
-                }`}
-              >
-                Entendi
-              </button>
-            </div>
+          <div className={`relative w-full max-w-2xl mx-4 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
+            <OrcamentosCache
+              darkMode={darkMode}
+              onClose={() => setShowCacheModal(false)}
+            />
           </div>
         </div>
+      )}
+
+      {toast.show && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={closeToast}
+          darkMode={darkMode}
+          position="bottom-right"
+        />
       )}
     </div>
   );

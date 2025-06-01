@@ -225,7 +225,7 @@ async def listar_orcamentos(request: Request, data_inicial: str = None, data_fin
                 query += " WHERE " + " AND ".join(where_clauses)
             
             # Adicionar ordenação
-            query += " ORDER BY ECF_DATA DESC"
+            query += " ORDER BY ECF_NUMERO DESC"
             
             logging.info(f"Query final: {query}")
             logging.info(f"Parâmetros: {params}")

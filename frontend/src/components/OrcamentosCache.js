@@ -7,6 +7,7 @@ const OrcamentosCache = ({ darkMode, onClose }) => {
   const [orcamentos, setOrcamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showConfirmacao, setShowConfirmacao] = useState(false);
+  const [showConfirmacaoLimparTodos, setShowConfirmacaoLimparTodos] = useState(false);
   const [orcamentoSelecionado, setOrcamentoSelecionado] = useState(null);
   const navigate = useNavigate();
 
@@ -58,6 +59,19 @@ const OrcamentosCache = ({ darkMode, onClose }) => {
     onClose();
   };
 
+  const handleLimparTodos = async () => {
+    try {
+      const todosOrcamentos = await OrcamentoCache.listar();
+      for (const orcamento of todosOrcamentos) {
+        await OrcamentoCache.remover(orcamento.id);
+      }
+      await carregarOrcamentos();
+      setShowConfirmacaoLimparTodos(false);
+    } catch (error) {
+      console.error('Erro ao limpar todos os orçamentos:', error);
+    }
+  };
+
   const formatarData = (timestamp) => {
     return new Date(timestamp).toLocaleString('pt-BR', {
       day: '2-digit',
@@ -98,7 +112,7 @@ const OrcamentosCache = ({ darkMode, onClose }) => {
             <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${darkMode ? 'border-b border-gray-700' : 'border-b'}`}>
               <div className="flex justify-between items-center">
                 <h3 className={`text-lg leading-6 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Orçamentos em Cache
+                  Pedidos em Cache
                 </h3>
                 <button
                   onClick={onClose}
@@ -121,61 +135,86 @@ const OrcamentosCache = ({ darkMode, onClose }) => {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className={darkMode ? 'bg-gray-700' : 'bg-gray-50'}>
-                      <tr>
-                        <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                          Data/Hora
-                        </th>
-                        <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                          Cliente
-                        </th>
-                        <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                          Produtos
-                        </th>
-                        <th scope="col" className={`px-6 py-3 text-right text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                          Total
-                        </th>
-                        <th scope="col" className={`px-6 py-3 text-right text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'} uppercase tracking-wider`}>
-                          Ações
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                      {orcamentos.map((orcamento) => (
-                        <tr key={orcamento.id} className={darkMode ? 'bg-gray-800' : 'bg-white'}>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                            {formatarData(orcamento.timestamp)}
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {orcamento.cliente?.nome || 'Cliente não selecionado'}
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                            {orcamento.produtos?.length || 0} itens
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-right ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {formatarMoeda(orcamento.produtos?.reduce((total, p) => total + (p.valor_total || 0), 0) || 0)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <>
+                  <div className="flex justify-end mb-4">
+                    <button
+                      onClick={() => setShowConfirmacaoLimparTodos(true)}
+                      className={`px-4 py-2 rounded-md text-sm font-medium ${
+                        darkMode
+                          ? 'bg-red-600 hover:bg-red-700 text-white'
+                          : 'bg-red-500 hover:bg-red-600 text-white'
+                      }`}
+                    >
+                      Limpar Todos
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    {orcamentos.map((orcamento) => (
+                      <div 
+                        key={orcamento.id} 
+                        className={`rounded-lg shadow-md p-4 ${
+                          darkMode ? 'bg-gray-700 text-gray-100' : 'bg-white text-gray-900'
+                        }`}
+                      >
+                        {/* Cabeçalho do Card */}
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {orcamento.cliente?.nome || 'Cliente não selecionado'}
+                            </h3>
+                            <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                              {formatarData(orcamento.timestamp)}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
                             <button
                               onClick={() => handleEditar(orcamento.id)}
-                              className={`text-blue-600 hover:text-blue-900 ${darkMode ? 'hover:text-blue-400' : ''} mr-3`}
+                              className={`p-2 rounded-full transition-colors ${
+                                darkMode 
+                                  ? 'hover:bg-gray-600 text-blue-400' 
+                                  : 'hover:bg-gray-100 text-blue-600'
+                              }`}
+                              title="Editar"
                             >
                               <FiEdit className="h-5 w-5" />
                             </button>
                             <button
                               onClick={() => handleRemover(orcamento.id)}
-                              className={`text-red-600 hover:text-red-900 ${darkMode ? 'hover:text-red-400' : ''}`}
+                              className={`p-2 rounded-full transition-colors ${
+                                darkMode 
+                                  ? 'hover:bg-gray-600 text-red-400' 
+                                  : 'hover:bg-gray-100 text-red-600'
+                              }`}
+                              title="Remover"
                             >
                               <FiTrash2 className="h-5 w-5" />
                             </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                          </div>
+                        </div>
+
+                        {/* Detalhes do Orçamento */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                              Produtos:
+                            </span>
+                            <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                              {orcamento.produtos?.length || 0} itens
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                              Total:
+                            </span>
+                            <span className={`font-medium ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+                              {formatarMoeda(orcamento.produtos?.reduce((total, p) => total + (p.valor_total || 0), 0) || 0)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
 
               {/* Botão Fechar */}
@@ -198,47 +237,100 @@ const OrcamentosCache = ({ darkMode, onClose }) => {
 
       {/* Modal de Confirmação */}
       {showConfirmacao && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
-          <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"></div>
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-black opacity-75"></div>
+            </div>
 
-          <div className="flex items-center justify-center min-h-screen p-4">
-            <div className={`relative rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full ${
-              darkMode ? 'bg-gray-800' : 'bg-white'
-            }`}>
-              <div className="p-6">
-                <div className="flex items-center justify-center mb-4">
-                  <div className={`rounded-full p-3 ${darkMode ? 'bg-yellow-900/30' : 'bg-yellow-100'}`}>
-                    <FiAlertTriangle className={`h-6 w-6 ${darkMode ? 'text-yellow-500' : 'text-yellow-600'}`} />
+            <div className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <FiAlertTriangle className="h-6 w-6 text-yellow-600" />
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className={`text-lg leading-6 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Carregar orçamento do cache?
+                    </h3>
+                    <div className="mt-2">
+                      <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Isso irá substituir qualquer conteúdo não salvo no formulário atual.
+                      </p>
+                    </div>
                   </div>
                 </div>
+              </div>
+              <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-800 border-t border-gray-700' : 'bg-gray-50'}`}>
+                <button
+                  type="button"
+                  onClick={handleConfirmarCarregamento}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Carregar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmacao(false)}
+                  className={`mt-3 sm:mt-0 w-full inline-flex justify-center rounded-md border px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${
+                    darkMode
+                      ? 'border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600 focus:ring-gray-500'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-500'
+                  }`}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-                <h3 className={`text-xl font-semibold text-center mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Carregar Orçamento do Cache?
-                </h3>
+      {/* Modal de Confirmação Limpar Todos */}
+      {showConfirmacaoLimparTodos && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-black opacity-75"></div>
+            </div>
 
-                <p className={`text-center mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                  Esta ação irá substituir todos os dados do orçamento atual.
-                  Os dados não salvos serão perdidos.
-                </p>
-
-                <div className="flex justify-center space-x-4">
-                  <button
-                    onClick={() => setShowConfirmacao(false)}
-                    className={`px-4 py-2 rounded-md ${
-                      darkMode
-                        ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                        : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                    }`}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleConfirmarCarregamento}
-                    className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    Sim, Carregar
-                  </button>
+            <div className={`inline-block align-bottom rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+              <div className={`px-4 pt-5 pb-4 sm:p-6 sm:pb-4 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <FiAlertTriangle className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className={`text-lg leading-6 font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Limpar todos os orçamentos?
+                    </h3>
+                    <div className="mt-2">
+                      <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                        Esta ação não pode ser desfeita. Todos os orçamentos em cache serão removidos permanentemente.
+                      </p>
+                    </div>
+                  </div>
                 </div>
+              </div>
+              <div className={`px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse ${darkMode ? 'bg-gray-800 border-t border-gray-700' : 'bg-gray-50'}`}>
+                <button
+                  type="button"
+                  onClick={handleLimparTodos}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Limpar Todos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmacaoLimparTodos(false)}
+                  className={`mt-3 sm:mt-0 w-full inline-flex justify-center rounded-md border px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm ${
+                    darkMode
+                      ? 'border-gray-600 bg-gray-700 text-gray-300 hover:bg-gray-600 focus:ring-gray-500'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-gray-500'
+                  }`}
+                >
+                  Cancelar
+                </button>
               </div>
             </div>
           </div>

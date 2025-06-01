@@ -272,7 +272,7 @@ const OrcamentoForm = ({ numero, darkMode }) => {
               }`}
             >
               <FiArchive className="mr-2" />
-              <span className="text-sm">Orçamentos em Cache</span>
+              <span className="text-sm">Pedidos em Cache</span>
             </button>
           </div>
           <div className="flex items-center space-x-4">

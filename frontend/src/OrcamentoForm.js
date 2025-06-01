@@ -695,7 +695,7 @@ function OrcamentoForm({ darkMode = false }) {
           }`}
         >
           <FiArchive className="mr-2" />
-          <span className="text-sm">Orçamentos em Cache</span>
+          <span className="text-sm">Pedidos em Cache</span>
         </button>
       </div>
       {/* Cabeçalho do orçamento: accordion no mobile, aberto no desktop */}
@@ -1091,7 +1091,7 @@ function OrcamentoForm({ darkMode = false }) {
           ) : (
             <>
               <FiCheck className="w-6 h-6" />
-              Finalizar Orçamento
+              Finalizar Pedido
             </>
           )}
         </button>

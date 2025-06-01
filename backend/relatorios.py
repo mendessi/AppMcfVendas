@@ -394,7 +394,7 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
                     raise HTTPException(status_code=400, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
 
                 # ===== USAR FUNÇÃO HELPER GLOBAL =====
-                filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VENDAS")
+                filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VD")
                 
                 sql_vendas_mes = f"""
                     SELECT COALESCE(SUM(ECF_TOTAL), 0)

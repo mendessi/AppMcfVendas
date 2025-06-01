@@ -36,10 +36,20 @@ function AppContent() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768); // Iniciar aberto em telas md e maiores
   const [darkMode, setDarkMode] = useState(true); // Modo dark ativado por padrão
   const [showVendedorWelcome, setShowVendedorWelcome] = useState(false);
   const [vendedorWelcomeData, setVendedorWelcomeData] = useState(null);
+
+  // Adicionar listener para ajustar o menu quando a tela for redimensionada
+  useEffect(() => {
+    const handleResize = () => {
+      setSidebarOpen(window.innerWidth >= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Verificar se o usuário está logado ao carregar a página
   useEffect(() => {
@@ -301,7 +311,7 @@ function AppContent() {
   };
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    setSidebarOpen(prev => !prev);
   };
 
   const toggleDarkMode = () => {
@@ -559,12 +569,58 @@ function AppContent() {
       </header>
 
       <div className="flex pt-14">
+        {/* Botão flutuante para expandir menu (visível apenas quando recolhido) */}
+        {!sidebarOpen && (
+          <button
+            onClick={toggleSidebar}
+            className={`fixed left-4 bottom-4 z-50 p-3 rounded-full shadow-lg transition-colors ${
+              darkMode 
+                ? 'bg-gray-800 hover:bg-gray-700 text-white' 
+                : 'bg-white hover:bg-gray-100 text-gray-800'
+            }`}
+            title="Expandir menu"
+          >
+            <FiMenu className="h-6 w-6" />
+          </button>
+        )}
+        
+        {/* Overlay escuro quando o menu está aberto em telas pequenas */}
+        {sidebarOpen && window.innerWidth < 768 && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-20 transition-opacity md:hidden"
+            onClick={toggleSidebar}
+          ></div>
+        )}
+        
         {/* Sidebar */}
         <div
-          className={`fixed inset-y-0 left-0 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 z-30 transition duration-300 ease-in-out ${darkMode ? 'bg-gray-800' : 'bg-white'} pt-14 w-64 shadow-lg`}
+          className={`fixed inset-y-0 left-0 transform ${
+            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } transition duration-300 ease-in-out ${
+            darkMode ? 'bg-gray-800' : 'bg-white'
+          } pt-14 w-64 shadow-lg z-30`}
         >
           <div className="h-full overflow-y-auto py-4 px-3 flex flex-col justify-between">
             <div className="space-y-8">
+              {/* Botão de recolher menu */}
+              <div className="flex justify-end px-2">
+                <button
+                  onClick={toggleSidebar}
+                  className={`p-2 rounded-md transition-colors ${
+                    darkMode 
+                      ? 'hover:bg-gray-700 text-gray-400 hover:text-white' 
+                      : 'hover:bg-gray-200 text-gray-600 hover:text-gray-900'
+                  }`}
+                  title={sidebarOpen ? "Recolher menu" : "Expandir menu"}
+                >
+                  {sidebarOpen ? (
+                    <FiX className="h-6 w-6" />
+                  ) : (
+                    <FiMenu className="h-6 w-6" />
+                  )}
+                </button>
+              </div>
+
               {/* Logo da Empresa */}
               <div className="flex justify-center items-center py-4">
                 <img 
@@ -673,8 +729,12 @@ function AppContent() {
         </div>
 
         {/* Conteúdo principal */}
-        <div className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
-          <main className="container mx-auto px-4 py-8">
+        <div className={`flex-1 transition-all duration-300 ${
+          sidebarOpen ? 'md:ml-64' : 'ml-0'
+        }`}>
+          <main className={`container mx-auto px-4 py-8 transition-all duration-300 ${
+            sidebarOpen ? 'md:max-w-[calc(100%-16rem)]' : 'max-w-full'
+          }`}>
             <Routes>
               <Route path="/" element={<Dashboard user={user} darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="/clientes" element={<ClientesList darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />

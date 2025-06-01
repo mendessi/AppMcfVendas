@@ -1,120 +1,103 @@
-# Aplicativo de Força de Vendas
+# AppMendes - Sistema de Força de Vendas
 
-Aplicativo de força de vendas para gerenciamento de pedidos, clientes e produtos, com sincronização em tempo real via API REST.
+## Requisitos do Sistema
 
-## Estrutura do Projeto
-
-O projeto está dividido em duas partes principais:
-
-### Frontend (React + Tailwind CSS)
-- Interface de usuário moderna e responsiva
-- Instalável como PWA (Progressive Web App)
-- Funciona em dispositivos móveis
-
-### Backend (FastAPI)
-- API REST para comunicação com o frontend
-- Conexão com banco de dados Firebird via módulo de conexão existente
-- Autenticação e autorização de usuários
-
-## Requisitos
+### Backend
+- Python 3.9 ou superior
+- Firebird 2.5 ou superior
+- Bibliotecas Python listadas em `requirements.txt`
+- fbclient.dll (incluído no projeto)
 
 ### Frontend
-- Node.js 14+
-- npm 6+
+- Node.js 16.x ou superior
+- npm 8.x ou superior
+- Dependências listadas em `package.json`
 
-### Backend
-- Python 3.8+
-- Firebird 2.5+
-- Biblioteca fbclient.dll (já incluída no projeto)
+## Instalação
 
-## Como Executar
+### 1. Backend
 
-### Backend
+```bash
+# 1. Clone o repositório
+git clone [url-do-repositorio]
 
-1. Ative o ambiente virtual:
-```
+# 2. Entre na pasta do backend
 cd backend
-.\venv\Scripts\activate
-```
 
-2. Instale as dependências:
-```
+# 3. Crie um ambiente virtual (recomendado)
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+
+# 4. Instale as dependências
 pip install -r requirements.txt
+
+# 5. Configure o ambiente
+cp .env.example .env
+# Edite o arquivo .env com suas configurações
+
+# 6. Inicie o servidor
+python main.py
 ```
 
-3. Execute o servidor:
-```
-uvicorn main:app --reload
-```
+### 2. Frontend
 
-O backend estará disponível em http://localhost:8000
-
-### Frontend
-
-1. Instale as dependências:
-```
+```bash
+# 1. Entre na pasta do frontend
 cd frontend
+
+# 2. Instale as dependências
 npm install
-```
 
-2. Execute o servidor de desenvolvimento:
-```
+# 3. Configure o ambiente
+cp .env.example .env
+# Edite o arquivo .env com suas configurações
+
+# 4. Para desenvolvimento
 npm start
-```
 
-O frontend estará disponível em http://localhost:3000
-
-## Funcionalidades
-
-- Login de usuários
-- Dashboard com resumo de dados
-- Gerenciamento de clientes
-- Gerenciamento de produtos
-- Criação e gerenciamento de pedidos
-- Sincronização em tempo real com o banco de dados
-
-## Configuração
-
-As configurações do banco de dados estão no arquivo `.env` na raiz do projeto. Ajuste as configurações conforme necessário:
-
-```
-SECRET_KEY=sua-chave-secreta-aqui-mude-isso
-DB_HOST=localhost
-DB_PATH=C:\ERP_MACFIN\Banco\Erinalda\BASE_PRI.GDB
-DB_USER=SYSDBA
-DB_PASSWORD=masterkey
-```
-
-## Construção para Produção
-
-### Frontend
-
-Para construir o frontend para produção:
-
-```
-cd frontend
+# 5. Para produção
 npm run build
 ```
 
-Os arquivos estáticos serão gerados na pasta `build` e podem ser servidos por qualquer servidor web.
+## Estrutura do Projeto
+
+```
+appmendes/
+├── backend/
+│   ├── main.py
+│   ├── requirements.txt
+│   └── fbclient.dll
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   └── package.json
+└── docs/
+    └── PASSO_A_PASSO_IMPLANTACAO_VPS.txt
+```
+
+## Implantação em Produção
+
+Siga as instruções detalhadas em `PASSO_A_PASSO_IMPLANTACAO_VPS.txt`
+
+## Dependências Principais
 
 ### Backend
+- FastAPI
+- SQLAlchemy
+- fdb (Firebird)
+- python-jose[cryptography]
+- passlib[bcrypt]
+- python-multipart
+- uvicorn
 
-Para o backend, recomenda-se usar o Gunicorn com o Uvicorn como worker:
+### Frontend
+- React 19.1.0
+- React Router DOM 7.6.0
+- Axios 1.9.0
+- TailwindCSS 3.3.1
+- React Icons 5.5.0
 
-```
-pip install gunicorn
-gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
-```
+## Suporte
 
-## PWA (Progressive Web App)
-
-O aplicativo pode ser instalado como um PWA em dispositivos móveis e desktops. Para instalar:
-
-1. Acesse o aplicativo em um navegador compatível
-2. O navegador mostrará uma opção para instalar o aplicativo
-3. Siga as instruções para instalar
-
-## Licença
-
-Este projeto é proprietário e confidencial.
+Para suporte, entre em contato com a equipe de desenvolvimento ou consulte a documentação adicional na pasta `docs/`.

@@ -129,16 +129,31 @@ export const getTabelasPreco = async (signal) => {
 
 export const getVendedores = async (signal) => {
   const empresaCodigo = localStorage.getItem('empresa_atual');
-  return api.get('/relatorios/listar_vendedores', {
-    params: {
-      search: '',
-      empresa: empresaCodigo
-    },
-    headers: {
-      'x-empresa-codigo': empresaCodigo
-    },
-    signal
-  });
+  if (!empresaCodigo) {
+    console.error('[API] Código da empresa não encontrado no localStorage');
+    throw new Error('Código da empresa não encontrado');
+  }
+  
+  console.log('[API] Buscando vendedores para empresa:', empresaCodigo);
+  
+  try {
+    const response = await api.get('/relatorios/listar_vendedores', {
+      params: {
+        search: '',
+        empresa: empresaCodigo
+      },
+      headers: {
+        'x-empresa-codigo': empresaCodigo
+      },
+      signal
+    });
+    
+    console.log('[API] Resposta da busca de vendedores:', response.data);
+    return response;
+  } catch (error) {
+    console.error('[API] Erro ao buscar vendedores:', error);
+    throw error;
+  }
 };
 
 export const getFormasPagamento = async (signal) => {

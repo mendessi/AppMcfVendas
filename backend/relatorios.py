@@ -1101,8 +1101,17 @@ async def listar_vendedores(request: Request):
     """
     Endpoint para listar todos os vendedores.
     """
+    log.info(f"[VENDEDORES] Headers recebidos: {dict(request.headers)}")
     try:
+        log.info("[VENDEDORES] Tentando obter conexão com o banco de dados...")
         conn = await get_empresa_connection(request)
+        if not conn:
+            log.error("[VENDEDORES] Não foi possível obter conexão com o banco de dados")
+            raise HTTPException(
+                status_code=500,
+                detail="Erro ao conectar ao banco de dados"
+            )
+            
         cursor = conn.cursor()
         
         sql = """
@@ -1110,30 +1119,37 @@ async def listar_vendedores(request: Request):
                 VEN_CODIGO as codigo,
                 VEN_NOME as nome
             FROM VENDEDOR
+            WHERE VEN_ATIVO = 0 OR VEN_ATIVO IS NULL
             ORDER BY VEN_NOME
         """
         
+        log.info("[VENDEDORES] Executando consulta SQL...")
         cursor.execute(sql)
         rows = cursor.fetchall()
         
         vendedores = []
         for row in rows:
             vendedor = {
-                "codigo": row[0],
-                "nome": row[1] or ""
+                "codigo": str(row[0]).strip() if row[0] else "",
+                "nome": str(row[1]).strip() if row[1] else ""
             }
             vendedores.append(vendedor)
             
+        log.info(f"[VENDEDORES] {len(vendedores)} vendedores encontrados")
         return vendedores
         
     except Exception as e:
         log.error(f"Erro ao listar vendedores: {str(e)}")
+        import traceback
+        log.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Erro ao listar vendedores: {str(e)}")
     finally:
         try:
-            conn.close()
-        except:
-            pass
+            if 'conn' in locals() and conn:
+                conn.close()
+                log.info("[VENDEDORES] Conexão fechada")
+        except Exception as e:
+            log.error(f"Erro ao fechar conexão: {str(e)}")
 
 @router.get("/clientes")
 async def buscar_clientes(request: Request, q: str = ""):

@@ -678,6 +678,29 @@ function OrcamentoForm({ darkMode = false }) {
   // TODO: Buscar clientes, tabelas, formas de pagamento, vendedores, produtos via API
   // TODO: Implementar autocomplete e selects reais
 
+  useEffect(() => {
+    // Carregar dados do usuário e inicializar vendedor se for vendedor
+    const userData = JSON.parse(localStorage.getItem('user'));
+    if (userData?.nivel?.toUpperCase() === 'VENDEDOR' && userData?.codigo_vendedor) {
+      setVendedor(userData.codigo_vendedor);
+    }
+
+    // Carregar dados do orçamento do cache se existir
+    if (orcamentoDoCache) {
+      setCliente(orcamentoDoCache.cliente);
+      setTabela(orcamentoDoCache.tabela_codigo);
+      setFormaPagamento(orcamentoDoCache.formapag_codigo);
+      if (!userData?.nivel?.toUpperCase() === 'VENDEDOR') {
+        setVendedor(orcamentoDoCache.vendedor_codigo);
+      }
+      setValidade(orcamentoDoCache.data_validade);
+      setEspecie(orcamentoDoCache.especie);
+      setDesconto(orcamentoDoCache.desconto);
+      setObservacao(orcamentoDoCache.observacao);
+      setProdutos(orcamentoDoCache.produtos);
+    }
+  }, [orcamentoDoCache]);
+
   return (
     <div className={
       isMobile

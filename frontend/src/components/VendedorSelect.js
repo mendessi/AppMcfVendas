@@ -1,61 +1,92 @@
 import React, { useState, useEffect } from 'react';
-import { getVendedores } from '../services/api';
+import api, { getVendedores } from '../services/api';
 
 const VendedorSelect = ({ value, onChange, darkMode }) => {
   const [vendedores, setVendedores] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const abortController = new AbortController();
-    
     const fetchVendedores = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await getVendedores(abortController.signal);
+
+        // Obter dados do usuário e empresa do localStorage
+        const userData = JSON.parse(localStorage.getItem('user'));
+        const empresaCodigo = localStorage.getItem('empresa_atual');
         
-        // Só atualiza se não foi cancelado
-        if (!abortController.signal.aborted) {
-          setVendedores(response.data);
+        console.log('[VENDEDORES] Dados do usuário:', userData);
+        console.log('[VENDEDORES] Código da empresa:', empresaCodigo);
+
+        if (!empresaCodigo) {
+          throw new Error('Código da empresa não encontrado');
         }
-      } catch (error) {
-        // Só mostra erro se não foi cancelamento
-        if (!abortController.signal.aborted) {
-          console.error('Erro ao buscar vendedores:', error);
-          setError('Erro ao carregar vendedores');
+
+        const isVendedor = userData?.nivel?.toUpperCase() === 'VENDEDOR';
+        const codigoVendedor = userData?.codigo_vendedor;
+
+        console.log('[VENDEDORES] É vendedor?', isVendedor);
+        console.log('[VENDEDORES] Código do vendedor:', codigoVendedor);
+
+        try {
+          // Se for vendedor, buscar apenas seus dados
+          console.log('[VENDEDORES] Iniciando chamada à API...');
+          const response = await getVendedores();
+          
+          console.log('[VENDEDORES] Resposta da API:', response.data);
+
+          if (isVendedor && codigoVendedor) {
+            // Garantir que o código do vendedor seja uma string para comparação
+            const vendedorData = response.data.find(v => String(v.codigo).trim() === String(codigoVendedor).trim());
+            if (vendedorData) {
+              console.log('[VENDEDORES] Dados do vendedor encontrados:', vendedorData);
+              setVendedores([vendedorData]);
+              onChange(vendedorData.codigo); // Pré-selecionar o vendedor
+            } else {
+              console.error('[VENDEDORES] Dados do vendedor não encontrados na resposta');
+              setError('Dados do vendedor não encontrados');
+            }
+          } else {
+            // Se não for vendedor, usar todos os vendedores
+            console.log('[VENDEDORES] Carregando lista completa:', response.data);
+            setVendedores(response.data || []);
+          }
+        } catch (apiError) {
+          console.error('[VENDEDORES] Erro na chamada da API:', apiError);
+          throw new Error(`Erro ao comunicar com o servidor: ${apiError.message}`);
         }
+      } catch (err) {
+        console.error('[VENDEDORES] Erro ao carregar vendedores:', err);
+        setError(err.message || 'Erro ao carregar vendedores');
       } finally {
-        if (!abortController.signal.aborted) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
     fetchVendedores();
+  }, [onChange]);
 
-    // Cleanup: cancela a requisição se o componente for desmontado
-    return () => {
-      abortController.abort();
-    };
-  }, []);
+  // Verificar se o usuário é vendedor
+  const userData = JSON.parse(localStorage.getItem('user'));
+  const isVendedor = userData?.nivel?.toUpperCase() === 'VENDEDOR';
 
   return (
     <div className="w-full">
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
-        disabled={isLoading}
+        disabled={isLoading || isVendedor} // Desabilitar se for vendedor
         className={`w-full rounded-md ${
           darkMode
             ? "bg-gray-600 border-gray-500 text-white"
             : "bg-white border-gray-300 text-gray-700"
-        } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+        } ${(isLoading || isVendedor) ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <option value="">{isLoading ? 'Carregando...' : 'Selecione um vendedor'}</option>
         {vendedores.map((vendedor) => (
           <option key={vendedor.codigo} value={vendedor.codigo}>
-            {vendedor.nome}
+            {vendedor.nome || `Vendedor ${vendedor.codigo}`}
           </option>
         ))}
       </select>

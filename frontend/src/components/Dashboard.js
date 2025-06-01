@@ -936,26 +936,50 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
               </table>
             </div>
             {/* Cards no mobile */}
-            <div className="sm:hidden flex flex-col gap-3">
-              {topProdutos.map((produto, index) => (
-                <div key={index} className={`rounded-lg p-3 shadow ${darkMode ? 'bg-gray-800 text-gray-100' : 'bg-gray-100 text-gray-900'}`}> 
-                  <div className="font-semibold text-base break-words mb-1">{produto.PRO_DESCRICAO || '-'}</div>
-                  <div className="flex flex-wrap gap-2 text-xs mb-1">
-                    <span><b>Total Vendido:</b> {produto.TOTAL !== undefined && produto.TOTAL !== null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(produto.TOTAL)) : '-'}</span>
-                    <span><b>Estoque:</b> {produto.ESTOQUE !== undefined && produto.ESTOQUE !== null ? Number(produto.ESTOQUE).toFixed(2) : '-'}</span>
-                    <span><b>Est. Mínimo:</b> {produto.EST_MINIMO !== undefined && produto.EST_MINIMO !== null ? Number(produto.EST_MINIMO).toFixed(2) : '-'}</span>
+            <div className="md:hidden mt-4">
+              <div className="grid grid-cols-1 gap-4">
+                {topProdutos.map((produto, index) => (
+                  <div key={index} className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-4`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>
+                          {produto.PRO_DESCRICAO}
+                        </h3>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <div>
+                            <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Total Vendido:</p>
+                            <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>
+                              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(produto.TOTAL ?? 0))}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Estoque Atual:</p>
+                            <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>
+                              {Number(produto.ESTOQUE ?? 0).toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Estoque Mínimo:</p>
+                            <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>
+                              {Number(produto.EST_MINIMO ?? 0).toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Status:</p>
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0)
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0) ? 'Estoque Baixo' : 'Estoque OK'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0)
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {Number(produto.ESTOQUE ?? 0) <= Number(produto.EST_MINIMO ?? 0) ? 'Estoque Baixo' : 'Estoque OK'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </>
         )}

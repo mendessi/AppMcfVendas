@@ -357,7 +357,7 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
         log.info(f"Período de consulta: {data_inicial} a {data_final}")
         
         # ===== USAR FUNÇÃO HELPER GLOBAL =====
-        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VD")
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VENDAS")
 
         # Obter a conexão com o banco da empresa selecionada
         empresa = get_empresa_atual(request)
@@ -394,14 +394,15 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
                     raise HTTPException(status_code=400, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
 
                 # ===== USAR FUNÇÃO HELPER GLOBAL =====
-                filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VD")
+                filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VENDAS")
                 
                 sql_vendas_mes = f"""
                     SELECT COALESCE(SUM(ECF_TOTAL), 0)
                     FROM VENDAS
                     WHERE VENDAS.ecf_cancelada = 'N'
                     AND VENDAS.ecf_concluida = 'S'
-                    AND CAST(VENDAS.{date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                    AND ECF_DATA IS NOT NULL
+                    AND CAST(VENDAS.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
                     {filtro_vendedor}
                 """
                 log.info(f"Executando SQL vendas do mês: {sql_vendas_mes}")
@@ -510,7 +511,7 @@ async def get_top_vendedores(request: Request, data_inicial: Optional[str] = Non
             data_final = (proximo_mes - timedelta(days=1)).isoformat()
             
         # ===== APLICAR FILTRO DE VENDEDOR =====
-        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VD")
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VENDAS")
             
         # Obter a conexão com o banco da empresa selecionada
         empresa = get_empresa_atual(request)
@@ -527,13 +528,13 @@ async def get_top_vendedores(request: Request, data_inicial: Optional[str] = Non
                     V.VEN_NOME,
                     V.VEN_CODIGO,
                     COUNT(*) as QTD_VENDAS,
-                    COALESCE(SUM(VD.ECF_TOTAL), 0) as TOTAL,
+                    COALESCE(SUM(VENDAS.ECF_TOTAL), 0) as TOTAL,
                     COALESCE(V.VEN_META, 50000.00) as META
-                FROM VENDAS VD
-                LEFT JOIN VENDEDOR V ON VD.VEN_CODIGO = V.VEN_CODIGO
-                WHERE VD.ECF_CANCELADA = 'N'
-                AND VD.ECF_CONCLUIDA = 'S'
-                AND CAST(VD.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                FROM VENDAS
+                LEFT JOIN VENDEDOR V ON VENDAS.VEN_CODIGO = V.VEN_CODIGO
+                WHERE VENDAS.ECF_CANCELADA = 'N'
+                AND VENDAS.ECF_CONCLUIDA = 'S'
+                AND CAST(VENDAS.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
                 {filtro_vendedor}
                 GROUP BY V.VEN_NOME, V.VEN_CODIGO, V.VEN_META
                 ORDER BY TOTAL DESC
@@ -600,7 +601,7 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
             data_final = (proximo_mes - timedelta(days=1)).isoformat()
             
         # ===== APLICAR FILTRO DE VENDEDOR =====
-        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "V")
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VENDAS")
         
         # Log detalhado do filtro
         log.info(f"🔍 TOP CLIENTES - Debug do filtro:")
@@ -625,13 +626,13 @@ async def get_top_clientes(request: Request, data_inicial: Optional[str] = None,
                     C.CIDADE,
                     C.UF,
                     COUNT(*) as QTD_VENDAS,
-                    COALESCE(SUM(V.ECF_TOTAL), 0) as TOTAL,
-                    MAX(V.ECF_DATA) as ULTIMA_COMPRA
-                FROM VENDAS V
-                LEFT JOIN CLIENTES C ON V.CLI_CODIGO = C.CLI_CODIGO
-                WHERE V.ECF_CANCELADA = 'N'
-                AND V.ECF_CONCLUIDA = 'S'
-                AND CAST(V.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                    COALESCE(SUM(VENDAS.ECF_TOTAL), 0) as TOTAL,
+                    MAX(VENDAS.ECF_DATA) as ULTIMA_COMPRA
+                FROM VENDAS
+                LEFT JOIN CLIENTES C ON VENDAS.CLI_CODIGO = C.CLI_CODIGO
+                WHERE VENDAS.ECF_CANCELADA = 'N'
+                AND VENDAS.ECF_CONCLUIDA = 'S'
+                AND CAST(VENDAS.ECF_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
                 {filtro_vendedor}
                 GROUP BY C.CLI_NOME, C.CLI_CODIGO, C.CIDADE, C.UF
                 ORDER BY TOTAL DESC

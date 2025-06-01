@@ -13,7 +13,10 @@ import OrcamentoHeader from './components/OrcamentoHeader';
 import useIsMobile from './components/useIsMobile';
 import ProdutoAutocomplete from './components/ProdutoAutocomplete';
 import api from './services/api';
-import { FiPrinter, FiX, FiCheck, FiCopy, FiPlus } from 'react-icons/fi';
+import { FiPrinter, FiX, FiCheck, FiCopy, FiPlus, FiArchive } from 'react-icons/fi';
+import OrcamentosCache from './components/OrcamentosCache';
+import OrcamentoCache from './services/OrcamentoCache';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const ESPECIE_OPCOES = [
   { value: '0', label: 'Dinheiro' },
@@ -32,8 +35,13 @@ const ESPECIE_OPCOES = [
 ];
 
 function OrcamentoForm({ darkMode = false }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const orcamentoDoCache = location.state?.orcamentoCache;
+
   // Estados principais do formulário
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [showCacheModal, setShowCacheModal] = useState(false);
   const [orcamentoSalvo, setOrcamentoSalvo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [cliente, setCliente] = useState(null);
@@ -457,7 +465,8 @@ function OrcamentoForm({ darkMode = false }) {
       const data = response.data;
       
       if (data.success) {
-        console.log('Orçamento salvo com sucesso. Nome do cliente:', nomeCliente);
+        // Limpar o cache após salvar com sucesso
+        await OrcamentoCache.limparTudo();
         
         setOrcamentoSalvo({
           numero_orcamento: data.numero_orcamento,
@@ -480,6 +489,56 @@ function OrcamentoForm({ darkMode = false }) {
     }
   };
 
+  // Função para salvar no cache
+  const salvarNoCache = async () => {
+    if (!cliente || produtos.length === 0) return;
+
+    try {
+      const orcamentoCache = {
+        cliente,
+        tabela,
+        formaPagamento,
+        vendedor,
+        dataOrcamento,
+        validade,
+        especie,
+        desconto,
+        observacao,
+        produtos,
+        timestamp: new Date().toISOString()
+      };
+
+      await OrcamentoCache.salvarCache(orcamentoCache);
+    } catch (error) {
+      console.error('Erro ao salvar no cache:', error);
+    }
+  };
+
+  // Salvar no cache quando houver alterações relevantes
+  useEffect(() => {
+    if (cliente || produtos.length > 0) {
+      salvarNoCache();
+    }
+  }, [cliente, produtos, tabela, formaPagamento, vendedor, validade, especie, desconto, observacao]);
+
+  // Carregar dados do cache quando disponível
+  useEffect(() => {
+    if (orcamentoDoCache) {
+      setCliente(orcamentoDoCache.cliente);
+      setTabela(orcamentoDoCache.tabela || '');
+      setFormaPagamento(orcamentoDoCache.formaPagamento || '');
+      setVendedor(orcamentoDoCache.vendedor || '');
+      setValidade(orcamentoDoCache.validade || '');
+      setEspecie(orcamentoDoCache.especie || '0');
+      setDesconto(orcamentoDoCache.desconto || 0);
+      setObservacao(orcamentoDoCache.observacao || '');
+      setProdutos(orcamentoDoCache.produtos || []);
+      
+      // Após carregar, remove do cache
+      OrcamentoCache.removerCache(orcamentoDoCache.id);
+    }
+  }, [orcamentoDoCache]);
+
   // TODO: Buscar clientes, tabelas, formas de pagamento, vendedores, produtos via API
   // TODO: Implementar autocomplete e selects reais
 
@@ -489,7 +548,20 @@ function OrcamentoForm({ darkMode = false }) {
         ? `orcamento-form w-full ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-2 mt-2 mb-4`
         : `orcamento-form w-full max-w-7xl mx-auto ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-8 mt-8 mb-8 flex flex-col min-h-[80vh]`
     }>
-      <h2 className={`text-2xl font-bold mb-6 text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Novo Orçamento</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className={`text-2xl font-bold text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Pedido de Venda</h2>
+        <button
+          onClick={() => setShowCacheModal(true)}
+          className={`flex items-center px-3 py-2 rounded-md ${
+            darkMode
+              ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+          }`}
+        >
+          <FiArchive className="mr-2" />
+          <span className="text-sm">Orçamentos em Cache</span>
+        </button>
+      </div>
       {/* Cabeçalho do orçamento: accordion no mobile, aberto no desktop */}
       {isMobile ? (
         <div className="mb-4">
@@ -880,6 +952,14 @@ function OrcamentoForm({ darkMode = false }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Cache */}
+      {showCacheModal && (
+        <OrcamentosCache
+          darkMode={darkMode}
+          onClose={() => setShowCacheModal(false)}
+        />
       )}
     </div>
   );

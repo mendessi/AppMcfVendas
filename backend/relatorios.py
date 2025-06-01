@@ -384,19 +384,39 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
             if row and row[0] is not None:
                 stats.vendas_dia = float(row[0])
             
-            # Consulta para vendas do mês
-            sql_vendas_mes = f"""
-                SELECT COALESCE(SUM(ECF_TOTAL), 0)
-                FROM VENDAS
-                WHERE VENDAS.ecf_cancelada = 'N'
-                AND VENDAS.ecf_concluida = 'S'
-                AND CAST(VENDAS.ecf_data AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
-                {filtro_vendedor}
-            """
-            cursor.execute(sql_vendas_mes, (data_inicial, data_final))
-            row = cursor.fetchone()
-            if row and row[0] is not None:
-                stats.vendas_mes = float(row[0])
+            # Consulta para vendas do mês (parametrizada)
+            try:
+                # Descobrir coluna de data válida
+                cursor.execute("SELECT FIRST 1 * FROM VENDAS")
+                colunas_vendas = [col[0].lower() for col in cursor.description]
+                date_column = "ecf_data" if "ecf_data" in colunas_vendas else ("ecf_cx_data" if "ecf_cx_data" in colunas_vendas else None)
+                if not date_column:
+                    raise HTTPException(status_code=400, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
+
+                # ===== USAR FUNÇÃO HELPER GLOBAL =====
+                filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "VENDAS")
+                
+                sql_vendas_mes = f"""
+                    SELECT COALESCE(SUM(ECF_TOTAL), 0)
+                    FROM VENDAS
+                    WHERE VENDAS.ecf_cancelada = 'N'
+                    AND VENDAS.ecf_concluida = 'S'
+                    AND CAST(VENDAS.{date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                    {filtro_vendedor}
+                """
+                log.info(f"Executando SQL vendas do mês: {sql_vendas_mes}")
+                log.info(f"Parâmetros: {data_inicial}, {data_final}")
+                cursor.execute(sql_vendas_mes, (data_inicial, data_final))
+                row = cursor.fetchone()
+                if row and row[0] is not None:
+                    stats.vendas_mes = float(row[0])
+                else:
+                    stats.vendas_mes = 0.0
+                log.info(f"Vendas do mês: {stats.vendas_mes}")
+            
+            except Exception as e:
+                log.error(f"Erro ao buscar vendas do mês: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Erro ao buscar vendas do mês: {str(e)}")
             
             # Consulta para vendas autenticadas e não autenticadas
             sql_vendas_auth = f"""

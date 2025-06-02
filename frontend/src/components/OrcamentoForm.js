@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiSave, FiX, FiPlus, FiTrash2, FiArchive } from 'react-icons/fi';
+import { FiSave, FiX, FiPlus, FiTrash2, FiArchive, FiAlertCircle } from 'react-icons/fi';
 import OrcamentoHeader from './OrcamentoHeader';
 import ProdutoAutocomplete from './ProdutoAutocomplete';
 import api from '../services/api';
@@ -23,6 +23,7 @@ const OrcamentoForm = ({ numero, darkMode }) => {
     forma_pagamento: '',
     vendedor: '',
     desconto: 0,
+    valor_desconto: 0,
     observacao: '',
     produtos: []
   });
@@ -31,6 +32,10 @@ const OrcamentoForm = ({ numero, darkMode }) => {
   const [formasPagamento, setFormasPagamento] = useState([]);
   const [vendedores, setVendedores] = useState([]);
   const [showCacheModal, setShowCacheModal] = useState(false);
+
+  // Estados para modal de confirmação de produto existente
+  const [showProdutoExistenteModal, setShowProdutoExistenteModal] = useState(false);
+  const [produtoExistenteInfo, setProdutoExistenteInfo] = useState(null);
 
   useEffect(() => {
     carregarDados();
@@ -155,7 +160,7 @@ const OrcamentoForm = ({ numero, darkMode }) => {
     const produtoMarca = produto.PRO_MARCA || produto.pro_marca || '';
     const precoPrazo = produto.pro_vendapz || 0;
     const precoMinimo = produto.pro_descprovlr || 0;
-    const estoqueAtual = produto.pro_quantidade || 0;
+    const estoqueAtual = produto.estoque || produto.pro_quantidade || produto.PRO_QUANTIDADE || 0;
     const unidade = produto.UNI_CODIGO || '';
     
     console.log('Campos mapeados:', {
@@ -173,19 +178,13 @@ const OrcamentoForm = ({ numero, darkMode }) => {
     console.log('Produto existente?', !!produtoExistente);
     
     if (produtoExistente) {
-      console.log('Atualizando produto existente...');
-      setOrcamento(prev => {
-        const novoProdutos = prev.produtos.map(p =>
-          p.codigo === produtoCodigo
-            ? { ...p, quantidade: p.quantidade + 1, valor_total: (p.quantidade + 1) * p.valor_unitario }
-            : p
-        );
-        console.log('Novos produtos (existente):', novoProdutos);
-        return {
-          ...prev,
-          produtos: novoProdutos
-        };
+      console.log('Produto já existe na lista, mostrando modal...');
+      setProdutoExistenteInfo({
+        produto: produto,
+        produtoExistente: produtoExistente
       });
+      setShowProdutoExistenteModal(true);
+      return;
     } else {
       console.log('Adicionando novo produto...');
       const novoProduto = {
@@ -238,11 +237,133 @@ const OrcamentoForm = ({ numero, darkMode }) => {
     }));
   };
 
-  const calcularTotal = () => {
-    const subtotal = orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0);
-    const desconto = (subtotal * orcamento.desconto) / 100;
-    return subtotal - desconto;
+  // Função para confirmar adição de quantidade ao produto existente
+  const handleConfirmarProdutoExistente = () => {
+    if (produtoExistenteInfo) {
+      const { produtoExistente } = produtoExistenteInfo;
+      setOrcamento(prev => {
+        const novoProdutos = prev.produtos.map(p =>
+          p.codigo === produtoExistente.codigo
+            ? { ...p, quantidade: p.quantidade + 1, valor_total: (p.quantidade + 1) * p.valor_unitario }
+            : p
+        );
+        return {
+          ...prev,
+          produtos: novoProdutos
+        };
+      });
+      
+      // Fazer scroll até o produto
+      const index = orcamento.produtos.findIndex(p => p.codigo === produtoExistente.codigo);
+      if (index !== -1) {
+        setTimeout(() => {
+          const element = document.getElementById(`produto-row-${produtoExistente.codigo}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.classList.add('bg-yellow-100');
+            setTimeout(() => element.classList.remove('bg-yellow-100'), 2000);
+            
+            // Focar e selecionar o campo de quantidade
+            const quantidadeInput = element.querySelector('input[type="number"]');
+            if (quantidadeInput) {
+              setTimeout(() => {
+                quantidadeInput.focus();
+                quantidadeInput.select();
+              }, 300);
+            }
+          }
+        }, 100);
+      }
+    }
+    setShowProdutoExistenteModal(false);
+    setProdutoExistenteInfo(null);
   };
+
+  // Função para cancelar adição ao produto existente
+  const handleCancelarProdutoExistente = () => {
+    setShowProdutoExistenteModal(false);
+    setProdutoExistenteInfo(null);
+  };
+
+  const calcularTotal = () => {
+    console.log('OrcamentoForm - Calculando total...');
+    const subtotal = orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0);
+    const valorDesconto = (subtotal * orcamento.desconto) / 100;
+    console.log('OrcamentoForm - Total calculado:', { subtotal, desconto: orcamento.desconto, valorDesconto });
+    return subtotal - valorDesconto;
+  };
+
+  const calcularValorDesconto = () => {
+    console.log('OrcamentoForm - Calculando valor do desconto...');
+    const subtotal = orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0);
+    const valorDesconto = (subtotal * orcamento.desconto) / 100;
+    console.log('OrcamentoForm - Desconto calculado:', { 
+      subtotal, 
+      desconto: orcamento.desconto, 
+      valorDesconto,
+      produtos: orcamento.produtos 
+    });
+    return valorDesconto;
+  };
+
+  const handleSalvar = async () => {
+    try {
+      // Obtém o nome do cliente formatado
+      const nomeCliente = getNomeCliente(orcamento.cliente);
+      
+      // Monta o JSON conforme backend
+      const payload = {
+        cliente_codigo: String(orcamento.cliente?.cli_codigo || orcamento.cliente?.CLI_CODIGO || orcamento.cliente?.codigo || ''),
+        nome_cliente: nomeCliente,
+        tabela_codigo: String(orcamento.tabela || ''),
+        formapag_codigo: String(orcamento.forma_pagamento || ''),
+        valor_total: Number(calcularTotal()),
+        data_orcamento: String(orcamento.data || ''),
+        data_validade: String(orcamento.validade || ''),
+        observacao: String(orcamento.observacao || ''),
+        vendedor_codigo: String(orcamento.vendedor || ''),
+        especie: String(orcamento.especie || '0'),
+        desconto: Number(orcamento.desconto || 0),
+        produtos: orcamento.produtos.map(p => ({
+          codigo: String(p.codigo || ''),
+          descricao: String(p.descricao || ''),
+          quantidade: Number(p.quantidade || 0),
+          valor_unitario: Number(p.valor_unitario || 0),
+          valor_total: Number(p.valor_total || 0),
+          imagem: String(p.imagem || '')
+        }))
+      };
+
+      const token = localStorage.getItem('token');
+      const empresa = localStorage.getItem('empresa_atual');
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'x-empresa-codigo': empresa
+      };
+
+      if (numero) {
+        await api.put(`/orcamentos/${numero}`, payload, { headers });
+      } else {
+        await api.post('/orcamentos', payload, { headers });
+      }
+
+      navigate('/orcamentos');
+    } catch (error) {
+      console.error('Erro ao salvar orçamento:', error);
+      setError('Erro ao salvar orçamento. Por favor, tente novamente.');
+    }
+  };
+
+  // Adiciona useEffect para monitorar mudanças no desconto
+  useEffect(() => {
+    console.log('OrcamentoForm - Monitorando mudanças:', {
+      desconto: orcamento.desconto,
+      valor_desconto: orcamento.valor_desconto,
+      produtos: orcamento.produtos,
+      subtotal: orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0)
+    });
+  }, [orcamento.desconto, orcamento.valor_desconto, orcamento.produtos]);
 
   if (isLoading) {
     return (
@@ -412,7 +533,11 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                   darkMode ? "divide-gray-600 bg-gray-700" : "divide-gray-200 bg-white"
                 }`}>
                   {orcamento.produtos.map((produto) => (
-                    <tr key={produto.codigo} className={darkMode ? "hover:bg-gray-600" : "hover:bg-gray-50"}>
+                    <tr 
+                      key={produto.codigo} 
+                      id={`produto-row-${produto.codigo}`}
+                      className={darkMode ? "hover:bg-gray-600" : "hover:bg-gray-50"}
+                    >
                       <td className={`px-6 py-4 whitespace-nowrap ${
                         darkMode ? "text-white" : "text-gray-900"
                       }`}>
@@ -506,27 +631,143 @@ const OrcamentoForm = ({ numero, darkMode }) => {
         <div className={`p-4 rounded-lg ${
           darkMode ? "bg-gray-700" : "bg-gray-50"
         }`}>
-          <div className="flex justify-end">
-            <div className="text-right">
-              <p className={`text-lg font-medium ${
-                darkMode ? "text-gray-300" : "text-gray-700"
-              }`}>
-                Total: {new Intl.NumberFormat('pt-BR', {
-                  style: 'currency',
-                  currency: 'BRL'
-                }).format(calcularTotal())}
-              </p>
+          <div className="flex flex-col space-y-2 mt-4">
+            <div className="flex justify-between items-center">
+              <span>Qtde de Itens:</span>
+              <span>{orcamento.produtos.length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span>Soma das Qtdades:</span>
+              <span>{orcamento.produtos.reduce((total, produto) => total + produto.quantidade, 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span>Subtotal:</span>
+              <span>{orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <span>Desconto:</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={orcamento.desconto}
+                  onChange={(e) => {
+                    console.log('OrcamentoForm - Input desconto onChange:', e.target.value);
+                    const valor = parseFloat(e.target.value) || 0;
+                    const subtotal = orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0);
+                    const valorDesconto = (subtotal * valor) / 100;
+                    
+                    setOrcamento(prev => {
+                      const novo = {
+                        ...prev,
+                        desconto: valor,
+                        valor_desconto: valorDesconto
+                      };
+                      console.log('OrcamentoForm - Novo estado após desconto:', novo);
+                      return novo;
+                    });
+                  }}
+                  onBlur={(e) => {
+                    console.log('OrcamentoForm - Input desconto onBlur:', e.target.value);
+                    const valor = parseFloat(e.target.value) || 0;
+                    const subtotal = orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0);
+                    const valorDesconto = (subtotal * valor) / 100;
+                    
+                    setOrcamento(prev => ({
+                      ...prev,
+                      desconto: valor,
+                      valor_desconto: valorDesconto
+                    }));
+                  }}
+                  className="w-16 mx-2 px-2 py-1 text-right border rounded"
+                />
+                <span>%</span>
+              </div>
+              <span>R$ {(() => {
+                const valor = calcularValorDesconto();
+                console.log('OrcamentoForm - Renderizando valor do desconto:', valor);
+                return valor.toFixed(2);
+              })()}</span>
+            </div>
+            <div className="flex justify-between items-center font-bold text-blue-500">
+              <span>TOTAL:</span>
+              <span>R$ {(orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0) * (1 - orcamento.desconto/100)).toFixed(2)}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modal de Cache */}
-      {showCacheModal && (
-        <OrcamentosCache
-          darkMode={darkMode}
-          onClose={() => setShowCacheModal(false)}
-        />
+      {/* Modal de Produto Já Existente */}
+      {showProdutoExistenteModal && produtoExistenteInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`${
+            darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+          } border-2 rounded-xl shadow-2xl w-full max-w-md p-6 mx-4`}>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${
+                  darkMode ? 'bg-yellow-900/30' : 'bg-yellow-100'
+                }`}>
+                  <FiAlertCircle className={`w-6 h-6 ${
+                    darkMode ? 'text-yellow-400' : 'text-yellow-600'
+                  }`} />
+                </div>
+                <h3 className={`text-xl font-bold ${
+                  darkMode ? 'text-yellow-400' : 'text-yellow-600'
+                }`}>
+                  Produto Já Adicionado
+                </h3>
+              </div>
+              <button
+                onClick={handleCancelarProdutoExistente}
+                className={`p-1 rounded-full transition-colors ${
+                  darkMode 
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className="mb-4">
+                O produto <strong>{produtoExistenteInfo.produto.pro_descricao || produtoExistenteInfo.produto.descricao}</strong> já está no pedido.
+              </p>
+              <p className="mb-2">
+                Quantidade atual: <strong>{produtoExistenteInfo.produtoExistente.quantidade}</strong>
+              </p>
+              <p>
+                Deseja adicionar +1 unidade a este item?
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancelarProdutoExistente}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  darkMode
+                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarProdutoExistente}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  darkMode
+                    ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                } flex items-center gap-2`}
+              >
+                <FiPlus className="w-5 h-5" />
+                Adicionar +1
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

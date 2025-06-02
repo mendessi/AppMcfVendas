@@ -13,11 +13,12 @@ import OrcamentoHeader from './components/OrcamentoHeader';
 import useIsMobile from './components/useIsMobile';
 import ProdutoAutocomplete from './components/ProdutoAutocomplete';
 import api from './services/api';
-import { FiPrinter, FiX, FiCheck, FiCopy, FiPlus, FiArchive } from 'react-icons/fi';
+import { FiPrinter, FiX, FiCheck, FiCopy, FiPlus, FiArchive, FiPercent, FiAlertCircle, FiEdit } from 'react-icons/fi';
 import OrcamentosCache from './components/OrcamentosCache';
 import OrcamentoCache from './services/OrcamentoCache';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Toast from './components/Toast';
+import VendedorSelect from './components/VendedorSelect';
 
 const ESPECIE_OPCOES = [
   { value: '0', label: 'Dinheiro' },
@@ -49,7 +50,10 @@ function OrcamentoForm({ darkMode = false }) {
   const [tabela, setTabela] = useState('');
   const [formaPagamento, setFormaPagamento] = useState('');
   const [vendedor, setVendedor] = useState('');
-  const [dataOrcamento] = useState(new Date().toISOString().slice(0, 10));
+  const [dataOrcamento] = useState(() => {
+    const hoje = new Date();
+    return hoje.toLocaleDateString('pt-BR');
+  });
   const [validade, setValidade] = useState('');
   const [especie, setEspecie] = useState('0');
   const [desconto, setDesconto] = useState(0);
@@ -75,25 +79,27 @@ function OrcamentoForm({ darkMode = false }) {
   // Novo estado para controlar o toast
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
 
-  // useEffect para limpar campos ao entrar na tela
-  useEffect(() => {
-    console.log('Componente OrcamentoForm montado - limpando campos...');
-    limparFormularioCompleto();
-  }, []); // Array vazio = executa apenas na montagem do componente
+  // Novo estado para vendedores
+  const [vendedores, setVendedores] = useState([]);
+  const [vendedorSelecionado, setVendedorSelecionado] = useState(null);
 
-  // Monitora mudanças no cliente para debug
-  useEffect(() => {
-    console.log('Cliente atualizado (useEffect):', cliente);
-    if (cliente) {
-      console.log('Dados completos do cliente (useEffect):', JSON.parse(JSON.stringify(cliente)));
-      console.log('Campos disponíveis (useEffect):', Object.keys(cliente));
-      console.log('CLI_NOME (useEffect):', cliente.CLI_NOME);
-      console.log('cli_nome (useEffect):', cliente.cli_nome);
-      console.log('nome (useEffect):', cliente.nome);
-      console.log('value (useEffect):', cliente.value);
-      console.log('label (useEffect):', cliente.label);
+  // Função para verificar se o desconto está válido
+  const isDescontoValido = () => {
+    if (!vendedorSelecionado) return true;
+    return parseFloat(desconto) <= parseFloat(vendedorSelecionado.desconto_maximo);
+  };
+
+  // Função para verificar se pode finalizar o pedido
+  const podeFinalizarPedido = () => {
+    if (!cliente || produtos.length === 0 || isLoading) {
+      return false;
     }
-  }, [cliente]);
+    // Bloqueio TOTAL se o desconto estiver inválido
+    if (!isDescontoValido()) {
+      return false;
+    }
+    return true;
+  };
 
   // Função para obter o nome do cliente, verificando múltiplos campos possíveis
   const getNomeCliente = (cliente) => {
@@ -112,22 +118,10 @@ function OrcamentoForm({ darkMode = false }) {
     );
   };
 
-  // Função para lidar com o envio do formulário
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // Logs de depuração
-    console.log('=== INÍCIO DO ENVIO ===');
-    console.log('Cliente no momento do envio:', cliente);
-    if (cliente) {
-      console.log('Dados completos do cliente (envio):', JSON.parse(JSON.stringify(cliente)));
-      console.log('Nome do cliente (formatado):', getNomeCliente(cliente));
-    }
-  };
-
-  // Subtotal dos itens
+  // Cálculo do subtotal e total
   const subtotal = produtos.reduce((acc, p) => acc + (p.quantidade * p.valor_unitario), 0);
-  const total = subtotal - desconto;
+  const valorDesconto = (subtotal * desconto) / 100;
+  const total = subtotal - valorDesconto;
 
   // Detecta se é mobile
   const isMobile = useIsMobile();
@@ -144,19 +138,20 @@ function OrcamentoForm({ darkMode = false }) {
   const scrollToProduto = (index) => {
     if (produtoRefs.current[index]) {
       produtoRefs.current[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Destaque visual temporário
-      produtoRefs.current[index].classList.add('ring-2', 'ring-blue-500');
+      // Destaque visual temporário mais forte
+      const element = produtoRefs.current[index];
+      element.classList.add('ring-4', 'ring-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+      
+      // Remove o destaque gradualmente
       setTimeout(() => {
-        if (produtoRefs.current[index]) {
-          produtoRefs.current[index].classList.remove('ring-2', 'ring-blue-500');
+        if (element) {
+          element.classList.remove('ring-4', 'ring-blue-500');
+          // Mantém o fundo por mais tempo
+          setTimeout(() => {
+            element.classList.remove('bg-blue-50', 'dark:bg-blue-900/20');
+          }, 1000);
         }
       }, 2000);
-      
-      // Foca e seleciona o texto do campo de quantidade
-      if (quantidadeRefs.current[index]) {
-        quantidadeRefs.current[index].focus();
-        quantidadeRefs.current[index].select();
-      }
     }
   };
   
@@ -171,7 +166,17 @@ function OrcamentoForm({ darkMode = false }) {
   const handleConfirmarNavegacao = () => {
     setConfirmacaoVisivel(false);
     if (indiceProduto !== -1) {
-      scrollToProduto(indiceProduto);
+      // Fazer scroll e focar no campo de quantidade
+      setTimeout(() => {
+        scrollToProduto(indiceProduto);
+        // Aguarda um pouco mais para garantir que o scroll terminou
+        setTimeout(() => {
+          if (quantidadeRefs.current[indiceProduto]) {
+            quantidadeRefs.current[indiceProduto].focus();
+            quantidadeRefs.current[indiceProduto].select();
+          }
+        }, 300);
+      }, 100);
     }
   };
   
@@ -270,7 +275,7 @@ function OrcamentoForm({ darkMode = false }) {
         valor_unitario: valorUnit,
         valor_total: valorUnit * 1,
         imagem: produto.pro_imagem || produto.imagem || '',
-        estoque_atual: produto.PRO_QUANTIDADE || 0,
+        estoque_atual: produto.estoque || produto.pro_quantidade || produto.PRO_QUANTIDADE || 0,
         estoque_minimo: produto.pro_minimo_estoque || 0,
         preco_minimo: produto.pro_descprovlr || 0
       };
@@ -320,12 +325,12 @@ function OrcamentoForm({ darkMode = false }) {
 
   // Handler para abrir confirmação
   const handleAbrirConfirmacao = () => {
-    if (!cliente) {
-      alert('Selecione um cliente antes de salvar o orçamento.');
+    // Verificação DUPLA de segurança
+    if (!isDescontoValido()) {
+      showToast(`ATENÇÃO: Desconto de ${desconto}% não permitido. Máximo: ${vendedorSelecionado?.desconto_maximo}%`, 'error');
       return;
     }
-    if (produtos.length === 0) {
-      alert('Adicione pelo menos um produto ao orçamento.');
+    if (!podeFinalizarPedido()) {
       return;
     }
     setShowConfirmation(true);
@@ -456,21 +461,21 @@ function OrcamentoForm({ darkMode = false }) {
     }
   };
 
+  // Função para converter data do formato DD/MM/YYYY para YYYY-MM-DD
+  const converterDataParaISO = (data) => {
+    if (!data) return '';
+    const [dia, mes, ano] = data.split('/');
+    return `${ano}-${mes}-${dia}`;
+  };
+
   // Handler para submit do orçamento
   const handleSalvar = async () => {
-    if (isLoading) return; // Evita múltiplos cliques
-    setIsLoading(true);
+    if (!isDescontoValido()) {
+      alert(`Desconto não permitido. Máximo: ${vendedorSelecionado?.desconto_maximo}%`);
+      return;
+    }
     
-    // Log para depuração
-    console.log('Cliente ao salvar:', cliente);
-    console.log('Campos do cliente:', {
-      cli_codigo: cliente?.cli_codigo,
-      cli_nome: cliente?.cli_nome,
-      codigo: cliente?.codigo,
-      nome: cliente?.nome,
-      CLI_CODIGO: cliente?.CLI_CODIGO,
-      CLI_NOME: cliente?.CLI_NOME
-    });
+    setIsLoading(true);
     
     try {
       // Obtém o nome do cliente formatado
@@ -483,7 +488,7 @@ function OrcamentoForm({ darkMode = false }) {
         tabela_codigo: String(tabela || ''),
         formapag_codigo: String(formaPagamento || ''),
         valor_total: Number(total),
-        data_orcamento: String(dataOrcamento || ''),
+        data_orcamento: converterDataParaISO(dataOrcamento),
         data_validade: String(validade || ''),
         observacao: String(observacao || ''),
         vendedor_codigo: String(vendedor || ''),
@@ -506,12 +511,13 @@ function OrcamentoForm({ darkMode = false }) {
       const response = await api.post('/orcamentos', payload);
       const data = response.data;
       
-      if (data.success) {
+      // Verifica se salvou com sucesso (adapta para diferentes formatos de resposta)
+      if (response.status === 200 || response.status === 201 || data.numero_orcamento || data.numero) {
         // Limpar o cache após salvar com sucesso
         await OrcamentoCache.limparTudo();
         
         setOrcamentoSalvo({
-          numero_orcamento: data.numero_orcamento,
+          numero_orcamento: data.numero_orcamento || data.numero || 'N/A',
           data: new Date().toLocaleDateString('pt-BR'),
           cliente: nomeCliente,
           valor_total: total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -520,12 +526,28 @@ function OrcamentoForm({ darkMode = false }) {
         // Não limpa o formulário aqui, apenas mantém o modal aberto
         // para permitir que o usuário veja as opções (imprimir, copiar, novo)
       } else {
-        console.error('Erro ao salvar orçamento:', data.message || 'Erro desconhecido');
-        alert('Erro ao salvar: ' + (data.message || 'Erro desconhecido'));
+        throw new Error(data.message || 'Erro ao salvar orçamento');
       }
-    } catch (err) {
-      console.error('Erro ao salvar orçamento:', err);
-      alert('Erro de conexão ao salvar orçamento: ' + (err.message || 'Erro desconhecido'));
+    } catch (error) {
+      console.error('Erro ao salvar orçamento:', error);
+      console.error('Detalhes do erro:', error.response?.data);
+      
+      let mensagemErro = 'Erro desconhecido';
+      
+      if (error.response?.data?.detail) {
+        // Se for um array de erros de validação
+        if (Array.isArray(error.response.data.detail)) {
+          mensagemErro = error.response.data.detail.map(err => err.msg).join(', ');
+        } else {
+          mensagemErro = error.response.data.detail;
+        }
+      } else if (error.response?.data?.message) {
+        mensagemErro = error.response.data.message;
+      } else if (error.message) {
+        mensagemErro = error.message;
+      }
+      
+      alert('Erro ao salvar: ' + mensagemErro);
     } finally {
       setIsLoading(false);
     }
@@ -568,7 +590,7 @@ function OrcamentoForm({ darkMode = false }) {
     if (orcamentoDoCache && location.state?.forcarCarregamento) {
       setCliente(orcamentoDoCache.cliente);
       setTabela(orcamentoDoCache.tabela || '');
-      setFormaPagamento(orcamentoDoCache.formaPagamento || '');
+      setFormaPagamento(orcamentoDoCache.formapag_codigo);
       setVendedor(orcamentoDoCache.vendedor || '');
       setValidade(orcamentoDoCache.validade || '');
       setEspecie(orcamentoDoCache.especie || '0');
@@ -675,6 +697,40 @@ function OrcamentoForm({ darkMode = false }) {
     showToast(`Produto "${novoProduto.descricao}" adicionado com sucesso`, 'success');
   };
 
+  // Função para buscar vendedores
+  useEffect(() => {
+    const fetchVendedores = async () => {
+      try {
+        const response = await api.get('/vendedores');
+        setVendedores(response.data);
+      } catch (error) {
+        console.error('Erro ao buscar vendedores:', error);
+      }
+    };
+    fetchVendedores();
+  }, []);
+
+  // Atualiza o vendedor selecionado quando mudar o vendedor
+  useEffect(() => {
+    const vendedorAtual = vendedores.find(v => v.codigo === vendedor);
+    setVendedorSelecionado(vendedorAtual);
+  }, [vendedor, vendedores]);
+
+  // Função para validar o desconto
+  const handleDescontoChange = (valor) => {
+    let novoDesconto = parseFloat(valor) || 0;
+    
+    // Força o limite máximo do vendedor
+    if (vendedorSelecionado) {
+      const maximo = parseFloat(vendedorSelecionado.desconto_maximo);
+      if (novoDesconto > maximo) {
+        novoDesconto = maximo;
+      }
+    }
+    
+    setDesconto(novoDesconto);
+  };
+
   // TODO: Buscar clientes, tabelas, formas de pagamento, vendedores, produtos via API
   // TODO: Implementar autocomplete e selects reais
 
@@ -700,6 +756,17 @@ function OrcamentoForm({ darkMode = false }) {
       setProdutos(orcamentoDoCache.produtos);
     }
   }, [orcamentoDoCache]);
+
+  const handleVendedorChange = (vendedorSelecionado) => {
+    if (typeof vendedorSelecionado === 'object') {
+      setVendedor(vendedorSelecionado.codigo);
+      setVendedorSelecionado(vendedorSelecionado);
+    } else {
+      setVendedor(vendedorSelecionado);
+      const vendedor = vendedores.find(v => v.codigo === vendedorSelecionado);
+      setVendedorSelecionado(vendedor);
+    }
+  };
 
   return (
     <div className={
@@ -740,7 +807,7 @@ function OrcamentoForm({ darkMode = false }) {
                 tabela={tabela} setTabela={setTabela}
                 formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento}
                 vendedor={vendedor} setVendedor={setVendedor}
-                dataOrcamento={dataOrcamento}
+                data={dataOrcamento}
                 validade={validade} setValidade={setValidade}
                 especie={especie} setEspecie={setEspecie}
                 desconto={desconto} setDesconto={setDesconto}
@@ -758,7 +825,7 @@ function OrcamentoForm({ darkMode = false }) {
             tabela={tabela} setTabela={setTabela}
             formaPagamento={formaPagamento} setFormaPagamento={setFormaPagamento}
             vendedor={vendedor} setVendedor={setVendedor}
-            dataOrcamento={dataOrcamento}
+            data={dataOrcamento}
             validade={validade} setValidade={setValidade}
             especie={especie} setEspecie={setEspecie}
             desconto={desconto} setDesconto={setDesconto}
@@ -1062,19 +1129,41 @@ function OrcamentoForm({ darkMode = false }) {
           
           {/* Linha de desconto */}
           <div className="flex justify-between items-center">
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
               <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium`}>Desconto:</span>
-              <input
-                type="number"
-                min={0}
-                step={0.01}
-                value={desconto}
-                onChange={e => setDesconto(parseFloat(e.target.value) || 0)}
-                className={`ml-2 w-24 px-2 py-1 rounded border focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${darkMode ? 'bg-gray-800 text-gray-100 border-gray-600' : 'bg-white text-gray-900 border-gray-300'}`}
-              />
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiPercent className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    max={vendedorSelecionado?.desconto_maximo || 100}
+                    value={desconto}
+                    onChange={e => {
+                      let valor = parseFloat(e.target.value) || 0;
+                      const maximo = vendedorSelecionado?.desconto_maximo || 100;
+                      if (valor > maximo) valor = maximo;
+                      setDesconto(valor);
+                    }}
+                    className={`w-24 px-3 py-2 rounded border text-right text-lg ${
+                      darkMode 
+                        ? 'bg-gray-700 text-white border-gray-600' 
+                        : 'bg-white text-gray-900 border-gray-300'
+                    }`}
+                  />
+                </div>
+                <span className={`${darkMode ? 'text-white' : 'text-gray-900'} text-lg`}>%</span>
+                {vendedorSelecionado && (
+                  <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    (Máx: {vendedorSelecionado.desconto_maximo}%)
+                  </span>
+                )}
+              </div>
             </div>
-            <span className={`${darkMode ? 'text-gray-100' : 'text-gray-900'} font-semibold`}>
-              {parseFloat(desconto).toLocaleString('pt-BR', {
+            <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} font-medium`}>
+              R$ {(subtotal * desconto / 100).toLocaleString('pt-BR', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
               })}
@@ -1085,7 +1174,7 @@ function OrcamentoForm({ darkMode = false }) {
           <div className="flex justify-between items-center border-t pt-2">
             <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'} font-bold text-lg`}>TOTAL:</span>
             <span className={`${darkMode ? 'text-blue-400' : 'text-blue-600'} font-bold text-xl`}>
-              {parseFloat(total).toLocaleString('pt-BR', {
+              {(subtotal - ((subtotal * desconto) / 100)).toLocaleString('pt-BR', {
                 style: 'currency',
                 currency: 'BRL',
                 minimumFractionDigits: 2,
@@ -1100,10 +1189,21 @@ function OrcamentoForm({ darkMode = false }) {
         <button
           type="button"
           onClick={handleAbrirConfirmacao}
-          className={`w-full max-w-md ${isLoading ? 'bg-blue-700' : 'bg-blue-600 hover:bg-blue-700'} text-white py-3 rounded-lg font-bold text-xl transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
-          disabled={!cliente || produtos.length === 0 || isLoading}
+          disabled={!podeFinalizarPedido()}
+          className={`w-full max-w-md ${
+            !isDescontoValido() 
+              ? 'bg-red-600 hover:bg-red-700' 
+              : isLoading 
+                ? 'bg-blue-700' 
+                : 'bg-blue-600 hover:bg-blue-700'
+          } text-white py-3 rounded-lg font-bold text-xl transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
         >
-          {isLoading ? (
+          {!isDescontoValido() ? (
+            <>
+              <FiX className="w-6 h-6" />
+              Desconto Acima do Permitido ({vendedorSelecionado?.desconto_maximo}%)
+            </>
+          ) : isLoading ? (
             <>
               <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -1319,6 +1419,75 @@ function OrcamentoForm({ darkMode = false }) {
           darkMode={darkMode}
           position="bottom-right"
         />
+      )}
+
+      {/* Modal de Confirmação - Produto Já Existente */}
+      {confirmacaoVisivel && produtoSelecionadoConfirmacao && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`${
+            darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+          } border-2 rounded-xl shadow-2xl w-full max-w-md p-6 mx-4`}>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${
+                  darkMode ? 'bg-yellow-900/30' : 'bg-yellow-100'
+                }`}>
+                  <FiAlertCircle className={`w-6 h-6 ${
+                    darkMode ? 'text-yellow-400' : 'text-yellow-600'
+                  }`} />
+                </div>
+                <h3 className={`text-xl font-bold ${
+                  darkMode ? 'text-yellow-400' : 'text-yellow-600'
+                }`}>
+                  Produto Já Adicionado
+                </h3>
+              </div>
+              <button
+                onClick={handleCancelarNavegacao}
+                className={`p-1 rounded-full transition-colors ${
+                  darkMode 
+                    ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <p className="mb-4">
+                O produto <strong>{produtoSelecionadoConfirmacao.pro_descricao || produtoSelecionadoConfirmacao.descricao}</strong> já está no pedido.
+              </p>
+              <p>
+                Deseja ir até o item para editar a quantidade?
+              </p>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancelarNavegacao}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  darkMode
+                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmarNavegacao}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  darkMode
+                    ? 'bg-blue-900/30 text-blue-400 hover:bg-blue-900/50'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                } flex items-center gap-2`}
+              >
+                <FiEdit className="w-5 h-5" />
+                Ir para o Item
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

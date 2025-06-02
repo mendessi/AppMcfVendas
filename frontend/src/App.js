@@ -411,15 +411,22 @@ function AppContent() {
               }}
             />
           </div>
-          
-          <div className="text-center mb-6">
-            <h2 className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'} mb-2`}>
-              Bem-vindo ao Visão360
-            </h2>
-            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Faça login para acessar sua área
-            </p>
-          </div>
+              
+      <div className="text-center mb-6">
+        <h2 className={`text-2xl font-bold ${darkMode ? 'text-green-400' : 'text-green-600'} mb-2`}>
+          Bem-vindo ao Visão360
+        </h2>
+        <p className={`text-base ${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-4`}>
+          App de Vendas e Gerencial
+        </p>  
+        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          Desenvolvido por: Solução Informática - Versao 1.0.0.0
+        </p>
+        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          Faça login para acessar sua área
+        </p>
+      </div>
+
           
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">

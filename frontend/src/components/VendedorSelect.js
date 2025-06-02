@@ -42,7 +42,7 @@ const VendedorSelect = ({ value, onChange, darkMode }) => {
             if (vendedorData) {
               console.log('[VENDEDORES] Dados do vendedor encontrados:', vendedorData);
               setVendedores([vendedorData]);
-              onChange(vendedorData.codigo); // Pré-selecionar o vendedor
+              onChange(vendedorData); // Enviar o objeto completo do vendedor
             } else {
               console.error('[VENDEDORES] Dados do vendedor não encontrados na resposta');
               setError('Dados do vendedor não encontrados');
@@ -74,9 +74,12 @@ const VendedorSelect = ({ value, onChange, darkMode }) => {
   return (
     <div className="w-full">
       <select
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={isLoading || isVendedor} // Desabilitar se for vendedor
+        value={value?.codigo || value || ''}
+        onChange={(e) => {
+          const vendedorSelecionado = vendedores.find(v => v.codigo === e.target.value);
+          onChange(vendedorSelecionado || e.target.value);
+        }}
+        disabled={isLoading || isVendedor}
         className={`w-full rounded-md ${
           darkMode
             ? "bg-gray-600 border-gray-500 text-white"
@@ -86,7 +89,7 @@ const VendedorSelect = ({ value, onChange, darkMode }) => {
         <option value="">{isLoading ? 'Carregando...' : 'Selecione um vendedor'}</option>
         {vendedores.map((vendedor) => (
           <option key={vendedor.codigo} value={vendedor.codigo}>
-            {vendedor.nome || `Vendedor ${vendedor.codigo}`}
+            {vendedor.nome || `Vendedor ${vendedor.codigo}`} {vendedor.desconto_maximo ? `(Máx: ${vendedor.desconto_maximo}%)` : ''}
           </option>
         ))}
       </select>

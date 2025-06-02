@@ -8,7 +8,7 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
   const [filteredProdutos, setFilteredProdutos] = useState([]);
 
   const handleBuscar = () => {
-    if (searchTerm.length >= 2 || searchTerm.length === 0) {
+    if (searchTerm.length >= 4 || searchTerm.length === 0) {
       fetchProdutos(searchTerm);
     }
   };
@@ -17,7 +17,7 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
     setLoading(true);
     try {
       const empresaCodigo = empresaSelecionada?.cli_codigo || empresaSelecionada?.codigo;
-      const url = busca && busca.length >= 2 ? `/relatorios/produtos?q=${encodeURIComponent(busca)}` : `/relatorios/produtos?q=`;
+      const url = busca && busca.length >= 4 ? `/relatorios/produtos?q=${encodeURIComponent(busca)}` : `/relatorios/produtos?q=`;
       
       const response = await api.get(url);
       const data = response.data;
@@ -69,20 +69,26 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
       <div className="mb-6 flex gap-2">
         <input
           type="text"
-          placeholder="Buscar por código ou descrição..."
+          placeholder="Digite no mínimo 4 letras para buscar..."
           className={`flex-1 p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "bg-white border-gray-300 text-gray-700"}`}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleBuscar(); }}
+          onKeyDown={e => { if (e.key === 'Enter' && (searchTerm.length >= 4 || searchTerm.length === 0)) handleBuscar(); }}
         />
         <button
           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
           onClick={handleBuscar}
-          disabled={loading || searchTerm.length < 2}
+          disabled={loading || (searchTerm.length > 0 && searchTerm.length < 4)}
         >
           Buscar
         </button>
       </div>
+
+      {searchTerm.length > 0 && searchTerm.length < 4 && (
+        <div className={`mb-4 text-sm ${darkMode ? "text-yellow-300" : "text-yellow-600"}`}>
+          Digite no mínimo 4 letras para iniciar a busca
+        </div>
+      )}
 
       {/* Versão para desktop */}
       <div className="hidden md:block">

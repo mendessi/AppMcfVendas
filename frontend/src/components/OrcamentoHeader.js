@@ -7,34 +7,54 @@ import FormaPagamentoSelect from './FormaPagamentoSelect';
 
 const OrcamentoHeader = ({
   darkMode,
-  orcamento = {},
+  orcamento,
   setOrcamento,
-  // Props individuais para compatibilidade
+  tabelas,
+  formasPagamento,
+  vendedores,
+  onClienteSelect,
+  isUnifiedMode = false,
+  // Props para modo não unificado
   cliente,
   setCliente,
+  data,
+  setData,
+  validade,
+  setValidade,
   tabela,
   setTabela,
   formaPagamento,
   setFormaPagamento,
   vendedor,
   setVendedor,
-  dataOrcamento,
-  validade,
-  setValidade,
-  especie,
-  setEspecie,
   desconto,
   setDesconto,
   observacao,
   setObservacao,
-  ESPECIE_OPCOES,
-  tabelas = [],
-  formasPagamento = [],
-  vendedores = [],
-  onClienteSelect
+  ESPECIE_OPCOES
 }) => {
-  // Determina se está usando o modo unificado (setOrcamento) ou props individuais
-  const isUnifiedMode = !!setOrcamento;
+  
+  // Obtém os valores corretos dependendo do modo
+  const clienteValue = isUnifiedMode 
+    ? (orcamento?.cliente || null)
+    : (cliente || null);
+  const clienteNome = clienteValue ? (typeof clienteValue === 'string' ? clienteValue : (clienteValue.nome || '')) : '';
+  const validadeValue = isUnifiedMode ? orcamento.validade : validade;
+  const tabelaValue = isUnifiedMode ? (orcamento.tabela_preco || '') : (tabela || '');
+  const formaPagamentoValue = isUnifiedMode ? (orcamento.forma_pagamento || '') : (formaPagamento || '');
+  const vendedorValue = isUnifiedMode ? (orcamento.vendedor || '') : (vendedor || '');
+  const descontoValue = isUnifiedMode ? (orcamento.desconto || 0) : (desconto || 0);
+  const observacaoValue = isUnifiedMode ? (orcamento.observacao || '') : (observacao || '');
+
+  // Adiciona useEffect para monitorar mudanças
+  React.useEffect(() => {
+    console.log('OrcamentoHeader - Estado atual:', {
+      orcamento,
+      descontoValue,
+      produtos: orcamento?.produtos,
+      subtotal: orcamento?.produtos?.reduce((total, produto) => total + (produto.valor_total || 0), 0) || 0
+    });
+  }, [orcamento, descontoValue]);
 
   // Funções auxiliares para lidar com as mudanças
   const handleClienteChange = (value) => {
@@ -97,14 +117,18 @@ const OrcamentoHeader = ({
     }
   };
 
-  const handleVendedorChange = (vendedorCodigo) => {
+  const handleVendedorChange = (vendedorSelecionado) => {
     if (isUnifiedMode) {
       setOrcamento(prev => ({
         ...prev,
-        vendedor: vendedorCodigo
+        vendedor: typeof vendedorSelecionado === 'object' ? vendedorSelecionado.codigo : vendedorSelecionado
       }));
     } else if (setVendedor) {
-      setVendedor(vendedorCodigo);
+      if (typeof vendedorSelecionado === 'object') {
+        setVendedor(vendedorSelecionado.codigo);
+      } else {
+        setVendedor(vendedorSelecionado);
+      }
     }
   };
 
@@ -120,14 +144,31 @@ const OrcamentoHeader = ({
   };
 
   const handleDescontoChange = (value) => {
-    const descontoValue = parseFloat(value) || 0;
+    console.log('handleDescontoChange - Valor recebido:', value);
+    const novoDescontoValue = parseFloat(value) || 0;
+    
+    // Calcula o subtotal
+    const subtotal = orcamento?.produtos?.reduce((total, produto) => total + (produto.valor_total || 0), 0) || 0;
+    console.log('handleDescontoChange - Subtotal calculado:', subtotal);
+    
+    // Calcula o valor do desconto
+    const valorDesconto = (subtotal * novoDescontoValue) / 100;
+    console.log('handleDescontoChange - Valor do desconto calculado:', valorDesconto);
+
     if (isUnifiedMode) {
-      setOrcamento(prev => ({
-        ...prev,
-        desconto: descontoValue
-      }));
+      console.log('handleDescontoChange - Modo unificado - Atualizando orçamento');
+      setOrcamento(prev => {
+        const novo = {
+          ...prev,
+          desconto: novoDescontoValue,
+          valor_desconto: valorDesconto
+        };
+        console.log('handleDescontoChange - Novo estado do orçamento:', novo);
+        return novo;
+      });
     } else if (setDesconto) {
-      setDesconto(descontoValue);
+      console.log('handleDescontoChange - Modo não unificado - Atualizando desconto');
+      setDesconto(novoDescontoValue);
     }
   };
 
@@ -153,17 +194,20 @@ const OrcamentoHeader = ({
     }
   };
 
-  // Obtém os valores corretos dependendo do modo
-  const clienteValue = isUnifiedMode 
-    ? (orcamento?.cliente || null)
-    : (cliente || null);
-  const clienteNome = clienteValue ? (typeof clienteValue === 'string' ? clienteValue : (clienteValue.nome || '')) : '';
-  const validadeValue = isUnifiedMode ? orcamento.validade : validade;
-  const tabelaValue = isUnifiedMode ? (orcamento.tabela_preco || '') : (tabela || '');
-  const formaPagamentoValue = isUnifiedMode ? (orcamento.forma_pagamento || '') : (formaPagamento || '');
-  const vendedorValue = isUnifiedMode ? (orcamento.vendedor || '') : (vendedor || '');
-  const descontoValue = isUnifiedMode ? (orcamento.desconto || 0) : (desconto || 0);
-  const observacaoValue = isUnifiedMode ? (orcamento.observacao || '') : (observacao || '');
+  const calcularValorDesconto = () => {
+    const subtotal = orcamento?.produtos?.reduce((total, produto) => total + (produto.valor_total || 0), 0) || 0;
+    const valorDesconto = (subtotal * descontoValue) / 100;
+    console.log('calcularValorDesconto:', {
+      subtotal,
+      descontoValue,
+      valorDesconto,
+      produtos: orcamento?.produtos
+    });
+    return valorDesconto;
+  };
+
+  // Adiciona o campo para mostrar o valor em reais
+  const valorDescontoReais = calcularValorDesconto().toFixed(2);
 
   return (
     <div className={`p-4 rounded-lg ${
@@ -202,8 +246,8 @@ const OrcamentoHeader = ({
               <FiCalendar className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
             </div>
             <input
-              type="date"
-              value={isUnifiedMode ? orcamento.data : dataOrcamento}
+              type="text"
+              value={isUnifiedMode ? orcamento.data : (data || '')}
               disabled
               className={`pl-10 w-full rounded-md ${
                 darkMode
@@ -227,8 +271,10 @@ const OrcamentoHeader = ({
             </div>
             <input
               type="date"
-              value={validadeValue}
+              value={validadeValue || ''}
               onChange={(e) => handleValidadeChange(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+              placeholder="dd/mm/aaaa"
               className={`pl-10 w-full rounded-md ${
                 darkMode
                   ? "bg-gray-600 border-gray-500 text-white"
@@ -287,22 +333,30 @@ const OrcamentoHeader = ({
           }`}>
             Desconto (%)
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FiPercent className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiPercent className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
+              </div>
+              <input
+                type="number"
+                min="0"
+                max={vendedorValue?.desconto_maximo || 100}
+                value={descontoValue}
+                onChange={(e) => {
+                  let valor = parseFloat(e.target.value) || 0;
+                  const maximo = vendedorValue?.desconto_maximo || 100;
+                  if (valor > maximo) valor = maximo;
+                  handleDescontoChange(valor);
+                }}
+                className={`pl-10 w-full rounded-md ${
+                  darkMode
+                    ? "bg-gray-600 border-gray-500 text-white"
+                    : "bg-white border-gray-300 text-gray-700"
+                }`}
+              />
             </div>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={descontoValue}
-              onChange={(e) => handleDescontoChange(e.target.value)}
-              className={`pl-10 w-full rounded-md ${
-                darkMode
-                  ? "bg-gray-600 border-gray-500 text-white"
-                  : "bg-white border-gray-300 text-gray-700"
-              }`}
-            />
+            <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>%</span>
           </div>
         </div>
 

@@ -1,47 +1,42 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-# Comentando imports problemáticos
-# import mock_response
-# Importar o router de mock para teste sem CORS
-# from mock_response import mock_router
-# Importar o router de informações da empresa
-from empresa_info import router as empresa_info_router
-# Importar o router de relatórios
-from relatorios import router as relatorios_router
-# Importar o router de teste de empresa
-# from teste_empresa import router as teste_empresa_router
-# Importar o router de teste de seleção
-# from teste_selecionar import router as teste_selecionar_router
-# Importar o router de teste de cabeçalhos
-# from teste_cabecalhos import router as teste_cabecalhos_router
-# Importar o router de teste de conexão
-# from teste_conexao import router as teste_conexao_router
-# Importar o router de teste empresa CRUD
-# from teste_empresa_crud import router as teste_empresa_crud_router
-# Importar o router de teste de seleção com session
-# from teste_selecao_session import router as teste_selecao_session_router
-# Importar o router de teste session simples
-# from teste_session_simples import router as teste_session_simples_router
-# Importar o router de teste de conexão de empresa
-# from teste_conexao_api import router as teste_conexao_api_router
-# Importar o router de informações detalhadas da empresa
-from empresa_info_detalhada import router as empresa_info_detalhada_router
-# Importar o router de teste SQL da empresa
-# from teste_sql_empresa import router as teste_sql_empresa_router
-from typing import List, Optional, Dict, Any
-import models
-import database
-from pydantic import BaseModel
-import uvicorn
-import logging
 import os
 import sys
-# Importar o router de orçamentos
-from orcamento_router import router as orcamento_router
-from fastapi import FastAPI
+import json
+import logging
+import uvicorn
+from fastapi import FastAPI, Depends, HTTPException, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import Session
 from sqlalchemy import text
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+from datetime import datetime, date
+from decimal import Decimal
+import fdb
+import jwt
+from jose import JWTError
+from auth import login, get_current_user
+from empresa_manager import selecionar_empresa, get_empresa_atual, EmpresaData, EmpresaSelect
+from empresa_manager_corrigido import get_empresa_connection
+import models
+import database
+from starlette.middleware.base import BaseHTTPMiddleware
+
+# Importar o router de orçamentos
+from orcamento_router import router as orcamento_router
+
+# Importar o router de autenticação
+from auth import router as auth_router
+
+# Importar o router de informações da empresa
+from empresa_info import router as empresa_info_router
+
+# Importar o router de relatórios
+from relatorios import router as relatorios_router
+
+# Importar o router de informações detalhadas da empresa
+from empresa_info_detalhada import router as empresa_info_detalhada_router
 
 # Função para obter a sessão do banco de dados
 def get_db():
@@ -1057,20 +1052,39 @@ async def listar_formas_pagamento(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/vendedores")
-async def listar_vendedores(db: Session = Depends(get_db)):
+async def listar_vendedores(request: Request):
     try:
+        # Usar a conexão direta do Firebird ao invés de SQLAlchemy
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        
         query = """
             SELECT 
                 VEN_CODIGO as codigo,
-                VEN_NOME as nome
+                VEN_NOME as nome,
+                VEN_DESC_MAXIMO as desconto_maximo
             FROM VENDEDOR
             ORDER BY VEN_NOME
         """
-        result = await db.execute(text(query))
-        vendedores = result.fetchall()
-        return [dict(vendedor) for vendedor in vendedores]
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        
+        vendedores = []
+        for row in rows:
+            vendedor = {
+                "codigo": str(row[0]).strip() if row[0] else "",
+                "nome": str(row[1]).strip() if row[1] else "",
+                "desconto_maximo": float(row[2] or 0)
+            }
+            vendedores.append(vendedor)
+        
+        return vendedores
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()
 
 if __name__ == "__main__":
     import argparse

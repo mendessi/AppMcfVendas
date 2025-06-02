@@ -9,6 +9,7 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showWarning, setShowWarning] = useState(false);
   const wrapperRef = useRef(null);
 
   console.log('Estado atual:', { searchTerm, suggestions: suggestions.length, isLoading, showSuggestions });
@@ -27,22 +28,25 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
     const value = e.target.value;
     console.log('Input mudou para:', value);
     setSearchTerm(value);
-    setShowSuggestions(true);
+    setShowWarning(value.length > 0 && value.length < 4);
+    setShowSuggestions(value.length >= 4);
   };
 
   const handleInputFocus = () => {
     console.log('Campo focado, termo atual:', searchTerm);
-    // Se já há um termo de pesquisa e sugestões, mostrar as sugestões
-    if (searchTerm.length >= 2 && suggestions.length > 0) {
+    if (searchTerm.length >= 4 && suggestions.length > 0) {
       console.log('Mostrando sugestões existentes');
       setShowSuggestions(true);
+    }
+    if (searchTerm.length > 0 && searchTerm.length < 4) {
+      setShowWarning(true);
     }
   };
 
   useEffect(() => {
     console.log('useEffect disparado, searchTerm:', searchTerm);
     const searchProdutos = async () => {
-      if (searchTerm.length < 2) {
+      if (searchTerm.length < 4) {
         console.log('Termo muito curto, limpando sugestões');
         setSuggestions([]);
         return;
@@ -136,7 +140,7 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
           value={searchTerm}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
-          placeholder="Digite para buscar produtos..."
+          placeholder="Digite no mínimo 4 letras para buscar produtos..."
           className={`w-full p-2 pl-10 rounded-md ${
             darkMode
               ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
@@ -151,6 +155,12 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
           )}
         </div>
       </div>
+
+      {showWarning && (
+        <div className={`mt-1 text-sm ${darkMode ? "text-yellow-300" : "text-yellow-600"}`}>
+          Digite no mínimo 4 letras para iniciar a busca
+        </div>
+      )}
 
       {console.log('Verificando se deve mostrar sugestões:', { showSuggestions, suggestionsLength: suggestions.length })}
       
@@ -212,7 +222,7 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
                         Mínimo: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_descprovlr || 0)}
                       </span>
                       <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Estoque: {produto.pro_quantidade || 0} {produto.UNI_CODIGO || ''}
+                        Estoque: {produto.estoque || produto.pro_quantidade || 0} {produto.unidade || produto.UNI_CODIGO || ''}
                       </span>
                     </div>
                     <button
@@ -239,7 +249,7 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
         </div>
       )}
 
-      {showSuggestions && suggestions.length === 0 && searchTerm.length >= 2 && !isLoading && (
+      {showSuggestions && suggestions.length === 0 && searchTerm.length >= 4 && !isLoading && (
         <div className={`absolute z-50 w-full mt-1 rounded-md shadow-lg ${darkMode ? "bg-gray-800" : "bg-white"} border ${darkMode ? "border-gray-600" : "border-gray-200"} p-2`}>
           <span className={darkMode ? "text-gray-300" : "text-gray-600"}>Nenhum produto encontrado</span>
         </div>

@@ -22,3 +22,4 @@ class OrcamentoCreate(BaseModel):
     especie: str
     desconto: float
     produtos: List[ProdutoOrcamento]
+    empresa: str

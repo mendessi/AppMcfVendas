@@ -1111,13 +1111,14 @@ async def listar_vendedores(request: Request):
                 status_code=500,
                 detail="Erro ao conectar ao banco de dados"
             )
-            
+        
         cursor = conn.cursor()
         
         sql = """
             SELECT 
                 VEN_CODIGO as codigo,
-                VEN_NOME as nome
+                VEN_NOME as nome,
+                VEN_DESC_MAXIMO as desconto_maximo
             FROM VENDEDOR
             WHERE VEN_ATIVO = 0 OR VEN_ATIVO IS NULL
             ORDER BY VEN_NOME
@@ -1131,10 +1132,11 @@ async def listar_vendedores(request: Request):
         for row in rows:
             vendedor = {
                 "codigo": str(row[0]).strip() if row[0] else "",
-                "nome": str(row[1]).strip() if row[1] else ""
+                "nome": str(row[1]).strip() if row[1] else "",
+                "desconto_maximo": float(row[2] or 0)
             }
             vendedores.append(vendedor)
-            
+        
         log.info(f"[VENDEDORES] {len(vendedores)} vendedores encontrados")
         return vendedores
         
@@ -1220,13 +1222,17 @@ async def buscar_produtos(request: Request, q: str = ""):
                 P.PRO_QUANTIDADE,
                 P.PRO_IMAGEM
             FROM PRODUTO P
-            WHERE UPPER(P.PRO_DESCRICAO) CONTAINING UPPER(?)
-            OR CAST(P.PRO_CODIGO AS VARCHAR(20)) CONTAINING ?
-            OR UPPER(P.PRO_MARCA) CONTAINING UPPER(?)
+            WHERE (UPPER(P.PRO_DESCRICAO) LIKE UPPER(?)
+            OR CAST(P.PRO_CODIGO AS VARCHAR(20)) LIKE ?
+            OR UPPER(P.PRO_MARCA) LIKE UPPER(?))
+            AND P.ITEM_TABLET = 'S'
             ORDER BY P.PRO_DESCRICAO
         """
         
-        cursor.execute(sql, (q, q, q))
+        # Adiciona % no início e fim se não existir
+        search_term = q if q.startswith('%') else f"%{q}%"
+        
+        cursor.execute(sql, (search_term, search_term, search_term))
         rows = cursor.fetchall()
         
         produtos = []

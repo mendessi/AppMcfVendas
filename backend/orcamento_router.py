@@ -64,6 +64,12 @@ async def criar_orcamento(request: Request, orcamento: OrcamentoCreate):
         cursor = conn.cursor()
         try:
             conn.begin()
+            # Calcular o valor do desconto baseado no valor informado
+            subtotal = sum(item.valor_total for item in orcamento.produtos)
+            valor_desconto = orcamento.desconto if orcamento.desconto else 0
+            
+            valor_total = subtotal - valor_desconto
+
             # Buscar próximo número de orçamento na tabela CODIGO
             cursor.execute("SELECT COD_PROXVALOR FROM CODIGO WHERE COD_TABELA = 'ORCAMENT' AND COD_NOMECAMPO = 'ECF_NUMERO'")
             resultado = cursor.fetchone()
@@ -95,11 +101,11 @@ async def criar_orcamento(request: Request, orcamento: OrcamentoCreate):
                 vazio_para_none(orcamento.cliente_codigo),
                 vazio_para_none(orcamento.nome_cliente),
                 data_orcamento,
-                vazio_para_none(orcamento.valor_total),
+                valor_total,
                 vazio_para_none(orcamento.formapag_codigo),
                 vazio_para_none(orcamento.tabela_codigo),
                 vazio_para_none(orcamento.vendedor_codigo),
-                vazio_para_none(orcamento.desconto or 0),
+                valor_desconto,
                 data_validade,
                 vazio_para_none(orcamento.observacao),
                 0,  # PAR_PARAMETRO = 0 (Em análise)

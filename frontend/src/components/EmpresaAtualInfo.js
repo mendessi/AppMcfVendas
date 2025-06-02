@@ -10,8 +10,27 @@ const EmpresaAtualInfo = ({ darkMode = false }) => {
   const [error, setError] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
 
-  // URL da API
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+  // URL da API - Deteção automática de ambiente
+  const getApiUrl = () => {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    
+    // Verificar se estamos em localhost (desenvolvimento)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8000';
+    }
+    
+    // Verificação específica para mendessolucao.site
+    if (hostname.includes('mendessolucao.site')) {
+      return `${protocol}//api.mendessolucao.site`;
+    }
+    
+    // Se chegar aqui, estamos em produção (domínio desconhecido)
+    // Assumimos que a API está em 'api.' + mesmo domínio
+    return `${protocol}//api.${hostname}`;
+  };
+  
+  const API_URL = getApiUrl();
 
   useEffect(() => {
     const fetchEmpresaInfo = async () => {

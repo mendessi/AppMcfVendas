@@ -1,43 +1,57 @@
 import axios from 'axios';
 
-// Detectar se estamos em acesso externo (Cloudflare ou Ngrok)
-const isExternalAccess = 
-  window.location.hostname.includes('mendessolucao.site') || 
-  window.location.hostname.includes('ngrok.io');
+// Função para obter a URL da API baseada no ambiente
+const getApiUrl = () => {
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  
+  // Log para debug
+  console.log('Ambiente detectado:', {
+    hostname,
+    protocol,
+    userAgent: navigator.userAgent,
+    isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  });
 
-// Detectar se estamos em dispositivo móvel
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-  navigator.userAgent
-);
+  // Verificar se estamos em localhost (desenvolvimento)
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    const apiUrl = 'http://localhost:8000';
+    console.log('Desenvolvimento local, usando:', apiUrl);
+    return apiUrl;
+  }
+  
+  // Se estiver em ngrok (para tunelamento)
+  if (hostname.includes('ngrok.io')) {
+    // Usar o mesmo protocolo (http ou https)
+    const apiUrl = `${protocol}//api.${hostname.split('.').slice(1).join('.')}`;
+    console.log('Ngrok detectado, usando:', apiUrl);
+    return apiUrl;
+  }
+  
+  // Verificação específica para mendessolucao.site
+  if (hostname.includes('mendessolucao.site')) {
+    const apiUrl = `${protocol}//api.mendessolucao.site`;
+    console.log('Produção Mendes detectada, usando:', apiUrl);
+    return apiUrl;
+  }
 
-// Determinar a URL base da API baseado no ambiente
-let API_URL;
+  // Se chegar aqui, estamos em produção (domínio desconhecido)
+  // Assumimos que a API está em 'api.' + mesmo domínio
+  const apiUrl = `${protocol}//api.${hostname}`;
+  console.log('Produção detectada, usando:', apiUrl);
+  return apiUrl;
+};
 
-// Se estiver acessando externamente, SEMPRE usar o domínio da API
-if (isExternalAccess) {
-  // Forçar para o domínio da API em produção
-  API_URL = 'https://api.mendessolucao.site';
-  console.log('Acesso externo detectado, usando API em:', API_URL);
-}
-// Caso contrário, usar a URL padrão para desenvolvimento local
-else {
-  // Forçar sempre a porta 8000 para desenvolvimento local
-  API_URL = 'http://localhost:8000';
-  console.log('Ambiente de desenvolvimento detectado, usando API em:', API_URL);
-}
-
-// Log para debugging
-console.log(`Configurando API com base URL: ${API_URL} (${window.location.hostname})`);
-
-// Certificar-se de que a URL não termine com uma barra
-if (API_URL.endsWith('/')) {
-  API_URL = API_URL.slice(0, -1);
-}
+// Obter a URL base da API
+const API_URL = getApiUrl();
 
 // Criar uma instância do axios com configurações padrão
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || API_URL,
-  timeout: 30000 // Aumentado de 10s para 30s para operações do Firebird
+  baseURL: API_URL,
+  timeout: 30000, // 30 segundos
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
 // Interceptador para adicionar o token em todas as requisições

@@ -1,11 +1,21 @@
 // Configuração da API
 const getApiUrl = () => {
-    // Se estamos acessando via Cloudflare Tunnel
-    if (window.location.hostname === 'app.mendessolucao.site') {
-        return 'https://api.mendessolucao.site';
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+    
+    // Verificar se estamos em localhost (desenvolvimento)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:8000';
     }
-    // Padrão para desenvolvimento local
-    return process.env.REACT_APP_API_URL || 'http://localhost:8000';
+    
+    // Verificação específica para mendessolucao.site
+    if (hostname.includes('mendessolucao.site')) {
+        return `${protocol}//api.mendessolucao.site`;
+    }
+    
+    // Se chegar aqui, estamos em produção (domínio desconhecido)
+    // Assumimos que a API está em 'api.' + mesmo domínio
+    return `${protocol}//api.${hostname}`;
 };
 
 export const API_URL = getApiUrl();

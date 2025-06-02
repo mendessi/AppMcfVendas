@@ -113,9 +113,19 @@ origins = [
     "http://127.0.0.1:5500",
     "file://",  # Para testes locais com arquivo HTML
     
-    # URLs do Cloudflare Tunnel
+    # URLs do Cloudflare Tunnel - HTTPS
     "https://api.mendessolucao.site",
-    "https://app.mendessolucao.site"
+    "https://app.mendessolucao.site",
+    "https://meuapp.mendessolucao.site",
+    "https://www.mendessolucao.site",
+    "https://mendessolucao.site",
+    
+    # Permitir também HTTP caso necessário
+    "http://api.mendessolucao.site",
+    "http://app.mendessolucao.site",
+    "http://meuapp.mendessolucao.site",
+    "http://www.mendessolucao.site",
+    "http://mendessolucao.site"
 ]
 
 # Middleware personalizado para garantir que CORS funcione em todas as respostas
@@ -123,9 +133,27 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         # Obter a origem da requisição
         origin = request.headers.get("origin", "*")
-        # Tratar a origem "null" (arquivo HTML local)
-        if origin.lower() == "null":
-            origin = "*"
+        
+        # Lista de domínios permitidos
+        allowed_domains = [
+            "mendessolucao.site",
+            "api.mendessolucao.site", 
+            "app.mendessolucao.site",
+            "meuapp.mendessolucao.site",
+            "ngrok.io",
+            "localhost",
+            "127.0.0.1"
+        ]
+        
+        # Verificar se a origem é permitida
+        origin_allowed = any(domain in origin for domain in allowed_domains) if origin != "*" else True
+        
+        # Se for produção ou origem permitida, usar a origem específica
+        if origin_allowed and origin != "*":
+            cors_origin = origin
+        else:
+            # Para desenvolvimento ou origens não listadas
+            cors_origin = "*"
             
         # Para requisições OPTIONS (preflight), responder imediatamente
         if request.method == "OPTIONS":
@@ -133,10 +161,11 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
                 status_code=200,
                 content="",
                 headers={
-                    "Access-Control-Allow-Origin": origin,
-                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-                    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-empresa-codigo",
-                    "Access-Control-Allow-Credentials": "true"
+                    "Access-Control-Allow-Origin": cors_origin,
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-empresa-codigo, Accept, Origin, X-Requested-With",
+                    "Access-Control-Allow-Credentials": "true" if cors_origin != "*" else "false",
+                    "Access-Control-Max-Age": "86400"  # 24 horas de cache
                 }
             )
             return response
@@ -145,11 +174,11 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         
         # Garantir que os cabeçalhos CORS estejam presentes
-        response.headers["Access-Control-Allow-Origin"] = origin
-        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, x-empresa-codigo, x-empresa-codigo, Origin, Accept, X-Requested-With"
-        response.headers["Access-Control-Allow-Credentials"] = "true"
-        response.headers["Access-Control-Max-Age"] = "3600"  # Cache para reduzir preflight requests (bom para mobile)
+        response.headers["Access-Control-Allow-Origin"] = cors_origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, x-empresa-codigo, Accept, Origin, X-Requested-With"
+        response.headers["Access-Control-Allow-Credentials"] = "true" if cors_origin != "*" else "false"
+        response.headers["Access-Control-Max-Age"] = "86400"  # Cache de 24h para reduzir preflight requests
         
         return response
 
@@ -205,6 +234,15 @@ app.include_router(orcamento_router, tags=["Orçamentos"])
 @app.get("/")
 async def root():
     return {"message": "API de Força de Vendas funcionando!", "version": "1.0.0"}
+
+@app.get("/health")
+async def health_check():
+    """Endpoint de health check para verificar se a API está acessível"""
+    return {
+        "status": "ok",
+        "timestamp": datetime.now().isoformat(),
+        "message": "API está funcionando corretamente"
+    }
 
 @app.get("/teste-cors")
 async def teste_cors():

@@ -14,6 +14,9 @@ def setup_cors(app: FastAPI):
         "http://127.0.0.1:3000",
         "http://localhost:3001",
         "http://127.0.0.1:3001",
+        "https://meuapp.mendessolucao.site",
+        "http://meuapp.mendessolucao.site",
+        "https://*.mendessolucao.site",  # Para permitir qualquer subdomínio
     ]
     
     # Adicione o middleware CORS padrão do FastAPI

@@ -165,11 +165,8 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
       {console.log('Verificando se deve mostrar sugestões:', { showSuggestions, suggestionsLength: suggestions.length })}
       
       {showSuggestions && suggestions.length > 0 && (
-        <div className={`absolute z-50 w-full mt-1 rounded-md shadow-lg ${darkMode ? "bg-gray-800" : "bg-white"} border ${darkMode ? "border-gray-600" : "border-gray-200"}`}>
-          {console.log('Renderizando lista de sugestões com', suggestions.length, 'produtos')}
-          <ul className={`max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm ${
-            darkMode ? "bg-gray-800" : "bg-white"
-          }`}>
+        <div className={`absolute z-50 w-full mt-1 rounded-md shadow-lg ${darkMode ? "bg-gray-800" : "bg-white"} border ${darkMode ? "border-gray-600" : "border-gray-200"}`} style={{maxHeight: '90vh'}}>
+          <ul className="py-1 overflow-auto max-h-[80vh]">
             {suggestions.map((produto) => {
               console.log('Renderizando produto:', produto.pro_codigo, produto.pro_descricao);
               const jaAdicionado = isProdutoJaAdicionado(produto);
@@ -178,13 +175,14 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
               return (
                 <li
                   key={produto.pro_codigo}
-                  className={`cursor-pointer select-none relative py-3 px-4 ${
-                    jaAdicionado 
-                      ? (darkMode ? "bg-green-900 hover:bg-green-800 text-green-100" : "bg-green-50 hover:bg-green-100 text-green-900")
+                  className={`cursor-pointer select-none relative py-4 px-4 ${
+                    jaAdicionado
+                      ? (darkMode ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-900")
                       : (darkMode ? "hover:bg-gray-700 text-white" : "hover:bg-gray-100 text-gray-900")
                   }`}
                   onMouseDown={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     console.log('MouseDown detectado:', produto);
                     handleProdutoClick(produto);
                   }}
@@ -197,34 +195,40 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
                 >
                   <div className="flex flex-col">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-base">{produto.pro_descricao}</span>
+                      <span className="font-medium text-base line-clamp-2">{produto.pro_descricao}</span>
                       {jaAdicionado && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 ml-1 flex-shrink-0">
                           <FiCheck className="w-4 h-4 text-green-500" />
                           <span className="text-xs font-medium text-green-600">Adicionado</span>
                         </div>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Código: {produto.pro_codigo}
+                    
+                    {/* Layout responsivo para informações do produto */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <span className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                        <span className="font-semibold">Código:</span> {produto.pro_codigo}
                       </span>
-                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Marca: {produto.PRO_MARCA || '-'}
+                      <span className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                        <span className="font-semibold">Marca:</span> {produto.PRO_MARCA || '-'}
                       </span>
-                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        À Vista: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_venda)}
+                      <span className={`${darkMode ? "text-gray-200 font-semibold" : "text-gray-800 font-semibold"}`}>
+                        <span>À Vista:</span> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_venda)}
                       </span>
-                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Preço 2: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_vendapz || 0)}
+                      <span className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                        <span className="font-semibold">Preço 2:</span> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_vendapz || 0)}
                       </span>
-                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Mínimo: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_descprovlr || 0)}
+                      <span className={`${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                        <span className="font-semibold">Mínimo:</span> {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(produto.pro_descprovlr || 0)}
                       </span>
-                      <span className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                        Estoque: {produto.estoque || produto.pro_quantidade || 0} {produto.unidade || produto.UNI_CODIGO || ''}
+                      <span>
+                        <span className="font-semibold">Estoque:</span>
+                        <span className={`ml-1 ${(produto.estoque <= 0 || produto.pro_quantidade <= 0) ? "text-red-500 font-bold" : (darkMode ? "text-gray-300" : "text-gray-600")}`}>
+                          {produto.estoque || produto.pro_quantidade || 0} {produto.unidade || produto.UNI_CODIGO || ''}
+                        </span>
                       </span>
                     </div>
+                    
                     <button
                       type="button"
                       onClick={(e) => {
@@ -233,13 +237,13 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
                         console.log('BOTÃO CLICADO - Produto:', produto);
                         handleProdutoClick(produto);
                       }}
-                      className={`mt-2 px-2 py-1 rounded text-xs ${
+                      className={`mt-2 px-4 py-2 rounded text-sm font-medium ${
                         jaAdicionado
                           ? "bg-orange-500 hover:bg-orange-600 text-white"
                           : "bg-blue-500 hover:bg-blue-600 text-white"
                       }`}
                     >
-                      {jaAdicionado ? "Ir para produto" : "Adicionar"}
+                      {jaAdicionado ? "Ir para produto" : "Adicionar ao pedido"}
                     </button>
                   </div>
                 </li>

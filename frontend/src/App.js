@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import './App.css';
-import { API_URL, AUTH_CONFIG, ROUTES } from './config';
+import { API_URL, AUTH_CONFIG, ROUTES, APP_VERSION } from './config';
+import { checkAppVersion } from './utils/versionCheck';
+import UpdateNotification from './components/UpdateNotification';
 
 // Ícones
 import { FiMenu, FiX, FiHome, FiUsers, FiPackage, FiShoppingCart, FiPlusCircle, FiLogOut, FiMoon, FiSun, FiGrid, FiClipboard } from 'react-icons/fi';
@@ -40,6 +42,8 @@ function AppContent() {
   const [darkMode, setDarkMode] = useState(true); // Modo dark ativado por padrão
   const [showVendedorWelcome, setShowVendedorWelcome] = useState(false);
   const [vendedorWelcomeData, setVendedorWelcomeData] = useState(null);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [storedVersion, setStoredVersion] = useState('');
 
   // Adicionar listener para ajustar o menu quando a tela for redimensionada
   useEffect(() => {
@@ -49,6 +53,23 @@ function AppContent() {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Verificar atualizações da aplicação
+  useEffect(() => {
+    try {
+      console.log('Verificando atualizações da aplicação, versão atual:', APP_VERSION);
+      const { needsUpdate, storedVersion: oldVersion } = checkAppVersion();
+      if (needsUpdate) {
+        console.log(`Atualização disponível: ${oldVersion} -> ${APP_VERSION}`);
+        setUpdateAvailable(true);
+        setStoredVersion(oldVersion);
+      } else {
+        console.log('Aplicação está atualizada na versão:', APP_VERSION);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar atualizações:', error);
+    }
   }, []);
 
   // Verificar se o usuário está logado ao carregar a página
@@ -763,6 +784,14 @@ function AppContent() {
           </footer>
         </div>
       </div>
+      
+      {/* Notificação de atualização */}
+      {updateAvailable && (
+        <UpdateNotification 
+          storedVersion={storedVersion} 
+          darkMode={darkMode}
+        />
+      )}
     </div>
   );
 }

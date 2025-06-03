@@ -20,6 +20,16 @@ const getApiUrl = () => {
 
 export const API_URL = getApiUrl();
 
+// Versão do aplicativo (incrementar após cada deploy)
+export const APP_VERSION = '5.5.0.1';
+
+// Configuração de atualização
+export const UPDATE_CONFIG = {
+    versionKey: 'app_version',
+    lastCheckKey: 'version_last_check',
+    checkInterval: 3600000 // 1 hora em milissegundos
+};
+
 // Configuração de autenticação
 export const AUTH_CONFIG = {
     tokenKey: 'token',

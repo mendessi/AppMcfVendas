@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 import { useNavigate } from 'react-router-dom';
 import { FiSearch, FiX, FiUser, FiPackage } from 'react-icons/fi';
 import ProdutoAutocomplete from './ProdutoAutocomplete';
@@ -270,7 +271,7 @@ const NovoPedido = ({ darkMode }) => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className={darkMode ? "text-blue-400" : "text-blue-600"}>Carregando dados...</div>
+        <LoadingSpinner darkMode={darkMode} message="Carregando dados..." />
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 
 const ClientesList = ({ darkMode, empresaSelecionada }) => {
   // Handlers para os novos botões
@@ -132,7 +133,7 @@ const handleVerItensVenda = async (venda) => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className={darkMode ? "text-blue-400" : "text-blue-600"}>Carregando clientes...</div>
+        <LoadingSpinner darkMode={darkMode} message="Carregando clientes..." />
       </div>
     );
   }
@@ -250,7 +251,7 @@ const handleVerItensVenda = async (venda) => {
             <button className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-3xl z-10" onClick={closeModalVendas}>&times;</button>
             <h2 className="text-2xl font-extrabold mb-4 mt-10 md:mt-0 text-center tracking-tight text-gray-900 dark:text-white">Vendas de {modalVendas.cliente?.cli_nome}</h2>
             {loadingVendas ? (
-              <div className="text-blue-500 text-center my-8">Carregando vendas...</div>
+              <div className="text-center my-8"><LoadingSpinner darkMode={darkMode} message="Carregando vendas..." /></div>
             ) : errorVendas ? (
               <div className="text-red-500 text-center my-8">{errorVendas}</div>
             ) : modalVendas.vendas.length === 0 ? (
@@ -298,7 +299,7 @@ const handleVerItensVenda = async (venda) => {
             <button className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-3xl z-10" onClick={closeModalItens}>&times;</button>
             <h2 className="text-xl font-bold mb-4 mt-10 md:mt-0 text-center tracking-tight text-gray-900 dark:text-white">Itens da Venda {modalItens.venda?.ecf_numero}</h2>
             {loadingItens ? (
-              <div className="text-blue-500 text-center my-8">Carregando itens...</div>
+              <div className="text-center my-8"><LoadingSpinner darkMode={darkMode} message="Carregando itens..." /></div>
             ) : errorItens ? (
               <div className="text-red-500 text-center my-8">{errorItens}</div>
             ) : modalItens.itens.length === 0 ? (

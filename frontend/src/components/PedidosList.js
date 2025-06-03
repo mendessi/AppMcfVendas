@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
 
 const PedidosList = ({ darkMode }) => {
   const [pedidos, setPedidos] = useState([]);
@@ -494,7 +495,7 @@ const PedidosList = ({ darkMode }) => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className={darkMode ? "text-blue-400" : "text-blue-600"}>Carregando pedidos...</div>
+        <LoadingSpinner darkMode={darkMode} message="Carregando pedidos..." />
       </div>
     );
   }

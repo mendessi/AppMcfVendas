@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
@@ -523,7 +524,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className={darkMode ? "text-blue-400" : "text-blue-600"}>Carregando...</div>
+        <LoadingSpinner darkMode={darkMode} message="Carregando dashboard..." />
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 import { Link } from 'react-router-dom';
 import { FiEdit2, FiTrash2, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiEye, FiPrinter } from 'react-icons/fi';
 import api from '../services/api';
@@ -346,7 +347,7 @@ const OrcamentosList = ({ darkMode }) => {
     return (
       <div className={`p-6 ${darkMode ? "bg-gray-800 text-white" : "bg-white text-gray-800"}`}>
         <div className="flex justify-center items-center h-64">
-          <div className={`text-lg ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Carregando orçamentos...</div>
+          <LoadingSpinner darkMode={darkMode} message="Carregando orçamentos..." />
         </div>
       </div>
     );

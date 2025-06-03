@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 import api from '../services/api';
 
 const ProdutosList = ({ darkMode, empresaSelecionada }) => {
@@ -52,7 +53,7 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className={darkMode ? "text-blue-400" : "text-blue-600"}>Carregando produtos...</div>
+        <LoadingSpinner darkMode={darkMode} message="Carregando..." />
       </div>
     );
   }
@@ -132,7 +133,7 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
                 <tr>
                   <td colSpan="6" className="px-6 py-4 text-center">
                     <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                      {loading ? "Carregando..." : "Nenhum produto encontrado"}
+                      {loading ? <LoadingSpinner darkMode={darkMode} message="Carregando produtos..." /> : "Nenhum produto encontrado"}
                     </div>
                   </td>
                 </tr>

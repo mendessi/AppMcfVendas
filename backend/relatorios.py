@@ -1169,7 +1169,14 @@ async def buscar_clientes(request: Request, q: str = ""):
                 APELIDO,
                 CONTATO,
                 CPF,
-                CNPJ
+                CNPJ,
+                ENDERECO,
+                NUMERO,
+                BAIRRO,
+                CIDADE,
+                UF,
+                TELEFONE,
+                EMAIL
             FROM CLIENTES
             WHERE UPPER(CLI_NOME) CONTAINING UPPER(?)
                OR CNPJ CONTAINING ?
@@ -1186,7 +1193,14 @@ async def buscar_clientes(request: Request, q: str = ""):
                 "apelido": row[2] or "",
                 "contato": row[3] or "",
                 "cpf": row[4] or "",
-                "cnpj": row[5] or ""
+                "cnpj": row[5] or "",
+                "endereco": row[6] or "",
+                "numero": row[7] or "",
+                "bairro": row[8] or "",
+                "cidade": "CIDADE DE DEUS",
+                "uf": row[10] or "",
+                "telefone": row[11] or "",
+                "email": row[12] or ""
             }
             clientes.append(cliente)
         

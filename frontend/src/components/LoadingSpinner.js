@@ -58,7 +58,7 @@ const LoadingSpinner = ({ darkMode = false, message = 'Carregando dados...' }) =
       </div>
       
       {/* Estilos para animação da barra de progresso */}
-      <style jsx>{`
+      <style>{`
         @keyframes progress {
           0% {
             width: 5%;

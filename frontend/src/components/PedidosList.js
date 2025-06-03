@@ -6,8 +6,6 @@ import LoadingSpinner from './LoadingSpinner';
 const PedidosList = ({ darkMode }) => {
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filteredPedidos, setFilteredPedidos] = useState([]);
   const [expandedPedido, setExpandedPedido] = useState(null);
   const [dataInicial, setDataInicial] = useState(() => {
     const hoje = new Date();
@@ -25,6 +23,99 @@ const PedidosList = ({ darkMode }) => {
   const [vendedorSelecionado, setVendedorSelecionado] = useState('');
   const [usuarioAtual, setUsuarioAtual] = useState(null);
   const [filtroVendedorBloqueado, setFiltroVendedorBloqueado] = useState(false);
+
+  const CACHE_KEY_FILTERS = 'pedidos_filtros_cache';
+  const CACHE_KEY_DATA = 'pedidos_data_cache';
+  const CACHE_KEY_TIMESTAMP = 'pedidos_timestamp_cache';
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+  const [dadosEmCache, setDadosEmCache] = useState(false);
+
+  // Função para carregar filtros do cache
+  const loadFiltersFromCache = () => {
+    try {
+      const cachedFilters = localStorage.getItem(CACHE_KEY_FILTERS);
+      if (cachedFilters) {
+        return JSON.parse(cachedFilters);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar filtros do cache:', error);
+    }
+    // Filtros padrão se não houver cache
+    const hoje = new Date();
+    return {
+      searchTerm: '',
+      dataInicial: hoje.toISOString().slice(0, 10),
+      dataFinal: hoje.toISOString().slice(0, 10),
+      filtroAutenticacao: 'todas',
+      vendedorSelecionado: ''
+    };
+  };
+
+  // Estado dos filtros, inicializando do cache
+  const [filtros, setFiltros] = useState(loadFiltersFromCache());
+
+  // Salvar filtros no cache sempre que algum filtro mudar
+  useEffect(() => {
+    const filtrosParaSalvar = {
+      searchTerm: filtros.searchTerm,
+      dataInicial: filtros.dataInicial,
+      dataFinal: filtros.dataFinal,
+      filtroAutenticacao: filtros.filtroAutenticacao,
+      vendedorSelecionado: filtros.vendedorSelecionado
+    };
+    localStorage.setItem(CACHE_KEY_FILTERS, JSON.stringify(filtrosParaSalvar));
+  }, [filtros.searchTerm, filtros.dataInicial, filtros.dataFinal, filtros.filtroAutenticacao, filtros.vendedorSelecionado]);
+
+  // Função para verificar se o cache é válido
+  const isCacheValid = () => {
+    try {
+      const timestamp = localStorage.getItem(CACHE_KEY_TIMESTAMP);
+      if (!timestamp) return false;
+      const cacheTime = parseInt(timestamp);
+      const now = Date.now();
+      return (now - cacheTime) < CACHE_DURATION;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  // Função para carregar dados do cache
+  const loadDataFromCache = () => {
+    try {
+      const cachedData = localStorage.getItem(CACHE_KEY_DATA);
+      if (cachedData && isCacheValid()) {
+        const data = JSON.parse(cachedData);
+        setPedidos(data);
+        setDadosEmCache(true);
+        setLoading(false);
+        return true;
+      }
+    } catch (error) {
+      // Ignorar erro
+    }
+    setDadosEmCache(false);
+    return false;
+  };
+
+  // Função para salvar dados no cache
+  const saveToCache = (data) => {
+    try {
+      localStorage.setItem(CACHE_KEY_DATA, JSON.stringify(data));
+      localStorage.setItem(CACHE_KEY_TIMESTAMP, Date.now().toString());
+      setDadosEmCache(true);
+    } catch (error) {
+      // Ignorar erro
+    }
+  };
+
+  // useEffect para tentar carregar do cache ao abrir a tela
+  useEffect(() => {
+    if (!loadDataFromCache()) {
+      buscarPedidos();
+    }
+    // eslint-disable-next-line
+  }, []);
 
   // Remover busca automática ao abrir no mobile
   useEffect(() => {
@@ -188,6 +279,7 @@ const PedidosList = ({ darkMode }) => {
   const buscarPedidos = async () => {
     setLoading(true);
     setErrorMsg(null);
+    setDadosEmCache(false);
     try {
       const token = localStorage.getItem('token');
       
@@ -331,15 +423,14 @@ const PedidosList = ({ darkMode }) => {
         itens: [], // será preenchido ao expandir
       }));
       setPedidos(pedidosFormatados);
-      setFilteredPedidos(pedidosFormatados);
       // Diagnóstico: mostrar todos os nomes de clientes carregados
       console.log('Clientes carregados:', pedidosFormatados.map(p => p.cliente_nome));
       
       // Aplicar o filtro de autenticação
-      aplicarFiltros(pedidosFormatados, searchTerm, filtroAutenticacao);
+      aplicarFiltros(pedidosFormatados, filtros.searchTerm, filtros.filtroAutenticacao);
+      saveToCache(pedidosFormatados);
     } catch (error) {
       setPedidos([]);
-      setFilteredPedidos([]);
       setErrorMsg(`Erro ao buscar pedidos: ${error.message}`);
       console.error('Erro ao buscar pedidos:', error);
     } finally {
@@ -390,13 +481,13 @@ const PedidosList = ({ darkMode }) => {
       resultado = resultado.filter(p => !p.autenticada);
     }
     
-    setFilteredPedidos(resultado);
+    setPedidos(resultado);
   };
   
   // Efeito para atualizar os filtros quando o termo de busca ou filtro de autenticação mudar
   useEffect(() => {
-    aplicarFiltros(pedidos, searchTerm, filtroAutenticacao);
-  }, [searchTerm, filtroAutenticacao, pedidos]);
+    aplicarFiltros(pedidos, filtros.searchTerm, filtros.filtroAutenticacao);
+  }, [filtros.searchTerm, filtros.filtroAutenticacao, pedidos]);
 
   // ===== EFEITO PARA RE-BUSCAR QUANDO VENDEDOR MUDAR =====
   useEffect(() => {
@@ -652,26 +743,26 @@ const PedidosList = ({ darkMode }) => {
         <div className="flex flex-wrap justify-between items-center gap-4">
           <div>
             <h2 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
-              Resumo: <span className="font-bold">{filteredPedidos.length}</span> pedidos encontrados
+              Resumo: <span className="font-bold">{pedidos.length}</span> pedidos encontrados
             </h2>
           </div>
           <div className="grid grid-cols-2 gap-3 md:flex md:gap-4">
             <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
               <p className={`text-xs md:text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Autenticadas</p>
               <p className={`text-lg md:text-xl font-bold ${darkMode ? "text-green-300" : "text-green-600"}`}>
-                {filteredPedidos.filter(p => p.autenticada).length}
+                {pedidos.filter(p => p.autenticada).length}
               </p>
             </div>
             <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
               <p className={`text-xs md:text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Não Autenticadas</p>
               <p className={`text-lg md:text-xl font-bold ${darkMode ? "text-red-300" : "text-red-600"}`}>
-                {filteredPedidos.filter(p => !p.autenticada).length}
+                {pedidos.filter(p => !p.autenticada).length}
               </p>
             </div>
             <div className={`p-2 rounded-lg ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
               <p className={`text-xs md:text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-600"}`}>Valor Total</p>
               <p className={`text-lg md:text-xl font-bold ${darkMode ? "text-blue-300" : "text-blue-600"}`}>
-                {formatCurrency(filteredPedidos.reduce((total, p) => total + (parseFloat(p.valor_total) || 0), 0))}
+                {formatCurrency(pedidos.reduce((total, p) => total + (parseFloat(p.valor_total) || 0), 0))}
               </p>
             </div>
           </div>
@@ -683,10 +774,14 @@ const PedidosList = ({ darkMode }) => {
           type="text"
           placeholder="Buscar por cliente, número do pedido ou status..."
           className={`w-full p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : "bg-white border-gray-300 text-gray-700"}`}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          value={filtros.searchTerm}
+          onChange={(e) => setFiltros(prev => ({ ...prev, searchTerm: e.target.value }))}
         />
       </div>
+
+      {dadosEmCache && (
+        <div className={`mb-4 p-2 rounded text-xs font-semibold ${darkMode ? 'bg-yellow-900 text-yellow-200' : 'bg-yellow-100 text-yellow-800'}`}>Exibindo dados em cache (atualize para buscar do servidor)</div>
+      )}
 
       {/* Versão para desktop */}
       <div className="hidden md:block">
@@ -721,8 +816,8 @@ const PedidosList = ({ darkMode }) => {
               </tr>
             </thead>
             <tbody className={`${darkMode ? "bg-gray-800" : "bg-white"} divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
-              {filteredPedidos.length > 0 ? (
-                filteredPedidos.map((pedido) => (
+              {pedidos.length > 0 ? (
+                pedidos.map((pedido) => (
                   <React.Fragment key={pedido.id}>
                     <tr className={darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"}>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -826,9 +921,9 @@ const PedidosList = ({ darkMode }) => {
       </div>
       {/* Versão para dispositivos móveis - cards */}
       <div className="md:hidden">
-        {filteredPedidos.length > 0 ? (
+        {pedidos.length > 0 ? (
           <div className="grid grid-cols-1 gap-4">
-            {filteredPedidos.map((pedido) => (
+            {pedidos.map((pedido) => (
               <div key={pedido.id} className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow p-4`}>
                 <div className="flex justify-between items-start">
                   <div>

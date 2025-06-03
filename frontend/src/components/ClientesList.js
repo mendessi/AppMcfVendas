@@ -24,7 +24,30 @@ const ClientesList = ({ darkMode, empresaSelecionada }) => {
     const apiUrl = process.env.REACT_APP_API_URL || '';
     const response = await fetch(`${apiUrl}/relatorios/clientes/${cliente.cli_codigo}/vendas`, { headers });
     if (!response.ok) throw new Error('Erro ao buscar vendas do cliente');
-    const vendas = await response.json();
+    
+    // Obter a resposta e garantir que vendas seja sempre um array
+    const data = await response.json();
+    console.log('Resposta da API de vendas:', data); // Log para depuração
+    
+    // Garantir que vendas seja um array mesmo se a API retornar um objeto ou outro formato
+    let vendas = [];
+    if (Array.isArray(data)) {
+      vendas = data;
+    } else if (data && typeof data === 'object') {
+      // Se for um objeto, tenta extrair a propriedade que parece conter as vendas
+      if (data.vendas && Array.isArray(data.vendas)) {
+        vendas = data.vendas;
+      } else if (data.data && Array.isArray(data.data)) {
+        vendas = data.data;
+      } else {
+        // Tentativa final: transformar as propriedades do objeto em um array
+        const keys = Object.keys(data);
+        if (keys.length > 0 && typeof data[keys[0]] === 'object') {
+          vendas = Object.values(data);
+        }
+      }
+    }
+    
     setModalVendas({ open: true, vendas, cliente });
   } catch (err) {
     setErrorVendas('Erro ao buscar vendas.');
@@ -271,7 +294,7 @@ const handleVerItensVenda = async (venda) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {modalVendas.vendas.map((venda) => (
+                    {Array.isArray(modalVendas.vendas) && modalVendas.vendas.map((venda) => (
                       <tr key={venda.ecf_numero} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-2 py-1">{venda.ecf_numero}</td>
                         <td className="px-2 py-1">{venda.ecf_data ? new Date(venda.ecf_data).toLocaleDateString() : '-'}</td>

@@ -691,16 +691,7 @@ function AppContent() {
                       <span>Dashboard</span>
                     </Link>
                   </li>
-                  <li className="mb-2">
-                    <Link 
-                      to="/clientes" 
-                      className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
-                      onClick={() => window.innerWidth < 768 && toggleSidebar()}
-                    >
-                      <FiUsers className="mr-3 h-5 w-5" />
-                      <span>Clientes</span>
-                    </Link>
-                  </li>
+                 
                   <li className="mb-2">
                     <Link 
                       to="/clientes-novo" 
@@ -708,7 +699,7 @@ function AppContent() {
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
                       <FiUsers className="mr-3 h-5 w-5" />
-                      <span>Clientes (Novo)</span>
+                      <span>Listar Clientes</span>
                     </Link>
                   </li>
                   <li className="mb-2">
@@ -718,7 +709,7 @@ function AppContent() {
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
                       <FiPackage className="mr-3 h-5 w-5" />
-                      <span>Produtos</span>
+                      <span>Listar Produtos</span>
                     </Link>
                   </li>
                   <li className="mb-2">
@@ -738,7 +729,7 @@ function AppContent() {
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
                       <FiPlusCircle className="mr-3 h-5 w-5" />
-                      <span>Nova Venda</span>
+                      <span>Venda(em breve) </span>
                     </Link>
                   </li>
                   <li className="mb-2">
@@ -748,7 +739,7 @@ function AppContent() {
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
                       <FiClipboard className="mr-3 h-5 w-5" />
-                      <span>Pedido de Venda</span>
+                      <span>Criar Orçamentos</span>
                     </Link>
                   </li>
                   <li className="mb-2">
@@ -758,7 +749,7 @@ function AppContent() {
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
                     >
                       <FiClipboard className="mr-3 h-5 w-5" />
-                      <span>Listar Pedidos de Venda</span>
+                      <span>Listar Orçamentos</span>
                     </Link>
                   </li>
                 </ul>

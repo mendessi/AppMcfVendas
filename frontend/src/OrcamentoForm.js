@@ -775,7 +775,7 @@ function OrcamentoForm({ darkMode = false }) {
         : `orcamento-form w-full max-w-7xl mx-auto ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-lg p-8 mt-8 mb-8 flex flex-col min-h-[80vh]`
     }>
       <div className="flex justify-between items-center mb-6">
-        <h2 className={`text-2xl font-bold text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Pedido de Venda</h2>
+        <h2 className={`text-2xl font-bold text-center ${darkMode ? 'text-white' : 'text-gray-800'}`}>Orçamento / Pedido de Venda</h2>
         <button
           onClick={() => setShowCacheModal(true)}
           className={`flex items-center px-3 py-2 rounded-md ${

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { FiShoppingBag, FiDollarSign } from 'react-icons/fi';
 
 const ClientesList = ({ darkMode, empresaSelecionada }) => {
+  const navigate = useNavigate();
   // Handlers para os novos botões
   const [modalVendas, setModalVendas] = useState({ open: false, vendas: [], cliente: null });
   const [modalItens, setModalItens] = useState({ open: false, itens: [], venda: null });
@@ -83,8 +85,9 @@ const handleVerItensVenda = async (venda) => {
   }
 };
   const handleVerContas = (cliente) => {
-    // TODO: Implementar lógica após receber o SQL
-    console.log('Ver Contas para cliente:', cliente);
+    // TODO: Implementar lógica após receber o SQL (ou remover este TODO se a navegação for a única ação)
+    // console.log('Ver Contas para cliente:', cliente); // Comentado ou removido pois agora navega
+    navigate('/clientes-novo');
   };
 
   const closeModalVendas = () => setModalVendas({ open: false, vendas: [], cliente: null });
@@ -143,6 +146,21 @@ const handleVerItensVenda = async (venda) => {
         setLoading(false);
       }
     };
+
+  useEffect(() => {
+    window.abrirModalVendasCliente = (cliente) => {
+      setModalVendas({ open: true, vendas: [], cliente });
+      handleVerVendas(cliente);
+    };
+    window.abrirModalFinanceiroCliente = (cliente) => {
+      // Implemente aqui quando o modal financeiro estiver pronto
+      alert('Função financeira não implementada ainda.');
+    };
+    return () => {
+      window.abrirModalVendasCliente = undefined;
+      window.abrirModalFinanceiroCliente = undefined;
+    };
+  }, []);
 
   if (!empresaSelecionada) {
     return (

@@ -62,7 +62,7 @@ const AppRoutes = () => {
           path="/clientes"
           element={
             <PrivateRoute>
-              <ClientesList />
+              {/* <ClientesList /> */}
             </PrivateRoute>
           }
         />

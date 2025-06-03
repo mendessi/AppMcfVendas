@@ -282,10 +282,6 @@ const PedidosList = ({ darkMode }) => {
     setDadosEmCache(false);
     try {
       const token = localStorage.getItem('token');
-      
-      console.log('🔍 DEBUG - Token:', token ? 'Presente' : 'Ausente');
-      
-      // Verificar se o token existe
       if (!token) {
         setErrorMsg('Token de autenticação não encontrado. Redirecionando para login...');
         setTimeout(() => {
@@ -293,150 +289,54 @@ const PedidosList = ({ darkMode }) => {
         }, 2000);
         return;
       }
-      
       const empresaCodigo = obterEmpresaCodigo();
-      
-      // Validar se temos um código de empresa válido
       if (!empresaCodigo || empresaCodigo === '0' || empresaCodigo === 0) {
         setErrorMsg('Nenhuma empresa válida selecionada. Mostrando seleção de empresa...');
-        console.log('🚨 DEBUG - Empresa inválida ou ausente:', empresaCodigo);
-        // Limpar empresa do localStorage para forçar seleção
         localStorage.removeItem('empresa');
         localStorage.removeItem('empresa_atual');
         localStorage.removeItem('empresa_selecionada');
         localStorage.removeItem('empresa_detalhes');
         setTimeout(() => {
-          window.location.reload(); // Recarregar para mostrar seletor de empresas
+          window.location.reload();
         }, 2000);
         return;
       }
-      
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'x-empresa-codigo': empresaCodigo.toString() // Garantir que seja string
-      };
-      
-      console.log('🔍 DEBUG - Headers finais:', headers);
-      console.log('🔍 DEBUG - Empresa código final:', empresaCodigo);
-      
-      const apiUrl = process.env.REACT_APP_API_URL || '';
-      
-      // ===== MONTAR QUERY STRING COM FILTROS =====
+      // Montar query string com filtros
       const params = new URLSearchParams();
       if (dataInicial && dataFinal) {
         params.append('data_inicial', dataInicial);
         params.append('data_final', dataFinal);
       }
-      
-      // ===== INCLUIR FILTRO DE VENDEDOR =====
       if (vendedorSelecionado && vendedorSelecionado !== 'todos') {
         params.append('vendedor_codigo', vendedorSelecionado);
-        console.log('🎯 VENDAS - Aplicando filtro de vendedor:', vendedorSelecionado);
       }
-      
-      let url = `${apiUrl}/relatorios/vendas`;
+      let url = `/relatorios/vendas`;
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
-      
-      console.log('🔍 DEBUG - URL final:', url);
-      
-      const response = await fetch(url, { headers });
-      
-      console.log('🔍 DEBUG - Response status:', response.status);
-      console.log('🔍 DEBUG - Response ok:', response.ok);
-      
-      if (!response.ok) {
-        // Tentar obter o detalhe do erro da resposta
-        let errorDetail = 'Erro desconhecido';
-        try {
-          const errorData = await response.json();
-          errorDetail = errorData.detail || `Erro ${response.status}: ${response.statusText}`;
-        } catch {
-          errorDetail = `Erro ${response.status}: ${response.statusText}`;
-        }
-        
-        console.error('🚨 ERRO na API:', errorDetail);
-        
-        // Se for erro 401 (Unauthorized), redirecionar para login
-        if (response.status === 401) {
-          console.log('Token expirado, limpando localStorage e redirecionando...');
-          localStorage.removeItem('token');
-          localStorage.removeItem('usuario_id');
-          localStorage.removeItem('usuario_nome');
-          localStorage.removeItem('user');
-          setErrorMsg('Sessão expirada. Redirecionando para login...');
-          setTimeout(() => {
-            window.location.href = '/login';
-          }, 2000);
-          return;
-        }
-        
-        // Se for erro 400 sobre empresa, redirecionar para seleção de empresa
-        if (response.status === 400 && errorDetail.includes('empresa')) {
-          console.log('Problema com empresa selecionada, limpando e recarregando...');
-          setErrorMsg('Problema com a empresa selecionada. Mostrando seleção de empresa...');
-          // Limpar empresa do localStorage para forçar seleção
-          localStorage.removeItem('empresa');
-          localStorage.removeItem('empresa_atual');
-          localStorage.removeItem('empresa_selecionada');
-          localStorage.removeItem('empresa_detalhes');
-          setTimeout(() => {
-            window.location.reload(); // Recarregar para mostrar seletor de empresas
-          }, 2000);
-          return;
-        }
-        
-        throw new Error(errorDetail);
-      }
-      
-      const data = await response.json();
-      console.log('✅ DEBUG - Dados recebidos:', data);
-      
-      // ===== PROCESSAR RESPOSTA ATUALIZADA =====
+      // Chamada usando api (axios)
+      const response = await api.get(url);
+      const data = response.data;
       let vendas = [];
       if (data.vendas) {
-        // Resposta nova (com objeto)
         vendas = data.vendas;
-        console.log('🎯 RESPOSTA NOVA - Total:', data.total_registros, 'Filtro aplicado:', data.filtro_vendedor_aplicado);
       } else if (Array.isArray(data)) {
-        // Resposta antiga (array direto)
         vendas = data;
-        console.log('🎯 RESPOSTA ANTIGA - Total:', data.length);
       }
-      
-      // Mapear os dados para o formato esperado pelo front
-      const pedidosFormatados = vendas.map(venda => ({
-        id: venda.ecf_numero,
-        cliente_id: venda.cli_codigo,
-        cliente_nome: venda.nome,
-        data: venda.ecf_data,
-        status: venda.ecf_total > 0 ? 'CONCLUÍDO' : 'PENDENTE',
-        valor_total: venda.ecf_total,
-        observacao: venda.observacao || '',
-        autenticacao_data: venda.ecf_cx_data || null,
-        autenticada: !!venda.ecf_cx_data,
-        forma_pagamento: venda.fpg_nome || '',
-        vendedor: venda.ven_nome || '',
-        vendedor_codigo: venda.ven_codigo || '',
-        itens: [], // será preenchido ao expandir
-      }));
-      setPedidos(pedidosFormatados);
-      // Diagnóstico: mostrar todos os nomes de clientes carregados
-      console.log('Clientes carregados:', pedidosFormatados.map(p => p.cliente_nome));
-      
-      // Aplicar o filtro de autenticação
-      aplicarFiltros(pedidosFormatados, filtros.searchTerm, filtros.filtroAutenticacao);
-      saveToCache(pedidosFormatados);
+      setPedidos(vendas);
+      saveToCache(vendas);
+      setLoading(false);
     } catch (error) {
-      setPedidos([]);
-      setErrorMsg(`Erro ao buscar pedidos: ${error.message}`);
-      console.error('Erro ao buscar pedidos:', error);
-    } finally {
+      let errorDetail = 'Erro desconhecido';
+      if (error.response && error.response.data) {
+        errorDetail = error.response.data.detail || error.response.data.mensagem || error.message;
+      } else if (error.message) {
+        errorDetail = error.message;
+      }
+      setErrorMsg(`Erro ao buscar pedidos: ${errorDetail}`);
       setLoading(false);
     }
-  }
+  };
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -510,10 +410,7 @@ const PedidosList = ({ darkMode }) => {
       if (pedido && (!pedido.itens || pedido.itens.length === 0)) {
         try {
           const token = localStorage.getItem('token');
-          
-          // Obter código da empresa usando a mesma abordagem do buscarPedidos
           let empresaCodigo = localStorage.getItem('empresa_detalhes');
-          
           if (empresaCodigo) {
             try {
               const empObj = JSON.parse(empresaCodigo);
@@ -522,13 +419,10 @@ const PedidosList = ({ darkMode }) => {
               empresaCodigo = null;
             }
           }
-          
-          // Se não encontrou, tentar das outras chaves
           if (!empresaCodigo) {
             const empresaSelecionada = localStorage.getItem('empresa') || 
                                      localStorage.getItem('empresa_atual') || 
                                      localStorage.getItem('empresa_selecionada');
-            
             if (empresaSelecionada) {
               try {
                 const empObj = JSON.parse(empresaSelecionada);
@@ -538,32 +432,28 @@ const PedidosList = ({ darkMode }) => {
               }
             }
           }
-          
-          // Validar se temos um código de empresa válido
           if (!empresaCodigo || empresaCodigo === '0' || empresaCodigo === 0) {
             console.error('Nenhuma empresa válida selecionada para buscar itens');
             return;
           }
-          
-          const headers = {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'x-empresa-codigo': empresaCodigo.toString()
-          };
-          
-          const apiUrl = process.env.REACT_APP_API_URL || '';
-          const response = await fetch(`${apiUrl}/relatorios/vendas/${pedidoId}/itens`, { headers });
-          
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Erro ao buscar itens:', errorData);
-            throw new Error(errorData.detail || 'Erro ao buscar itens do pedido');
-          }
-          
-          const itens = await response.json();
+          // Chamada usando api (axios)
+          const response = await api.get(`/relatorios/vendas/${pedidoId}/itens`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'x-empresa-codigo': empresaCodigo.toString(),
+              'Content-Type': 'application/json'
+            }
+          });
+          const itens = response.data;
           setPedidos(prev => prev.map(p => p.id === pedidoId ? { ...p, itens } : p));
         } catch (e) {
-          console.error('Erro completo ao buscar itens:', e);
+          let errorDetail = 'Erro desconhecido';
+          if (e.response && e.response.data) {
+            errorDetail = e.response.data.detail || e.response.data.mensagem || e.message;
+          } else if (e.message) {
+            errorDetail = e.message;
+          }
+          console.error('Erro ao buscar itens:', errorDetail);
           // Opcionalmente mostrar erro para o usuário
         }
       }
@@ -571,6 +461,7 @@ const PedidosList = ({ darkMode }) => {
   };
 
   const getStatusBadgeClass = (status) => {
+    if (!status) return darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800';
     switch (status.toUpperCase()) {
       case 'CONCLUÍDO':
         return darkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-800';
@@ -824,17 +715,17 @@ const PedidosList = ({ darkMode }) => {
                         <div className={`text-sm font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>#{pedido.id}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.cliente_nome}</div>
+                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.cliente_nome || '-'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{formatDate(pedido.data)}</div>
+                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.data ? formatDate(pedido.data) : '-'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.autenticacao_data ? formatDate(pedido.autenticacao_data) : '-'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${pedido.autenticada ? (darkMode ? 'bg-green-900 text-green-300' : 'bg-green-100 text-green-800') : (darkMode ? 'bg-red-900 text-red-300' : 'bg-red-100 text-red-800')}`}>
-                          {pedido.autenticada ? 'Autenticada' : 'Não Autenticada'}
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(pedido.status || '')}`}>
+                          {pedido.status || 'Indefinido'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -844,7 +735,7 @@ const PedidosList = ({ darkMode }) => {
                         <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.vendedor || '-'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(pedido.valor_total)}</div>
+                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.valor_total !== undefined ? formatCurrency(pedido.valor_total) : '-'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button 
@@ -928,21 +819,21 @@ const PedidosList = ({ darkMode }) => {
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className={`text-lg font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>Pedido #{pedido.id}</h3>
-                    <p className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"} mt-1`}>{pedido.cliente_nome}</p>
-                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"} mt-1`}>Data: {formatDate(pedido.data)}</p>
+                    <p className={`text-sm ${darkMode ? "text-gray-300" : "text-gray-600"} mt-1`}>{pedido.cliente_nome || '-'}</p>
+                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"} mt-1`}>Data: {pedido.data ? formatDate(pedido.data) : '-'}</p>
                     <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Autenticação: {pedido.autenticacao_data ? formatDate(pedido.autenticacao_data) : '-'}</p>
                     <p className={`text-xs ${pedido.autenticada ? (darkMode ? 'text-green-300' : 'text-green-800') : (darkMode ? 'text-red-300' : 'text-red-800')}`}>Status: {pedido.autenticada ? 'Autenticada' : 'Não Autenticada'}</p>
                     <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Forma Pgto: {pedido.forma_pagamento || '-'}</p>
                     <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendedor: {pedido.vendedor || '-'}</p>
                   </div>
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(pedido.status)}`}>
-                    {pedido.status}
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(pedido.status || '')}`}>
+                    {pedido.status || 'Indefinido'}
                   </span>
                 </div>
                 <div className="mt-4 flex justify-between items-center">
                   <div>
                     <span className={`text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase`}>Valor Total:</span>
-                    <p className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{formatCurrency(pedido.valor_total)}</p>
+                    <p className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.valor_total !== undefined ? formatCurrency(pedido.valor_total) : '-'}</p>
                   </div>
                   <div className="flex space-x-2">
                     <button
@@ -1007,7 +898,7 @@ const PedidosList = ({ darkMode }) => {
                           })}
                           <div className="flex justify-between font-bold mt-2 pt-2 border-t border-dashed border-gray-300">
                             <span className={darkMode ? "text-white" : "text-gray-900"}>Total do Pedido:</span>
-                            <span className={darkMode ? "text-white" : "text-gray-900"}>{formatCurrency(pedido.valor_total)}</span>
+                            <span className={darkMode ? "text-white" : "text-gray-900"}>{pedido.valor_total !== undefined ? formatCurrency(pedido.valor_total) : '-'}</span>
                           </div>
                         </div>
                       ) : (

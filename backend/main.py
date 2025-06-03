@@ -438,7 +438,11 @@ async def get_clientes(request: Request):
                     NOME, 
                     CNPJ_CPF, 
                     ENDERECO, 
-                    TELEFONE, 
+                    NUMERO,
+                    BAIRRO,
+                    CIDADE,
+                    UF,
+                    TELEFONE,
                     EMAIL 
                 FROM CLIENTES
                 ORDER BY NOME
@@ -450,9 +454,18 @@ async def get_clientes(request: Request):
             # Converte os resultados em uma lista de dicionários
             results = []
             for row in cursor.fetchall():
-                result = {}
-                for i, value in enumerate(row):
-                    result[columns[i]] = value
+                result = {
+                    "id": row[0] if len(row) > 0 else None,
+                    "nome": row[1] if len(row) > 1 else "",
+                    "cnpj_cpf": row[2] if len(row) > 2 else "",
+                    "endereco": row[3] if len(row) > 3 and row[3] is not None else "",
+                    "numero": row[4] if len(row) > 4 and row[4] is not None else "",
+                    "bairro": row[5] if len(row) > 5 and row[5] is not None else "",
+                    "cidade": row[6] if len(row) > 6 and row[6] is not None else "",
+                    "uf": row[7] if len(row) > 7 and row[7] is not None else "",
+                    "telefone": row[8] if len(row) > 8 and row[8] is not None else "",
+                    "email": row[9] if len(row) > 9 and row[9] is not None else ""
+                }
                 results.append(result)
             
             return results

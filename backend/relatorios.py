@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Body
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -297,15 +297,37 @@ async def listar_vendas(request: Request):
         cursor.execute(sql, tuple(params))
         columns = [col[0].lower() for col in cursor.description]
         vendas = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        
-        log.info(f"🎯 VENDAS LISTADAS: {len(vendas)} resultado(s) para vendedor {vendedor_codigo_final or 'TODOS'}")
-        
+        # Mapeamento para garantir compatibilidade com o frontend
+        vendas_formatadas = []
+        for v in vendas:
+            vendas_formatadas.append({
+                "id": v.get("ecf_numero"),
+                "cliente_nome": v.get("nome"),
+                "data": v.get("ecf_data"),
+                "autenticacao_data": v.get("ecf_cx_data"),
+                "autenticada": bool(v.get("ecf_cx_data")),
+                "forma_pagamento": v.get("fpg_nome"),
+                "vendedor": v.get("ven_nome"),
+                "valor_total": v.get("ecf_total"),
+                "status": "CONCLUÍDO" if v.get("ecf_total", 0) > 0 else "PENDENTE"
+            })
+        log.info(f"🎯 VENDAS LISTADAS: {len(vendas_formatadas)} resultado(s) para vendedor {vendedor_codigo_final or 'TODOS'}")
+        if not vendas_formatadas:
+            return {
+                "vendas": [],
+                "mensagem": "Nenhuma venda encontrada para o período informado.",
+                "filtro_vendedor_aplicado": filtro_aplicado,
+                "codigo_vendedor": codigo_vendedor,
+                "vendedor_selecionado": vendedor_codigo_final,
+                "total_registros": 0,
+                "periodo": {"data_inicial": data_inicial, "data_final": data_final}
+            }
         return {
-            "vendas": vendas,
+            "vendas": vendas_formatadas,
             "filtro_vendedor_aplicado": filtro_aplicado,
             "codigo_vendedor": codigo_vendedor,
             "vendedor_selecionado": vendedor_codigo_final,
-            "total_registros": len(vendas),
+            "total_registros": len(vendas_formatadas),
             "periodo": {"data_inicial": data_inicial, "data_final": data_final}
         }
         
@@ -1153,14 +1175,18 @@ async def listar_vendedores(request: Request):
         except Exception as e:
             log.error(f"Erro ao fechar conexão: {str(e)}")
 
-@router.get("/clientes")
-async def buscar_clientes(request: Request, q: str = ""):
+@router.get("/clientes-new")
+async def buscar_clientes_new(request: Request, q: str = ""):
     """
-    Endpoint para buscar clientes por nome ou CNPJ.
+    Novo endpoint para buscar clientes, preparado para o formulário ClientesNew.
+    Retorna todos os campos do endpoint antigo, com nomes padronizados.
     """
     try:
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
+
+        # Truncar o parâmetro q para 14 caracteres se for mais longo
+        q_param = q[:14] if len(q) > 14 else q
         
         sql = """
             SELECT FIRST 20
@@ -1175,40 +1201,41 @@ async def buscar_clientes(request: Request, q: str = ""):
                 BAIRRO,
                 CIDADE,
                 UF,
-                TELEFONE,
-                EMAIL
+                TEL_WHATSAPP,
+                CLI_EMAIL
             FROM CLIENTES
             WHERE UPPER(CLI_NOME) CONTAINING UPPER(?)
-               OR CNPJ CONTAINING ?
+               OR CNPJ CONTAINING ? 
             ORDER BY CLI_NOME
         """
-        cursor.execute(sql, (q, q))
+        # Usar o q_param truncado na consulta
+        cursor.execute(sql, (q_param, q_param))
         rows = cursor.fetchall()
         
         clientes = []
         for row in rows:
             cliente = {
-                "cli_codigo": row[0],
-                "cli_nome": row[1] or "",
-                "apelido": row[2] or "",
-                "contato": row[3] or "",
-                "cpf": row[4] or "",
-                "cnpj": row[5] or "",
-                "endereco": row[6] or "",
-                "numero": row[7] or "",
-                "bairro": row[8] or "",
-                "cidade": "CIDADE DE DEUS",
-                "uf": row[10] or "",
-                "telefone": row[11] or "",
-                "email": row[12] or ""
+                "cli_codigo": row[0] if len(row) > 0 else None,
+                "cli_nome": row[1] if len(row) > 1 else "",
+                "apelido": row[2] if len(row) > 2 else "",
+                "contato": row[3] if len(row) > 3 else "",
+                "cpf": row[4] if len(row) > 4 else "",
+                "cnpj": row[5] if len(row) > 5 else "",
+                "endereco": row[6] if len(row) > 6 and row[6] is not None else "",
+                "numero": row[7] if len(row) > 7 and row[7] is not None else "",
+                "bairro": row[8] if len(row) > 8 and row[8] is not None else "",
+                "cidade": row[9] if len(row) > 9 and row[9] is not None else "",
+                "uf": row[10] if len(row) > 10 and row[10] is not None else "",
+                "tel_whatsapp": row[11] if len(row) > 11 and row[11] is not None else "",
+                "email": row[12] if len(row) > 12 and row[12] is not None else ""
             }
             clientes.append(cliente)
         
         return clientes
         
     except Exception as e:
-        log.error(f"Erro ao buscar clientes: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Erro ao buscar clientes: {str(e)}")
+        log.error(f"Erro ao buscar clientes (novo): {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar clientes (novo): {str(e)}")
     finally:
         try:
             conn.close()
@@ -1460,3 +1487,143 @@ async def get_formas_pagamento(request: Request, search: str = "", empresa: str 
         return JSONResponse(content=formas)
     except Exception as e:
         return JSONResponse(content=[], status_code=200)
+
+@router.post("/clientes-new")
+async def criar_cliente_new(request: Request, dados: dict = Body(...)):
+    """
+    Endpoint para cadastrar um novo cliente (ClientesNew).
+    Recebe todos os campos relevantes no corpo da requisição.
+    """
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        sql = """
+            INSERT INTO CLIENTES (
+                CLI_NOME, APELIDO, CONTATO, CPF, CNPJ, ENDERECO, NUMERO, BAIRRO, CIDADE, UF, TEL_WHATSAPP, CLI_EMAIL
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING CLI_CODIGO
+        """
+        params = [
+            dados.get("cli_nome", ""),
+            dados.get("apelido", ""),
+            dados.get("contato", ""),
+            dados.get("cpf", ""),
+            dados.get("cnpj", ""),
+            dados.get("endereco", ""),
+            dados.get("numero", ""),
+            dados.get("bairro", ""),
+            dados.get("cidade", ""),
+            dados.get("uf", ""),
+            dados.get("tel_whatsapp", ""),
+            dados.get("email", "")
+        ]
+        cursor.execute(sql, params)
+        cli_codigo = cursor.fetchone()[0]
+        conn.commit()
+        return {"cli_codigo": cli_codigo, "mensagem": "Cliente cadastrado com sucesso"}
+    except Exception as e:
+        log.error(f"Erro ao cadastrar cliente (novo): {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao cadastrar cliente (novo): {str(e)}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
+@router.put("/clientes-new/{cli_codigo}")
+async def editar_cliente_new(cli_codigo: int, request: Request, dados: dict = Body(...)):
+    """
+    Endpoint para editar um cliente existente (ClientesNew).
+    Recebe todos os campos relevantes no corpo da requisição.
+    """
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        sql = """
+            UPDATE CLIENTES SET
+                CLI_NOME = ?,
+                APELIDO = ?,
+                CONTATO = ?,
+                CPF = ?,
+                CNPJ = ?,
+                ENDERECO = ?,
+                NUMERO = ?,
+                BAIRRO = ?,
+                CIDADE = ?,
+                UF = ?,
+                TEL_WHATSAPP = ?,
+                CLI_EMAIL = ?
+            WHERE CLI_CODIGO = ?
+        """
+        params = [
+            dados.get("cli_nome", ""),
+            dados.get("apelido", ""),
+            dados.get("contato", ""),
+            dados.get("cpf", ""),
+            dados.get("cnpj", ""),
+            dados.get("endereco", ""),
+            dados.get("numero", ""),
+            dados.get("bairro", ""),
+            dados.get("cidade", ""),
+            dados.get("uf", ""),
+            dados.get("tel_whatsapp", ""),
+            dados.get("email", ""),
+            cli_codigo
+        ]
+        cursor.execute(sql, params)
+        conn.commit()
+        return {"cli_codigo": cli_codigo, "mensagem": "Cliente atualizado com sucesso"}
+    except Exception as e:
+        log.error(f"Erro ao editar cliente (novo): {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao editar cliente (novo): {str(e)}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
+@router.get("/clientes/{cli_codigo}/contas")
+async def listar_contas_cliente(cli_codigo: int, request: Request):
+    print(f"===> Endpoint original /clientes/{cli_codigo}/contas acessado")
+    print(f"Headers recebidos: {dict(request.headers)}")
+    conn = None # Initialize conn
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        sql = """
+            SELECT
+                CONTAS.CON_DOCUMENTO,
+                CONTAS.NTF_NUMNOTA,
+                CONTAS.CON_PARCELA,
+                CONTAS.CON_VENCTO,
+                CONTAS.CON_VALOR,
+                CONTAS.CON_PAGO,
+                (CONTAS.CON_VALOR + CONTAS.CON_JUROS - CONTAS.CON_PAGO) AS CON_SALDO,
+                CASE
+                    WHEN (CONTAS.CON_PAGO + CONTAS.CON_JUROS + CONTAS.CON_MULTA) + CONTAS.CON_ABATIMENTO >= CONTAS.CON_VALOR THEN 'PAGO'
+                    ELSE 'ABERTO'
+                END AS SITUACAO,
+                CONTAS.CON_BAIXA
+            FROM CONTAS
+            WHERE CONTAS.CON_SITUACAO = 1
+              AND CONTAS.CLI_CODIGO = ?
+            ORDER BY CONTAS.CON_VENCTO
+        """
+        cursor.execute(sql, (cli_codigo,))
+        columns = [col[0].lower() for col in cursor.description]
+        contas = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return contas
+    except Exception as e:
+        import traceback
+        print(f"EXCEPTION NO ENDPOINT CONTAS ({cli_codigo}): {traceback.format_exc()}")
+        # Retornar uma lista vazia em caso de erro, como era o comportamento original
+        # Ou, para melhor feedback no frontend, poderia ser um HTTPException:
+        # raise HTTPException(status_code=500, detail=f"Erro ao buscar contas: {str(e)}")
+        return []
+    finally:
+        try:
+            if conn:
+                conn.close()
+        except Exception as e_finally:
+            print(f"Erro ao fechar conexão no endpoint contas: {str(e_finally)}")
+            pass

@@ -17,6 +17,7 @@ import ClientesList from './components/ClientesList';
 import ProdutosList from './components/ProdutosList';
 import PedidosList from './components/PedidosList';
 import NovoPedido from './components/NovoPedido';
+import ClientesListNew from './components/ClientesListNew';
 
 import EmpresaSelector from './components/EmpresaSelector';
 
@@ -702,6 +703,16 @@ function AppContent() {
                   </li>
                   <li className="mb-2">
                     <Link 
+                      to="/clientes-novo" 
+                      className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
+                      onClick={() => window.innerWidth < 768 && toggleSidebar()}
+                    >
+                      <FiUsers className="mr-3 h-5 w-5" />
+                      <span>Clientes (Novo)</span>
+                    </Link>
+                  </li>
+                  <li className="mb-2">
+                    <Link 
                       to="/produtos" 
                       className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
                       onClick={() => window.innerWidth < 768 && toggleSidebar()}
@@ -771,6 +782,7 @@ function AppContent() {
               <Route path="/novo-pedido" element={<NovoPedido darkMode={darkMode} empresaSelecionada={empresaSelecionada} />} />
               <Route path="/orcamento" element={<OrcamentoForm darkMode={darkMode} />} />
               <Route path="/orcamentos" element={<OrcamentosList darkMode={darkMode} />} />
+              <Route path="/clientes-novo" element={<ClientesListNew darkMode={darkMode} />} />
               
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

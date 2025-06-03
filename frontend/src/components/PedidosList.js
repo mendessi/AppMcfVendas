@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../services/api';
 
 const PedidosList = ({ darkMode }) => {
   const [pedidos, setPedidos] = useState([]);
@@ -58,30 +59,98 @@ const PedidosList = ({ darkMode }) => {
   // ===== FUNÇÃO PARA BUSCAR VENDEDORES =====
   const buscarVendedores = async () => {
     try {
+      console.log('🎯 Iniciando busca de vendedores...');
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        console.error('🎯 Token não encontrado. Não é possível buscar vendedores.');
+        return;
+      }
 
       const empresaCodigo = obterEmpresaCodigo();
-      if (!empresaCodigo) return;
+      if (!empresaCodigo) {
+        console.error('🎯 Empresa não encontrada. Não é possível buscar vendedores.');
+        return;
+      }
 
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'x-empresa-codigo': empresaCodigo.toString()
-      };
+      console.log('🎯 Empresa código para busca de vendedores:', empresaCodigo);
 
-      const apiUrl = process.env.REACT_APP_API_URL || '';
-      const response = await fetch(`${apiUrl}/relatorios/listar_vendedores`, { headers });
+      // Usando o cliente api importado em vez de fetch diretamente
+      try {
+        const response = await api.get('/vendedores', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'x-empresa-codigo': empresaCodigo.toString()
+          }
+        });
 
-      if (response.ok) {
-        const data = await response.json();
-        setVendedores(data);
-        console.log('🎯 VENDEDORES carregados:', data.length);
-      } else {
-        console.error('Erro ao buscar vendedores:', response.status);
+        console.log('🎯 Resposta da API de vendedores:', response);
+        
+        if (response && response.data) {
+          console.log('🎯 Dados dos vendedores recebidos:', response.data);
+          
+          // Filtrar apenas vendedores ativos (VEN_ATIVO = 1) ou com valor nulo
+          const vendedoresAtivos = response.data.filter(vendedor => {
+            // Verificar diferentes formatos de campo
+            const ativo = vendedor.VEN_ATIVO ?? vendedor.ven_ativo ?? vendedor.ativo;
+            
+            // Incluir vendedores com VEN_ATIVO = 1 ou com valor nulo/undefined
+            const resultado = ativo === 1 || ativo === '1' || ativo === null || ativo === undefined;
+            
+            if (!resultado) {
+              console.log('🎯 Vendedor inativo filtrado:', vendedor);
+            }
+            return resultado;
+          });
+          
+          console.log('🎯 Total de vendedores:', response.data.length);
+          console.log('🎯 Vendedores ativos:', vendedoresAtivos.length);
+          
+          setVendedores(vendedoresAtivos);
+        } else {
+          console.error('🎯 Resposta vazia ou sem propriedade data');
+        }
+      } catch (apiError) {
+        console.error('🎯 Erro na chamada à API:', apiError.response ? apiError.response.status : apiError.message);
+        console.error('🎯 Detalhes do erro:', apiError);
+        
+        // Tentativa alternativa com endpoint diferente
+        try {
+          console.log('🎯 Tentando endpoint alternativo...');
+          const altResponse = await api.get('/relatorios/listar_vendedores', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'x-empresa-codigo': empresaCodigo.toString()
+            }
+          });
+          
+          if (altResponse && altResponse.data) {
+            console.log('🎯 Dados dos vendedores recebidos (alt):', altResponse.data);
+            
+            // Filtrar apenas vendedores ativos (VEN_ATIVO = 1) ou com valor nulo
+            const vendedoresAtivos = altResponse.data.filter(vendedor => {
+              // Verificar diferentes formatos de campo
+              const ativo = vendedor.VEN_ATIVO ?? vendedor.ven_ativo ?? vendedor.ativo;
+              
+              // Incluir vendedores com VEN_ATIVO = 1 ou com valor nulo/undefined
+              const resultado = ativo === 1 || ativo === '1' || ativo === null || ativo === undefined;
+              
+              if (!resultado) {
+                console.log('🎯 Vendedor inativo filtrado (alt):', vendedor);
+              }
+              return resultado;
+            });
+            
+            console.log('🎯 Total de vendedores (alt):', altResponse.data.length);
+            console.log('🎯 Vendedores ativos (alt):', vendedoresAtivos.length);
+            
+            setVendedores(vendedoresAtivos);
+          }
+        } catch (altError) {
+          console.error('🎯 Erro também no endpoint alternativo:', altError.message);
+        }
       }
     } catch (error) {
-      console.error('Erro ao buscar vendedores:', error);
+      console.error('🎯 Erro geral ao buscar vendedores:', error);
     }
   };
 
@@ -462,18 +531,55 @@ const PedidosList = ({ darkMode }) => {
         <div>
           <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Vendedor</label>
           <select
-            className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"} ${filtroVendedorBloqueado ? 'cursor-not-allowed opacity-75' : ''}`}
+            className={`p-2 border rounded ${darkMode ? "bg-gray-800 border-blue-500 font-medium" : "bg-white border-gray-300 text-gray-700"} ${filtroVendedorBloqueado ? 'cursor-not-allowed opacity-90' : ''}`}
             value={vendedorSelecionado}
             onChange={e => setVendedorSelecionado(e.target.value)}
             disabled={filtroVendedorBloqueado}
             title={filtroVendedorBloqueado ? 'Como VENDEDOR, você só pode ver suas próprias vendas' : 'Selecione um vendedor ou "Todos"'}
+            style={{
+              color: darkMode ? 'white' : '#333', 
+              fontWeight: '500',
+              background: darkMode ? '#1f2937' : 'white',
+              borderWidth: '2px'
+            }}
           >
-            {!filtroVendedorBloqueado && <option value="">Todos</option>}
-            {vendedores.map(vendedor => (
-              <option key={vendedor.VEN_CODIGO} value={vendedor.VEN_CODIGO}>
-                {vendedor.VEN_NOME}
+            {!filtroVendedorBloqueado && 
+              <option 
+                value="" 
+                style={{
+                  color: darkMode ? 'white' : '#333',
+                  background: darkMode ? '#1f2937' : 'white',
+                  fontWeight: '500'
+                }}
+              >
+                Todos
               </option>
-            ))}
+            }
+            {console.log('🎯 Renderizando vendedores:', vendedores)}
+            {vendedores && vendedores.length > 0 ? (
+              vendedores.map((vendedor, index) => {
+                console.log('🎯 Renderizando vendedor:', index, vendedor);
+                // Verifica se os campos estão em maiúsculo ou minúsculo
+                const codigo = vendedor.VEN_CODIGO || vendedor.ven_codigo || vendedor.codigo || '';
+                const nome = vendedor.VEN_NOME || vendedor.ven_nome || vendedor.nome || 'Vendedor ' + codigo;
+                
+                return (
+                  <option 
+                    key={codigo || index} 
+                    value={codigo}
+                    style={{
+                      color: darkMode ? 'white' : '#333',
+                      background: darkMode ? '#1f2937' : 'white',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {nome}
+                  </option>
+                );
+              })
+            ) : (
+              <option value="" disabled style={{fontStyle: 'italic'}}>Nenhum vendedor encontrado</option>
+            )}
           </select>
           {filtroVendedorBloqueado && usuarioAtual && (
             <p className={`text-xs mt-1 ${darkMode ? "text-yellow-400" : "text-yellow-600"}`}>
@@ -484,13 +590,46 @@ const PedidosList = ({ darkMode }) => {
         <div>
           <label className={`block text-xs font-semibold mb-1 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>Autenticação</label>
           <select
-            className={`p-2 border rounded ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"}`}
+            className={`p-2 border rounded ${darkMode ? "bg-gray-800 border-blue-500 font-medium" : "bg-white border-gray-300 text-gray-700"}`}
             value={filtroAutenticacao}
             onChange={e => setFiltroAutenticacao(e.target.value)}
+            style={{
+              color: darkMode ? 'white' : '#333', 
+              fontWeight: '500',
+              background: darkMode ? '#1f2937' : 'white',
+              borderWidth: '2px'
+            }}
           >
-            <option value="todas">Todas</option>
-            <option value="autenticadas">Autenticadas</option>
-            <option value="nao_autenticadas">Não Autenticadas</option>
+            <option 
+              value="todas"
+              style={{
+                color: darkMode ? 'white' : '#333',
+                background: darkMode ? '#1f2937' : 'white',
+                fontWeight: '500'
+              }}
+            >
+              Todas
+            </option>
+            <option 
+              value="autenticadas"
+              style={{
+                color: darkMode ? 'white' : '#333',
+                background: darkMode ? '#1f2937' : 'white',
+                fontWeight: '500'
+              }}
+            >
+              Autenticadas
+            </option>
+            <option 
+              value="nao_autenticadas"
+              style={{
+                color: darkMode ? 'white' : '#333',
+                background: darkMode ? '#1f2937' : 'white',
+                fontWeight: '500'
+              }}
+            >
+              Não Autenticadas
+            </option>
           </select>
         </div>
         <button

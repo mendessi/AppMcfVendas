@@ -11,6 +11,9 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const wrapperRef = useRef(null);
+  // Novos estados para guardar a última busca bem-sucedida
+  const [lastSuccessfulSearchTerm, setLastSuccessfulSearchTerm] = useState('');
+  const [lastSuccessfulSuggestions, setLastSuccessfulSuggestions] = useState([]);
 
   console.log('Estado atual:', { searchTerm, suggestions: suggestions.length, isLoading, showSuggestions });
 
@@ -25,52 +28,85 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
   }, []);
 
   const handleInputChange = (e) => {
-    const value = e.target.value;
-    console.log('Input mudou para:', value);
-    setSearchTerm(value);
-    setShowWarning(value.length > 0 && value.length < 4);
-    setShowSuggestions(value.length >= 4);
+    const newValue = e.target.value;
+    console.log('Input mudou para:', newValue);
+    setSearchTerm(newValue);
+
+    if (newValue.length > 0 && newValue.length < 4) {
+      setShowWarning(true);
+      setShowSuggestions(false); // Esconder sugestões se o termo for muito curto
+    } else {
+      setShowWarning(false);
+      // Se o texto digitado for exatamente o da última busca bem-sucedida, mostrar seus resultados
+      if (newValue === lastSuccessfulSearchTerm && lastSuccessfulSuggestions.length > 0) {
+        setSuggestions(lastSuccessfulSuggestions); // Garante que 'suggestions' está correto
+        setShowSuggestions(true);
+      } else {
+        // Caso contrário (texto diferente ou sem busca bem-sucedida anterior com esse texto), esconder sugestões
+        setShowSuggestions(false);
+      }
+    }
   };
 
   const handleInputFocus = () => {
-    console.log('Campo focado, termo atual:', searchTerm);
-    if (searchTerm.length >= 4 && suggestions.length > 0) {
-      console.log('Mostrando sugestões existentes');
-      setShowSuggestions(true);
-    }
-    if (searchTerm.length > 0 && searchTerm.length < 4) {
+    console.log('Campo focado. Última busca bem-sucedida guardada:', lastSuccessfulSearchTerm);
+    if (lastSuccessfulSearchTerm && lastSuccessfulSuggestions.length > 0) {
+      console.log('Restaurando última busca bem-sucedida no foco:', lastSuccessfulSearchTerm);
+      setSearchTerm(lastSuccessfulSearchTerm);       // Preenche o input com o último termo buscado
+      setSuggestions(lastSuccessfulSuggestions);   // Define as sugestões para as da última busca
+      setShowSuggestions(true);                    // Mostra essas sugestões
+      setShowWarning(false);
+    } else if (searchTerm.length > 0 && searchTerm.length < 4) { // Se não há última busca, verifica o termo atual
+      setShowSuggestions(false);
       setShowWarning(true);
+    } else {
+      setShowSuggestions(false); // Nenhum termo válido ou última busca para mostrar
+      setShowWarning(false);
     }
   };
 
-  useEffect(() => {
-    console.log('useEffect disparado, searchTerm:', searchTerm);
-    const searchProdutos = async () => {
-      if (searchTerm.length < 4) {
-        console.log('Termo muito curto, limpando sugestões');
-        setSuggestions([]);
-        return;
-      }
+  // useEffect foi removido para implementar a busca manual com botão
+  // A função searchProdutos será chamada pelo botão
 
-      console.log('Iniciando busca para:', searchTerm);
-      setIsLoading(true);
-      try {
-        const response = await api.get(`/relatorios/produtos?q=${searchTerm}`);
-        console.log('Produtos encontrados:', response.data);
-        console.log('Quantidade de produtos:', response.data.length);
-        setSuggestions(response.data);
-        setShowSuggestions(true);
-      } catch (error) {
-        console.error('Erro ao buscar produtos:', error);
-        setSuggestions([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const searchProdutos = async () => {
+    if (searchTerm.length < 4) {
+      console.log('Termo muito curto para busca.');
+      setSuggestions([]);
+      setShowSuggestions(false); // Garante que sugestões antigas sejam limpas
+      setShowWarning(true); // Mostra o aviso de termo curto
+      return;
+    }
+    setShowWarning(false); // Limpa o aviso se a busca prosseguir
+    console.log('Iniciando busca para:', searchTerm);
+    setIsLoading(true);
+    setShowSuggestions(false); // Ocultar sugestões antigas antes de nova busca
+    try {
+      const response = await api.get(`/relatorios/produtos?q=${searchTerm}`);
+      const newSuggestions = response.data || [];
+      console.log('Produtos encontrados:', newSuggestions);
+      console.log('Quantidade de produtos:', newSuggestions.length);
+      setSuggestions(newSuggestions);
 
-    const timeoutId = setTimeout(searchProdutos, 300);
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+      if (newSuggestions.length > 0) {
+        setLastSuccessfulSearchTerm(searchTerm); // Guarda o termo da busca bem-sucedida
+        setLastSuccessfulSuggestions(newSuggestions); // Guarda os resultados
+      }
+      // Se a busca não retornar resultados, não limpamos a 'última busca bem-sucedida' anterior.
+      // Assim, se o usuário buscar algo sem resultado e focar de novo, verá a última *com* resultado.
+
+      setShowSuggestions(true); // Mostrar novas sugestões (ou painel vazio se não houver)
+    } catch (error) {
+      console.error('Erro ao buscar produtos:', error);
+      setSuggestions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSearchButtonClick = () => {
+    console.log('Botão de busca clicado');
+    searchProdutos();
+  };
 
   // Função para verificar se um produto já está no orçamento
   const isProdutoJaAdicionado = (produto) => {
@@ -134,26 +170,41 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
 
   return (
     <div ref={wrapperRef} className="relative">
-      <div className="relative">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={handleInputChange}
-          onFocus={handleInputFocus}
-          placeholder="Digite no mínimo 4 letras para buscar produtos..."
-          className={`w-full p-2 pl-10 rounded-md ${
-            darkMode
-              ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-              : "bg-white border-gray-300 text-gray-700"
-          }`}
-        />
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          {isLoading ? (
-            <FiLoader className={`animate-spin h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
-          ) : (
+      <div className="flex items-stretch space-x-0">
+        <div className="relative flex-grow">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            placeholder="Buscar produto..."
+            className={`w-full p-2 pl-10 rounded-l-md ${ // Borda direita será coberta pelo botão
+              darkMode
+                ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
+                : "bg-white border-gray-300 text-gray-700 focus:border-blue-500"
+            } border border-r-0 focus:ring-0`}
+          />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FiSearch className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
-          )}
+          </div>
         </div>
+        <button
+          type="button"
+          onClick={handleSearchButtonClick}
+          disabled={isLoading}
+          className={`p-2 px-3 rounded-r-md flex items-center justify-center transition-colors ${ 
+            darkMode
+              ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600 hover:border-blue-700"
+              : "bg-blue-500 hover:bg-blue-600 text-white border-blue-500 hover:border-blue-600"
+          } border disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
+        >
+          {isLoading ? (
+            <FiLoader className="animate-spin h-5 w-5" />
+          ) : (
+            <FiSearch className="h-5 w-5 sm:hidden" /> // Ícone para mobile
+          )}
+          <span className="ml-0 sm:ml-2 hidden sm:inline">Buscar</span> {/* Texto para telas maiores */}
+        </button>
       </div>
 
       {showWarning && (

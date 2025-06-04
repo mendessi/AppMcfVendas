@@ -59,6 +59,7 @@ function OrcamentoForm({ darkMode = false }) {
   const [desconto, setDesconto] = useState(0);
   const [observacao, setObservacao] = useState('');
   const [produtos, setProdutos] = useState([]);
+  const [focusedItemIndex, setFocusedItemIndex] = useState(null);
   const [produtoBusca, setProdutoBusca] = useState('');
   const [produtoSelecionado, setProdutoSelecionado] = useState(null);
   const [quantidade, setQuantidade] = useState(1);
@@ -193,6 +194,7 @@ function OrcamentoForm({ darkMode = false }) {
       i === idx ? { ...p, quantidade: novaQtd, valor_total: novaQtd * p.valor_unitario } : p
     );
     setProdutos(novosProdutos);
+    setFocusedItemIndex(idx); // Define o índice do item para focar
   };
 
   // Função para validar preço mínimo
@@ -215,6 +217,7 @@ function OrcamentoForm({ darkMode = false }) {
       i === idx ? { ...p, valor_unitario: novoValor, valor_total: novoValor * p.quantidade } : p
     );
     setProdutos(novosProdutos);
+    setFocusedItemIndex(idx); // Define o índice do item para focar
   };
 
   // Nova função para validar ao terminar a edição
@@ -493,7 +496,11 @@ function OrcamentoForm({ darkMode = false }) {
         observacao: String(observacao || ''),
         vendedor_codigo: String(vendedor || ''),
         especie: String(especie || '0'),
-        desconto: Number(desconto || 0),
+        // Calcula o valor do desconto em reais (percentual sobre o subtotal)
+        desconto: (() => {
+          const subtotal = produtos.reduce((acc, p) => acc + Number(p.valor_total || 0), 0);
+          return subtotal * (Number(desconto) / 100);
+        })(),
         produtos: produtos.map(p => ({
           codigo: String(p.codigo || ''),
           descricao: String(p.descricao || ''),
@@ -584,6 +591,23 @@ function OrcamentoForm({ darkMode = false }) {
       salvarNoCache();
     }
   }, [cliente, produtos, tabela, formaPagamento, vendedor, validade, especie, desconto, observacao]);
+
+  // Efeito para focar no item da lista (novo ou alterado)
+  useEffect(() => {
+    if (focusedItemIndex !== null && quantidadeRefs.current[focusedItemIndex]) {
+      const inputElement = quantidadeRefs.current[focusedItemIndex];
+      if (inputElement) {
+        setTimeout(() => {
+          inputElement.focus();
+          inputElement.select();
+          setFocusedItemIndex(null); // Reseta o índice após focar
+        }, 75); // Delay para garantir que o DOM está pronto e o item é visível
+      } else {
+        // Caso o elemento não esteja disponível (ex: item removido), reseta o índice
+        setFocusedItemIndex(null);
+      }
+    }
+  }, [focusedItemIndex, produtos]); // Dependências do efeito
 
   // Carregar dados do cache quando disponível
   useEffect(() => {
@@ -691,6 +715,7 @@ function OrcamentoForm({ darkMode = false }) {
     };
 
     setProdutos([novoProduto, ...produtos]);
+    setFocusedItemIndex(0); // Foca no item recém-adicionado (primeiro da lista)
     setProdutoSelecionado(null);
     setQuantidade(1);
     setValorUnitario(0);
@@ -986,6 +1011,7 @@ function OrcamentoForm({ darkMode = false }) {
                         value={p.quantidade}
                         ref={el => quantidadeRefs.current[idx] = el}
                         onChange={e => handleQuantidadeChange(idx, e.target.value)}
+                        onFocus={e => e.target.select()}
                         onKeyDown={e => {
                           if (e.key === 'Enter' || e.key === 'Tab') {
                             e.preventDefault();

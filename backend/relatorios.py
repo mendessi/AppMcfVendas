@@ -13,6 +13,42 @@ log = logging.getLogger("relatorios")
 # Configurar o router
 router = APIRouter(prefix="/relatorios", tags=["Relatórios"])
 
+@router.get("/clientes")
+async def listar_clientes(request: Request, q: str = "", empresa: str = ""):
+    """
+    Busca clientes reais no banco Firebird da empresa selecionada.
+    Pesquisa por nome, CNPJ ou CPF, usando o parâmetro q.
+    Retorna até 20 resultados.
+    """
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        termo = f"%{q.strip()}%" if q else "%"
+        sql = (
+            "SELECT CLI_CODIGO, CLI_NOME, CNPJ, CPF, CLI_TIPO, CIDADE, UF, BAIRRO "
+            "FROM CLIENTES "
+            "WHERE CLI_NOME LIKE ? OR CNPJ LIKE ? OR CPF LIKE ? "
+            "ORDER BY CLI_NOME ROWS 30"
+        )
+        cursor.execute(sql, (termo, termo, termo))
+        clientes = []
+        for row in cursor.fetchall():
+            clientes.append({
+                "cli_codigo": row[0],
+                "cli_nome": row[1],
+                "cnpj": row[2] or "",
+                "cpf": row[3] or "",
+                "cli_tipo": row[4] or "",
+                "cidade": row[5] or "",
+                "uf": row[6] or "",
+                "bairro": row[7] or ""
+            })  # Não inclui 'cli_cgc' no dicionário de resposta
+        conn.close()
+        return clientes
+    except Exception as e:
+        logging.error(f"Erro ao buscar clientes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar clientes: {str(e)}")
+
 from fastapi import Response
 
 # Modelos para as respostas

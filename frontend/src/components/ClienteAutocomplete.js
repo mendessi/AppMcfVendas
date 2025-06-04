@@ -22,8 +22,9 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
     };
   }, []);
 
-  useEffect(() => {
     const searchClientes = async () => {
+      const empresaCodigo = localStorage.getItem('empresa_atual');
+      const empresaDetalhes = localStorage.getItem('empresa_detalhes');
       if (searchTerm.length < 2) {
         setSuggestions([]);
         return;
@@ -34,9 +35,15 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
 
       setIsLoading(true);
       try {
+        console.log('API Call Details:', {
+          baseURL: api.defaults.baseURL,
+          endpoint: '/relatorios/clientes',
+          params: {
+            q: searchQuery,
+            empresa: empresaCodigo
+          }
+        });
         const token = localStorage.getItem('token');
-        const empresaCodigo = localStorage.getItem('empresa_atual');
-        const empresaDetalhes = localStorage.getItem('empresa_detalhes');
 
         if (!empresaCodigo || !empresaDetalhes) {
           console.error('Dados da empresa não encontrados');
@@ -84,9 +91,8 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
       }
     };
 
-    const timeoutId = setTimeout(searchClientes, 300);
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  // Removido useEffect para busca automática. A busca agora é manual.
+  // A função searchClientes será chamada por handleSearchClick.
 
   useEffect(() => {
     if (typeof value === 'string') {
@@ -104,7 +110,7 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
     if (onChange) {
       onChange(newValue);
     }
-    setShowSuggestions(true);
+    // setShowSuggestions(true); // Sugestões aparecerão após busca explícita
   };
 
   const handleSuggestionClick = (cliente) => {
@@ -122,6 +128,17 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
         bairro: cliente.bairro
       });
     }
+  };
+
+  const handleSearchClick = async () => {
+    if (searchTerm.length < 2) {
+      // Poderia mostrar um toast/aviso aqui se desejado
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    await searchClientes();
+    setShowSuggestions(true);
   };
 
   const handleClear = () => {
@@ -152,17 +169,32 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
           value={searchTerm}
           onChange={handleInputChange}
           placeholder="Buscar cliente..."
-          className={`pl-10 pr-10 w-full rounded-md ${
+          className={`pl-10 pr-24 w-full rounded-md ${
             darkMode
               ? "bg-gray-600 border-gray-500 text-white"
               : "bg-white border-gray-300 text-gray-700"
           }`}
         />
+        <button
+          type="button"
+          onClick={handleSearchClick}
+          disabled={isLoading || searchTerm.length < 2}
+          className={`absolute inset-y-0 right-0 pr-3 flex items-center justify-center w-20 rounded-r-md transition-colors ${darkMode 
+            ? isLoading || searchTerm.length < 2 ? 'bg-gray-500 text-gray-400' : 'bg-blue-600 hover:bg-blue-500 text-white' 
+            : isLoading || searchTerm.length < 2 ? 'bg-gray-300 text-gray-400' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
+          title="Buscar cliente"
+        >
+          {isLoading ? (
+            <FiLoader className="animate-spin h-5 w-5" />
+          ) : (
+            <FiSearch className="h-5 w-5" />
+          )}
+        </button>
         {searchTerm && (
           <button
             type="button"
             onClick={handleClear}
-            className={`absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer hover:${darkMode ? 'text-gray-200' : 'text-gray-700'} transition-colors`}
+            className={`absolute inset-y-0 right-20 pr-3 flex items-center cursor-pointer hover:${darkMode ? 'text-gray-200' : 'text-gray-700'} transition-colors`}
             title="Limpar cliente"
           >
             <FiX className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />

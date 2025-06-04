@@ -376,9 +376,9 @@ const PedidosList = ({ darkMode }) => {
     
     // Filtrar por autenticação
     if (filtroAuth === 'autenticadas') {
-      resultado = resultado.filter(p => p.autenticada);
+      resultado = resultado.filter(p => p.autenticacao_data && String(p.autenticacao_data).trim() !== "");
     } else if (filtroAuth === 'nao_autenticadas') {
-      resultado = resultado.filter(p => !p.autenticada);
+      resultado = resultado.filter(p => !p.autenticacao_data || String(p.autenticacao_data).trim() === "");
     }
     
     setPedidos(resultado);
@@ -676,9 +676,10 @@ const PedidosList = ({ darkMode }) => {
 
       {/* Versão para desktop */}
       <div className="hidden md:block">
-        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow overflow-hidden`}>
-          <table className="min-w-full divide-y divide-gray-700">
-            <thead className={darkMode ? "bg-gray-900" : "bg-gray-50"}>
+  <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow w-full`}>
+    <div className="w-full overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200" style={{minWidth: '1200px'}}>
+        <thead className={darkMode ? "bg-gray-900" : "bg-gray-50"}>
               <tr>
                 <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
                   Pedido
@@ -693,20 +694,28 @@ const PedidosList = ({ darkMode }) => {
                   Autenticação
                 </th>
                 <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Status Autenticação
-                </th>
+  Status Autenticação
+</th>
                 <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
                   Forma Pgto
                 </th>
                 <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Vendedor
-                </th>
-                <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-                  Valor Total
-                </th>
+  Tabela
+</th>
+<th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
+  Vendedor
+</th>
+<th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
+  Valor Total
+</th>
+<th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
+  Ações
+</th>
+                
+
               </tr>
             </thead>
-            <tbody className={`${darkMode ? "bg-gray-800" : "bg-white"} divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`}>
+            <tbody className={`${darkMode ? "bg-gray-800" : "bg-white"} divide-y ${darkMode ? "divide-gray-700" : "divide-gray-200"}`} style={{overflowX: 'auto'}} >
               {pedidos.length > 0 ? (
                 pedidos.map((pedido) => (
                   <React.Fragment key={pedido.id}>
@@ -721,8 +730,15 @@ const PedidosList = ({ darkMode }) => {
                         <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.data ? formatDate(pedido.data) : '-'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.autenticacao_data ? formatDate(pedido.autenticacao_data) : '-'}</div>
-                      </td>
+  <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.autenticacao_data ? formatDate(pedido.autenticacao_data) : '-'}</div>
+</td>
+<td className="px-6 py-4 whitespace-nowrap">
+  {pedido.autenticacao_data && String(pedido.autenticacao_data).trim() !== "" ? (
+    <span style={{ color: 'green', fontWeight: 'bold' }}>AUTENTICADA</span>
+  ) : (
+    <span style={{ color: 'red', fontWeight: 'bold' }}>NÃO AUTENTICADA</span>
+  )}
+</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeClass(pedido.status || '')}`}>
                           {pedido.status || 'Indefinido'}
@@ -730,6 +746,9 @@ const PedidosList = ({ darkMode }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.forma_pagamento || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.tabela_preco || '-'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className={`text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>{pedido.vendedor || '-'}</div>
@@ -741,6 +760,7 @@ const PedidosList = ({ darkMode }) => {
                         <button 
                           className={darkMode ? "text-blue-400 hover:text-blue-300 mr-3" : "text-blue-600 hover:text-blue-900 mr-3"}
                           onClick={() => togglePedidoDetails(pedido.id)}
+                          title={expandedPedido === pedido.id ? 'Ocultar itens' : 'Ver itens'}
                         >
                           {expandedPedido === pedido.id ? '🙈' : '👁️'}
                         </button>
@@ -808,9 +828,10 @@ const PedidosList = ({ darkMode }) => {
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-      {/* Versão para dispositivos móveis - cards */}
+        </div> {/* fecha div overflow-x-auto */}
+      </div> {/* fecha div container visual */}
+    </div> {/* fecha div md:block */}
+    {/* Versão para dispositivos móveis - cards */}
       <div className="md:hidden">
         {pedidos.length > 0 ? (
           <div className="grid grid-cols-1 gap-4">

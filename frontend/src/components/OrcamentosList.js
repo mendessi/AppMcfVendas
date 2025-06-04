@@ -662,7 +662,7 @@ const OrcamentosList = ({ darkMode }) => {
                   </div>
                   
                   {/* Grid de Informações */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="grid grid-cols-3 gap-3 mb-4">
                     <div>
                       <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Forma Pagto</p>
                       <p className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
@@ -673,6 +673,12 @@ const OrcamentosList = ({ darkMode }) => {
                       <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Tabela</p>
                       <p className={`text-sm font-medium ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
                         {orcamento.tabela || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Desconto</p>
+                      <p className={`text-sm font-medium ${darkMode ? "text-green-300" : "text-green-700"}`}>
+                        {formatarValor(orcamento.desconto || 0)}
                       </p>
                     </div>
                   </div>
@@ -768,6 +774,7 @@ const OrcamentosList = ({ darkMode }) => {
                   <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Forma Pagto</th>
                   <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Tabela</th>
                   <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Valor</th>
+                  <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Desconto</th>
                   <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Status</th>
                   <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${darkMode ? "text-gray-300" : "text-gray-500"}`}>Ações</th>
                 </tr>
@@ -775,7 +782,7 @@ const OrcamentosList = ({ darkMode }) => {
               <tbody className={`divide-y ${darkMode ? "divide-gray-600" : "divide-gray-200"}`}>
                 {orcamentosFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className={`px-6 py-4 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    <td colSpan="10" className={`px-6 py-4 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                       Nenhum orçamento encontrado
                     </td>
                   </tr>
@@ -790,6 +797,7 @@ const OrcamentosList = ({ darkMode }) => {
                         <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.forma_pagamento || '-'}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.tabela || '-'}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">{formatarValor(orcamento.valor_total)}</td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">{formatarValor(orcamento.desconto || 0)}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(orcamento.status)}`}>
                             {orcamento.status}

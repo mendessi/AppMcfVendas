@@ -73,6 +73,7 @@ function ModalVendasCliente({ open, onClose, vendas, cliente, darkMode, onVerIte
                   <th className="px-2 py-2 text-right">Total</th>
                   <th className="px-2 py-2 text-right">Desconto</th>
                   <th className="px-2 py-2 text-left">Forma Pgto</th>
+                  <th className="px-2 py-2 text-center">Status</th>
                   <th className="px-2 py-2 text-center">Itens</th>
                 </tr>
               </thead>
@@ -85,6 +86,13 @@ function ModalVendasCliente({ open, onClose, vendas, cliente, darkMode, onVerIte
                     <td className="px-2 py-1 text-right font-semibold">R$ {Number(venda.ecf_total).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
                     <td className="px-2 py-1 text-right">R$ {Number(venda.ecf_desconto).toLocaleString('pt-BR', {minimumFractionDigits:2})}</td>
                     <td className="px-2 py-1">{venda.fpg_nome}</td>
+                    <td className="px-2 py-1 text-center">
+                      {venda.ecf_cx_data && String(venda.ecf_cx_data).trim() !== "" ? (
+                        <span className="text-green-600 dark:text-green-400 font-bold">AUTENTICADA</span>
+                      ) : (
+                        <span className="text-red-600 dark:text-red-400 font-bold">NÃO AUTENTICADA</span>
+                      )}
+                    </td>
                     <td className="px-2 py-1 text-center">
                       <button className={`p-2 rounded-full ${darkMode ? 'text-blue-300 hover:text-blue-200 hover:bg-gray-700' : 'text-blue-600 hover:text-blue-900 hover:bg-gray-100'}`} title="Ver Itens da Venda" onClick={() => onVerItensVenda(venda)}>
                         <FiList size={18} />
@@ -311,7 +319,7 @@ export default function ClientesListNew({ darkMode = false }) {
 
   return (
     <div className={`w-full mx-auto p-4 ${darkMode ? 'bg-gray-900 text-gray-100' : 'bg-gray-50 text-gray-900'}`}>
-      <h1 className={`text-2xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Clientes (Novo)</h1>
+      <h1 className={`text-2xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Lista de Clientes</h1>
       {erro && <div className={`p-2 mb-2 rounded ${darkMode ? 'bg-red-900 text-red-200' : 'bg-red-100 text-red-700'}`}>{erro}</div>}
       <form onSubmit={handleBuscar} className="mb-4 flex flex-col sm:flex-row gap-2 items-center w-full">
         <div className="w-full flex flex-col sm:flex-row gap-2">

@@ -84,6 +84,10 @@ function OrcamentoForm({ darkMode = false }) {
   const [vendedores, setVendedores] = useState([]);
   const [vendedorSelecionado, setVendedorSelecionado] = useState(null);
 
+  // Estado para controlar o modal de restauração de rascunho
+  const [showRestoreDraftModal, setShowRestoreDraftModal] = useState(false);
+  const [rascunhoParaRestaurar, setRascunhoParaRestaurar] = useState(null);
+
   // Função para verificar se o desconto está válido
   const isDescontoValido = () => {
     if (!vendedorSelecionado) return true;
@@ -634,7 +638,7 @@ function OrcamentoForm({ darkMode = false }) {
         timestamp: new Date().toISOString()
       };
 
-      await OrcamentoCache.salvarCache(orcamentoCache);
+      await OrcamentoCache.salvarRascunho(orcamentoCache);
     } catch (error) {
       console.error('Erro ao salvar no cache:', error);
     }
@@ -846,6 +850,39 @@ function OrcamentoForm({ darkMode = false }) {
       const vendedor = vendedores.find(v => v.codigo === vendedorSelecionado);
       setVendedorSelecionado(vendedor);
     }
+  };
+
+  // Ao montar, verifica se existe rascunho salvo
+  useEffect(() => {
+    async function verificarRascunho() {
+      const rascunho = await OrcamentoCache.obterRascunho();
+      if (rascunho && (!cliente && produtos.length === 0)) {
+        setRascunhoParaRestaurar(rascunho);
+        setShowRestoreDraftModal(true);
+      }
+    }
+    verificarRascunho();
+  }, []);
+
+  // Função para restaurar o rascunho
+  const restaurarRascunho = () => {
+    if (rascunhoParaRestaurar) {
+      setCliente(rascunhoParaRestaurar.cliente);
+      setTabela(rascunhoParaRestaurar.tabela);
+      setFormaPagamento(rascunhoParaRestaurar.formaPagamento);
+      setVendedor(rascunhoParaRestaurar.vendedor);
+      setValidade(rascunhoParaRestaurar.validade);
+      setEspecie(rascunhoParaRestaurar.especie);
+      setDesconto(rascunhoParaRestaurar.desconto);
+      setObservacao(rascunhoParaRestaurar.observacao);
+      setProdutos(rascunhoParaRestaurar.produtos);
+    }
+    setShowRestoreDraftModal(false);
+  };
+
+  // Função para ignorar o rascunho
+  const ignorarRascunho = () => {
+    setShowRestoreDraftModal(false);
   };
 
   return (
@@ -1539,6 +1576,34 @@ function OrcamentoForm({ darkMode = false }) {
               >
                 <FiEdit className="w-5 h-5" />
                 Ir para o Item
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRestoreDraftModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`bg-white dark:bg-gray-800 border-2 rounded-xl shadow-2xl w-full max-w-md p-6 mx-4`}>
+            <h3 className="text-xl font-bold mb-4 text-blue-700 dark:text-blue-300">Rascunho Encontrado</h3>
+            <p className="mb-4 text-gray-700 dark:text-gray-200">
+              Existe um orçamento em andamento salvo automaticamente neste computador.<br /><br />
+              <strong>Deseja restaurar esse orçamento?</strong><br />
+              Se você confirmar, todos os campos e itens do rascunho serão carregados e você poderá continuar de onde parou.<br /><br />
+              Se preferir, pode ignorar e começar um novo orçamento do zero.
+            </p>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={ignorarRascunho}
+                className="px-4 py-2 rounded-lg font-medium bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+              >
+                Ignorar
+              </button>
+              <button
+                onClick={restaurarRascunho}
+                className="px-4 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
+              >
+                Restaurar Rascunho
               </button>
             </div>
           </div>

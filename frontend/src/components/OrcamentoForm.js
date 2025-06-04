@@ -213,8 +213,6 @@ const OrcamentoForm = ({ numero, darkMode }) => {
     console.log('=== HANDLEPRODUCTOSELECT FINALIZADO ===');
   };
 
-  console.log('Função handleProdutoSelect definida:', typeof handleProdutoSelect);
-
   const handleQuantidadeChange = (codigo, quantidade) => {
     setOrcamento(prev => ({
       ...prev,
@@ -223,7 +221,22 @@ const OrcamentoForm = ({ numero, darkMode }) => {
           ? {
               ...p,
               quantidade: parseFloat(quantidade) || 1,
-              valor_total: parseFloat(quantidade) * p.valor_unitario
+              valor_total: (parseFloat(quantidade) || 1) * p.valor_unitario
+            }
+          : p
+      )
+    }));
+  };
+
+  const handleValorUnitarioChange = (codigo, valor) => {
+    setOrcamento(prev => ({
+      ...prev,
+      produtos: prev.produtos.map(p =>
+        p.codigo === codigo
+          ? {
+              ...p,
+              valor_unitario: parseFloat(valor) || 0,
+              valor_total: p.quantidade * (parseFloat(valor) || 0)
             }
           : p
       )
@@ -262,15 +275,6 @@ const OrcamentoForm = ({ numero, darkMode }) => {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
             element.classList.add('bg-yellow-100');
             setTimeout(() => element.classList.remove('bg-yellow-100'), 2000);
-            
-            // Focar e selecionar o campo de quantidade
-            const quantidadeInput = element.querySelector('input[type="number"]');
-            if (quantidadeInput) {
-              setTimeout(() => {
-                quantidadeInput.focus();
-                quantidadeInput.select();
-              }, 300);
-            }
           }
         }, 100);
       }
@@ -560,11 +564,14 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           value={produto.quantidade}
-                          onChange={(e) => handleQuantidadeChange(produto.codigo, e.target.value)}
+                          onChange={e => {
+                            // Aceita apenas números e vírgula/ponto decimal
+                            const value = e.target.value.replace(/[^0-9,.]/g, '');
+                            handleQuantidadeChange(produto.codigo, value);
+                          }}
                           className={`w-20 text-right rounded-md ${
                             darkMode
                               ? "bg-gray-600 border-gray-500 text-white"
@@ -575,10 +582,22 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                       <td className={`px-6 py-4 whitespace-nowrap text-right ${
                         darkMode ? "text-white" : "text-gray-900"
                       }`}>
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(produto.valor_unitario)}
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={produto.valor_unitario}
+                          onChange={e => {
+                            // Aceita apenas números e vírgula/ponto decimal
+                            const value = e.target.value.replace(/[^0-9,.]/g, '');
+                            handleValorUnitarioChange(produto.codigo, value);
+                          }}
+                          className={`w-24 text-right rounded-md font-semibold ${
+                            darkMode
+                              ? "bg-gray-600 border-gray-500 text-white"
+                              : "bg-white border-gray-300 text-gray-900"
+                          }`}
+                          style={{fontVariantNumeric: 'tabular-nums'}}
+                        />
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap text-right ${
                         darkMode ? "text-white" : "text-gray-900"
@@ -648,9 +667,8 @@ const OrcamentoForm = ({ numero, darkMode }) => {
               <div className="flex items-center">
                 <span>Desconto:</span>
                 <input
-                  type="number"
-                  min="0"
-                  max="100"
+                  type="text"
+                  inputMode="decimal"
                   value={orcamento.desconto}
                   onChange={(e) => {
                     console.log('OrcamentoForm - Input desconto onChange:', e.target.value);

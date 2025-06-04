@@ -174,7 +174,7 @@ function OrcamentoForm({ darkMode = false }) {
         setTimeout(() => {
           if (quantidadeRefs.current[indiceProduto]) {
             quantidadeRefs.current[indiceProduto].focus();
-            quantidadeRefs.current[indiceProduto].select();
+            // Removido select() para evitar seleção automática
           }
         }, 300);
       }, 100);
@@ -189,9 +189,23 @@ function OrcamentoForm({ darkMode = false }) {
   };
 
   const handleQuantidadeChange = (idx, value) => {
-    const novaQtd = parseFloat(value) || 1;
+    // Primeiro, salva o valor exatamente como o usuário digitou (incluindo vírgulas) no estado
+    const novosProdutosTexto = [...produtos];
+    if (novosProdutosTexto[idx]) {
+      // Guarda o valor exato como texto para exibição
+      novosProdutosTexto[idx].quantidadeTexto = value;
+    }
+
+    // Agora faz a conversão para cálculo (substitui vírgula por ponto)
+    const valorNormalizado = value.toString().replace(',', '.');
+    const novaQtd = parseFloat(valorNormalizado) || 1;
     const novosProdutos = produtos.map((p, i) =>
-      i === idx ? { ...p, quantidade: novaQtd, valor_total: novaQtd * p.valor_unitario } : p
+      i === idx ? { 
+        ...p, 
+        quantidade: novaQtd, 
+        quantidadeTexto: value, // Salva também como texto
+        valor_total: novaQtd * p.valor_unitario 
+      } : p
     );
     setProdutos(novosProdutos);
     setFocusedItemIndex(idx); // Define o índice do item para focar
@@ -212,12 +226,27 @@ function OrcamentoForm({ darkMode = false }) {
 
   // Handler para alteração do valor unitário com validação
   const handleValorUnitarioChange = (idx, value) => {
-    const novoValor = parseFloat(value) || 0;
+    // Primeiro, salva o valor exatamente como o usuário digitou (incluindo vírgulas) no estado
+    const novosProdutosTexto = [...produtos];
+    if (novosProdutosTexto[idx]) {
+      // Guarda o valor exato como texto para exibição
+      novosProdutosTexto[idx].valorUnitarioTexto = value;
+    }
+
+    // Agora faz a conversão para cálculo (substitui vírgula por ponto)
+    const valorNormalizado = value.toString().replace(',', '.');
+    const novoValor = parseFloat(valorNormalizado) || 0;
     const novosProdutos = produtos.map((p, i) =>
-      i === idx ? { ...p, valor_unitario: novoValor, valor_total: novoValor * p.quantidade } : p
+      i === idx ? { 
+        ...p, 
+        valor_unitario: novoValor, 
+        valorUnitarioTexto: value, // Salva também como texto
+        valor_total: novoValor * p.quantidade 
+      } : p
     );
     setProdutos(novosProdutos);
-    setFocusedItemIndex(idx); // Define o índice do item para focar
+    // Removido setFocusedItemIndex para evitar redirecionamento de foco durante digitação
+    // setFocusedItemIndex(idx);
   };
 
   // Nova função para validar ao terminar a edição
@@ -599,7 +628,7 @@ function OrcamentoForm({ darkMode = false }) {
       if (inputElement) {
         setTimeout(() => {
           inputElement.focus();
-          inputElement.select();
+          // Removido select() para evitar seleção automática
           setFocusedItemIndex(null); // Reseta o índice após focar
         }, 75); // Delay para garantir que o DOM está pronto e o item é visível
       } else {
@@ -1003,16 +1032,23 @@ function OrcamentoForm({ darkMode = false }) {
                     </label>
                     <div className="relative">
                       <input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
-                        pattern="[0-9]*"
                         min="0.01"
                         step="0.01"
-                        value={p.quantidade}
+                        value={p.quantidadeTexto || p.quantidade}
                         ref={el => quantidadeRefs.current[idx] = el}
-                        onChange={e => handleQuantidadeChange(idx, e.target.value)}
-                        onFocus={e => e.target.select()}
+                        onChange={e => {
+                          // Permite digitação de vírgulas/pontos sem filtrar nada - passar o valor bruto
+                          handleQuantidadeChange(idx, e.target.value);
+                        }}
+                        onFocus={() => {/* Removido select() Mendes*/}}
                         onKeyDown={e => {
+                          // Permitir explicitamente vírgulas e pontos
+                          if (e.key === ',' || e.key === '.') {
+                            return; // Deixa o caractere passar
+                          }
+                          
                           if (e.key === 'Enter' || e.key === 'Tab') {
                             e.preventDefault();
                             if (precoRefs.current[idx]) precoRefs.current[idx].focus();
@@ -1043,26 +1079,40 @@ function OrcamentoForm({ darkMode = false }) {
                     </label>
                     <div className="relative">
                       <input
-                        type="number"
+                        type="text"
                         inputMode="decimal"
-                        pattern="[0-9]*"
                         min={0}
                         step={0.01}
-                        value={p.valor_unitario}
+                        value={p.valorUnitarioTexto || p.valor_unitario}
                         ref={el => precoRefs.current[idx] = el}
-                        onChange={e => handleValorUnitarioChange(idx, e.target.value)}
+                        onChange={e => {
+                          // Preserva o foco no campo atual sem criar loops
+                          const campo = e.target;
+                          
+                          // Permite digitação de vírgulas/pontos sem filtrar nada - passar o valor bruto
+                          handleValorUnitarioChange(idx, e.target.value);
+                          
+                          // Previne que o foco seja movido em outra parte do código
+                          // Executa depois que o React terminar o processamento do evento
+                          requestAnimationFrame(() => {
+                            if (campo && document.contains(campo)) {
+                              campo.focus();
+                            }
+                          });
+                        }}
                         onBlur={() => validarPrecoAoTerminar(idx)}
-                        onFocus={e => e.target.select()}
+                        onFocus={() => {/* Removido select() Mendes*/}}
                         onKeyDown={e => {
+                          // Permitir explicitamente vírgulas e pontos
+                          if (e.key === ',' || e.key === '.') {
+                            return; // Deixa o caractere passar
+                          }
+                        
                           if (e.key === 'Enter' || e.key === 'Tab') {
                             validarPrecoAoTerminar(idx);
-                            if (e.key === 'Enter' && quantidadeRefs.current[idx + 1]) {
-                              e.preventDefault();
-                              quantidadeRefs.current[idx + 1].focus();
-                            } else if (e.key === 'Tab') {
-                              e.preventDefault();
-                              e.target.select();
-                            }
+                            // Comportamento de Tab mantido como padrão
+                            // Comportamento de Enter mantido como padrão
+                            // Removida a mudança automática de foco para evitar problemas de digitação
                           }
                         }}
                         className={`w-full h-12 px-4 py-2 rounded border text-right font-semibold text-base md:text-xl ${

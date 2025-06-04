@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Corrigido: adiciona useRef
 import api, { getVendedores } from '../services/api';
 
 const VendedorSelect = ({ value, onChange, darkMode }) => {
   const [vendedores, setVendedores] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Cache simples em memória para evitar múltiplas chamadas à API durante a sessão
+  const vendedoresCache = useRef(null);
 
   useEffect(() => {
     const fetchVendedores = async () => {
@@ -30,7 +33,14 @@ const VendedorSelect = ({ value, onChange, darkMode }) => {
         console.log('[VENDEDORES] Código do vendedor:', codigoVendedor);
 
         try {
-          // Se for vendedor, buscar apenas seus dados
+          // Verifica se já existe cache
+          if (vendedoresCache.current) {
+            console.log('[VENDEDORES] Usando cache em memória:', vendedoresCache.current);
+            setVendedores(vendedoresCache.current);
+            setIsLoading(false);
+            return;
+          }
+          // Se não houver cache, faz a chamada à API normalmente
           console.log('[VENDEDORES] Iniciando chamada à API...');
           const response = await getVendedores();
           
@@ -42,6 +52,7 @@ const VendedorSelect = ({ value, onChange, darkMode }) => {
             if (vendedorData) {
               console.log('[VENDEDORES] Dados do vendedor encontrados:', vendedorData);
               setVendedores([vendedorData]);
+              vendedoresCache.current = [vendedorData]; // Salva no cache
               onChange(vendedorData); // Enviar o objeto completo do vendedor
             } else {
               console.error('[VENDEDORES] Dados do vendedor não encontrados na resposta');
@@ -51,6 +62,7 @@ const VendedorSelect = ({ value, onChange, darkMode }) => {
             // Se não for vendedor, usar todos os vendedores
             console.log('[VENDEDORES] Carregando lista completa:', response.data);
             setVendedores(response.data || []);
+            vendedoresCache.current = response.data || []; // Salva no cache
           }
         } catch (apiError) {
           console.error('[VENDEDORES] Erro na chamada da API:', apiError);

@@ -117,7 +117,8 @@ const OrcamentoHeader = ({
     }
   };
 
-  const handleVendedorChange = (vendedorSelecionado) => {
+  // Memoiza a função para evitar que mude a cada renderização e dispare efeitos desnecessários no VendedorSelect
+  const handleVendedorChange = React.useCallback((vendedorSelecionado) => {
     if (isUnifiedMode) {
       setOrcamento(prev => ({
         ...prev,
@@ -130,7 +131,8 @@ const OrcamentoHeader = ({
         setVendedor(vendedorSelecionado);
       }
     }
-  };
+  }, [isUnifiedMode, setOrcamento, setVendedor]);
+
 
   const handleFormaPagamentoChange = (formaPagamentoCodigo) => {
     if (isUnifiedMode) {
@@ -339,9 +341,8 @@ const OrcamentoHeader = ({
                 <FiPercent className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
               </div>
               <input
-                type="number"
-                min="0"
-                max={vendedorValue?.desconto_maximo || 100}
+                type="text"
+                inputMode="decimal"
                 value={descontoValue}
                 onChange={(e) => {
                   let valor = parseFloat(e.target.value) || 0;

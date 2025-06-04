@@ -398,12 +398,15 @@ const NovoPedido = ({ darkMode }) => {
               </label>
               <input
                 id="quantidade"
-                type="number"
-                min="0.01"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 className={`shadow appearance-none border rounded w-full py-2 px-3 ${darkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-white border-gray-300 text-gray-700"} leading-tight focus:outline-none focus:shadow-outline`}
                 value={quantidade}
-                onChange={(e) => setQuantidade(e.target.value)}
+                onChange={(e) => {
+                  // Aceita apenas números e vírgula/ponto decimal
+                  const value = e.target.value.replace(/[^0-9,.]/g, '');
+                  setQuantidade(value);
+                }}
               />
             </div>
           </div>

@@ -176,7 +176,6 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
             type="text"
             value={searchTerm.toUpperCase()}
             onChange={handleInputChange}
-            onFocus={handleInputFocus}
             placeholder="Buscar produto por código ou nome..."
             style={{ minHeight: '44px', height: '44px' }}
             className={`pl-10 pr-24 w-full rounded-md ${

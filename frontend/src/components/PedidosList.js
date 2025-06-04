@@ -703,10 +703,10 @@ const PedidosList = ({ darkMode }) => {
   Tabela
 </th>
 <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-  Vendedor
+  -
 </th>
 <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
-  Valor Total
+  Vendedor
 </th>
 <th scope="col" className={`px-6 py-3 text-left text-xs font-medium ${darkMode ? "text-gray-400" : "text-gray-500"} uppercase tracking-wider`}>
   Ações

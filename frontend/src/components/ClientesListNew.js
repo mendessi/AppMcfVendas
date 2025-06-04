@@ -422,42 +422,39 @@ export default function ClientesListNew({ darkMode = false }) {
               </tbody>
             </table>
           </div>
-          {/* Cards para mobile */}
-          <div className="block sm:hidden space-y-4">
+          {/* Lista responsiva para mobile */}
+          <div className="sm:hidden flex flex-col gap-3">
             {clientes.length > 0 ? (
-              clientes.map((cliente, idx) => (
-                <div key={cliente.cli_codigo || idx} className={`rounded-lg shadow p-4 flex flex-col justify-between border transition-shadow ${darkMode ? 'bg-gray-800 border-gray-700 text-white hover:shadow-xl' : 'bg-white border-gray-200 text-gray-900 hover:shadow-lg'}`}>
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-lg font-bold truncate ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>{cliente.cli_nome}</span>
-                      {cliente.apelido && <span className={`text-xs ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-700'} rounded px-2 py-0.5 ml-2`}>{cliente.apelido}</span>}
-                    </div>
-                    <div className={`text-sm mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}><b>Cidade:</b> {cliente.cidade || '-'} / {cliente.uf || '-'}</div>
-                    <div className={`text-sm mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}><b>WhatsApp:</b> {cliente.tel_whatsapp || '-'}</div>
-                    <div className={`text-sm mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}><b>CNPJ:</b> {cliente.cnpj || '-'}</div>
-                    <div className={`text-sm mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}><b>Endereço:</b> {[cliente.endereco, cliente.numero].filter(Boolean).join(', ') || '-'}</div>
-                    <div className={`text-xs mb-1 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Código: {cliente.cli_codigo}</div>
+              clientes.map((cliente) => (
+                <div key={cliente.cli_codigo} className={`rounded-lg shadow border p-4 flex flex-col gap-2 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-lg">{cliente.cli_nome}</span>
+                    {cliente.apelido && (
+                      <span className={`ml-2 px-2 py-0.5 rounded ${darkMode ? 'bg-blue-900 text-blue-200' : 'bg-blue-100 text-blue-700'} text-xs font-bold border`}>{cliente.apelido}</span>
+                    )}
                   </div>
-                  <div className="mt-3 flex gap-2">
+                  <div className="text-xs text-gray-400">Código: <span className="font-semibold text-gray-700 dark:text-gray-200">{cliente.cli_codigo}</span></div>
+                  <div className="text-sm"><b>CNPJ:</b> {cliente.cnpj || '-'}</div>
+                  <div className="text-sm"><b>Cidade/UF:</b> {cliente.cidade} / {cliente.uf}</div>
+                  <div className="text-sm"><b>WhatsApp:</b> {cliente.tel_whatsapp || '-'}</div>
+                  <div className="text-sm"><b>Endereço:</b> {[cliente.endereco, cliente.numero].filter(Boolean).join(', ') || '-'}</div>
+                  <div className="flex gap-2 mt-2">
                     <button
-                      className={`p-2 rounded-full ${darkMode ? 'text-green-400 hover:text-green-300 hover:bg-gray-700' : 'text-green-600 hover:text-green-900 hover:bg-gray-100'}`}
+                      className={`flex-1 p-2 rounded-lg font-semibold ${darkMode ? 'bg-green-700 text-white' : 'bg-green-100 text-green-800'} text-xs`}
                       onClick={() => handleVerVendas(cliente)}
                       title="Ver Vendas"
-                    >
-                      <FiShoppingBag size={20} />
-                    </button>
+                    >Vendas</button>
                     <button
-                      className={`p-2 rounded-full ${darkMode ? 'text-purple-400 hover:text-purple-300 hover:bg-gray-700' : 'text-purple-600 hover:text-purple-900 hover:bg-gray-100'}`}
+                      className={`flex-1 p-2 rounded-lg font-semibold ${darkMode ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'} text-xs`}
                       onClick={() => handleVerContas(cliente)}
-                      title="Ver Financeiro"
-                    >
-                      <FiDollarSign size={20} />
-                    </button>
+                      title="Financeiro"
+                    >Financeiro</button>
+                    <span className={`flex-1 p-2 rounded-lg font-semibold text-center ${darkMode ? 'bg-yellow-900 text-yellow-300' : 'bg-yellow-100 text-yellow-800'} text-xs opacity-80 cursor-not-allowed`} title="Em breve">Em construção</span>
                   </div>
                 </div>
               ))
             ) : (
-              <div className={`text-center ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nenhum cliente encontrado.</div>
+              <div className="text-center text-gray-500 py-8">Nenhum cliente encontrado.</div>
             )}
           </div>
         </div>

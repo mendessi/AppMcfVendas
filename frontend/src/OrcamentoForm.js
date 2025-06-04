@@ -226,17 +226,23 @@ function OrcamentoForm({ darkMode = false }) {
 
   // Handler para alteração do valor unitário com validação rigorosa
   const handleValorUnitarioChange = (idx, value) => {
-    const novosProdutos = produtos.map((p, i) =>
-      i === idx ? {
-        ...p,
-        valorUnitarioTexto: value, // sempre string
-        valor_unitario: value.replace(',', '.') // mantém como string para cálculo
-      } : p
-    );
+    const novosProdutos = produtos.map((p, i) => {
+      if (i === idx) {
+        const valorUnitarioNum = parseFloat(value.replace(',', '.')) || 0;
+        const quantidadeNum = parseFloat(p.quantidade) || 1;
+        return {
+          ...p,
+          valorUnitarioTexto: value, // sempre string
+          valor_unitario: value.replace(',', '.'), // mantém como string para cálculo
+          valor_total: valorUnitarioNum * quantidadeNum // recalcula o total
+        };
+      }
+      return p;
+    });
     setProdutos(novosProdutos);
   };
 
-  // Atualizar validarPrecoAoTerminar para limpar o campo e focar de volta se valor < mínimo
+  // Atualizar validarPrecoAoTerminar para ser chamada apenas no onBlur/onKeyDown
   const validarPrecoAoTerminar = (idx) => {
     const produtoAtual = produtos[idx];
     let valorAtual = 0;
@@ -254,7 +260,8 @@ function OrcamentoForm({ darkMode = false }) {
         i === idx ? {
           ...p,
           valorUnitarioTexto: valorFormatado,
-          valor_unitario: proVenda
+          valor_unitario: proVenda,
+          valor_total: (parseFloat(p.quantidade) || 1) * proVenda
         } : p
       );
       setProdutos(novosProdutos);
@@ -272,7 +279,8 @@ function OrcamentoForm({ darkMode = false }) {
         i === idx ? {
           ...p,
           valorUnitarioTexto: '',
-          valor_unitario: ''
+          valor_unitario: '',
+          valor_total: 0
         } : p
       );
       setProdutos(novosProdutos);
@@ -526,10 +534,7 @@ function OrcamentoForm({ darkMode = false }) {
     setIsLoading(true);
     
     try {
-      // Obtém o nome do cliente formatado
       const nomeCliente = getNomeCliente(cliente);
-      
-      // Monta o JSON conforme backend
       const payload = {
         cliente_codigo: String(cliente?.cli_codigo || cliente?.CLI_CODIGO || cliente?.codigo || ''),
         nome_cliente: nomeCliente,
@@ -1081,18 +1086,7 @@ function OrcamentoForm({ darkMode = false }) {
                         ref={el => precoRefs.current[idx] = el}
                         onFocus={e => e.target.select()}
                         onChange={e => {
-                          const campo = e.target;
                           handleValorUnitarioChange(idx, e.target.value);
-                          const valorDigitado = parseFloat(e.target.value.replace(',', '.')) || 0;
-                          const precoMinimo = parseFloat(p.preco_minimo) || 0;
-                          if (valorDigitado > 0 && valorDigitado < precoMinimo) {
-                            setTimeout(() => validarPrecoAoTerminar(idx), 1500);
-                          }
-                          requestAnimationFrame(() => {
-                            if (campo && document.contains(campo)) {
-                              campo.focus();
-                            }
-                          });
                         }}
                         onBlur={() => validarPrecoAoTerminar(idx)}
                         onKeyDown={e => {
@@ -1305,7 +1299,7 @@ function OrcamentoForm({ darkMode = false }) {
                     </h3>
                   </div>
                   <button
-                    onClick={handleFecharConfirmacao}
+                    onClick={orcamentoSalvo ? handleNovoOrcamento : handleFecharConfirmacao}
                     className={`p-1 rounded-full transition-colors ${
                       darkMode 
                         ? 'text-gray-400 hover:text-white hover:bg-gray-700' 
@@ -1390,7 +1384,7 @@ function OrcamentoForm({ darkMode = false }) {
                     </h3>
                   </div>
                   <button
-                    onClick={handleFecharConfirmacao}
+                    onClick={orcamentoSalvo ? handleNovoOrcamento : handleFecharConfirmacao}
                     className={`p-1 rounded-full transition-colors ${
                       darkMode 
                         ? 'text-gray-400 hover:text-white hover:bg-gray-700' 

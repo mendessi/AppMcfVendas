@@ -105,7 +105,7 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
   }, [value]);
 
   const handleInputChange = (e) => {
-    const newValue = e.target.value;
+    const newValue = e.target.value.toUpperCase();
     setSearchTerm(newValue);
     if (onChange) {
       onChange(newValue);
@@ -166,7 +166,7 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
         </div>
         <input
           type="text"
-          value={searchTerm}
+          value={searchTerm.toUpperCase()}
           onChange={handleInputChange}
           placeholder="Buscar cliente..."
           className={`pl-10 pr-24 w-full rounded-md ${
@@ -222,12 +222,12 @@ const ClienteAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
                       darkMode ? "bg-gray-600" : "bg-gray-100"
                     } ${darkMode ? "text-white" : "text-gray-700"}`}
                   >
-                    <div className="font-medium">{cliente.nome}</div>
+                    <div className="font-medium">{(cliente.nome || '').toUpperCase()}</div>
                     <div className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
-                      Código: {cliente.codigo} | CNPJ: {cliente.documento}
+                      CÓDIGO: {(cliente.codigo || '').toString().toUpperCase()} | CNPJ: {(cliente.documento || '').toUpperCase()}
                     </div>
                     <div className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                      {cliente.bairro ? `${cliente.bairro} - ` : ''}{cliente.cidade}/{cliente.uf}
+                      {cliente.bairro ? `${cliente.bairro.toUpperCase()} - ` : ''}{(cliente.cidade || '').toUpperCase()}/{(cliente.uf || '').toUpperCase()}
                     </div>
                   </li>
                 ))}

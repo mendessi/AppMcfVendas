@@ -28,7 +28,7 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
   }, []);
 
   const handleInputChange = (e) => {
-    const newValue = e.target.value;
+    const newValue = e.target.value.toUpperCase();
     console.log('Input mudou para:', newValue);
     setSearchTerm(newValue);
 
@@ -174,15 +174,17 @@ const ProdutoAutocomplete = ({ onSelect, onAdd, darkMode, value, onChange, produ
         <div className="relative flex-grow">
           <input
             type="text"
-            value={searchTerm}
+            value={searchTerm.toUpperCase()}
             onChange={handleInputChange}
             onFocus={handleInputFocus}
-            placeholder="Buscar produto..."
-            className={`w-full p-2 pl-10 rounded-l-md ${ // Borda direita será coberta pelo botão
+            placeholder="Buscar produto por código ou nome..."
+            style={{ minHeight: '44px', height: '44px' }}
+            className={`pl-10 pr-24 w-full rounded-md ${
               darkMode
-                ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-blue-500"
-                : "bg-white border-gray-300 text-gray-700 focus:border-blue-500"
-            } border border-r-0 focus:ring-0`}
+                ? "bg-gray-600 border-gray-500 text-white"
+                : "bg-white border-gray-300 text-gray-700"
+            }`}
+            autoComplete="off"
           />
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FiSearch className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />

@@ -945,8 +945,8 @@ function OrcamentoForm({ darkMode = false }) {
                   ${isUltimoInserido ? 'animate-pulse' : ''}
                 `}
               >
-                <div className="flex flex-row flex-nowrap items-center justify-between w-full">
-                  <div className="flex flex-row flex-nowrap items-center gap-2">
+                <div className={`flex flex-row flex-nowrap items-center justify-between w-full`}>
+                  <div className="flex flex-row flex-nowrap items-center gap-2 flex-1 min-w-0">
                     <span className={`font-medium text-sm px-3 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>{p.codigo}</span>
                     {isUltimoInserido && (
                       <span className={`px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-green-600 text-white' : 'bg-green-200 text-green-800'}`}>NOVO</span>
@@ -986,14 +986,13 @@ function OrcamentoForm({ darkMode = false }) {
                         })}
                       </span>
                     </span>
-                    <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Preço 2:
-                      <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                        {parseFloat(p.pro_vendapz || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {/* Preço 2 e Marca só em linha no desktop */}
+                    <span className="hidden md:inline-flex text-sm font-medium items-center gap-2">
+                      <span className={`ml-2`}>Preço 2:
+                        <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>{parseFloat(p.pro_vendapz || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </span>
-                    </span>
-                    <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Marca:
-                      <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
-                        {p.PRO_MARCA || p.pro_marca || '-'}
+                      <span className={`ml-2`}>Marca:
+                        <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>{p.PRO_MARCA || p.pro_marca || '-'}</span>
                       </span>
                     </span>
                   </div>
@@ -1007,6 +1006,15 @@ function OrcamentoForm({ darkMode = false }) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
+                </div>
+                {/* Preço 2 e Marca em linha separada no mobile */}
+                <div className="flex md:hidden flex-row flex-wrap items-center gap-2 mt-1 pl-1">
+                  <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Preço 2:
+                    <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>{parseFloat(p.pro_vendapz || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </span>
+                  <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Marca:
+                    <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>{p.PRO_MARCA || p.pro_marca || '-'}</span>
+                  </span>
                 </div>
                 
                 <div className={`font-semibold text-base leading-tight ${

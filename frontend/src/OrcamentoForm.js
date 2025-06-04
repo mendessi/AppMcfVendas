@@ -224,52 +224,65 @@ function OrcamentoForm({ darkMode = false }) {
     return true;
   };
 
-  // Handler para alteração do valor unitário com validação
+  // Handler para alteração do valor unitário com validação rigorosa
   const handleValorUnitarioChange = (idx, value) => {
-    // Primeiro, salva o valor exatamente como o usuário digitou (incluindo vírgulas) no estado
-    const novosProdutosTexto = [...produtos];
-    if (novosProdutosTexto[idx]) {
-      // Guarda o valor exato como texto para exibição
-      novosProdutosTexto[idx].valorUnitarioTexto = value;
-    }
-
-    // Agora faz a conversão para cálculo (substitui vírgula por ponto)
-    const valorNormalizado = value.toString().replace(',', '.');
-    const novoValor = parseFloat(valorNormalizado) || 0;
     const novosProdutos = produtos.map((p, i) =>
-      i === idx ? { 
-        ...p, 
-        valor_unitario: novoValor, 
-        valorUnitarioTexto: value, // Salva também como texto
-        valor_total: novoValor * p.quantidade 
+      i === idx ? {
+        ...p,
+        valorUnitarioTexto: value, // sempre string
+        valor_unitario: value.replace(',', '.') // mantém como string para cálculo
       } : p
     );
     setProdutos(novosProdutos);
-    // Removido setFocusedItemIndex para evitar redirecionamento de foco durante digitação
-    // setFocusedItemIndex(idx);
   };
 
-  // Nova função para validar ao terminar a edição
+  // Atualizar validarPrecoAoTerminar para limpar o campo e focar de volta se valor < mínimo
   const validarPrecoAoTerminar = (idx) => {
     const produtoAtual = produtos[idx];
-    const valorAtual = parseFloat(produtoAtual.valor_unitario) || 0;
+    let valorAtual = 0;
+    if (produtoAtual.valorUnitarioTexto) {
+      valorAtual = parseFloat(produtoAtual.valorUnitarioTexto.toString().replace(',', '.')) || 0;
+    } else {
+      valorAtual = parseFloat(produtoAtual.valor_unitario) || 0;
+    }
     const precoMinimo = parseFloat(produtoAtual.preco_minimo) || 0;
-
+    // Se o campo estiver vazio, nulo ou zero, preenche com pro_venda
+    if (!produtoAtual.valorUnitarioTexto || produtoAtual.valorUnitarioTexto === '' || valorAtual === 0) {
+      const proVenda = produtoAtual.pro_venda || produtoAtual.valorUnitarioOriginal || 0;
+      const valorFormatado = Number(proVenda).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const novosProdutos = produtos.map((p, i) =>
+        i === idx ? {
+          ...p,
+          valorUnitarioTexto: valorFormatado,
+          valor_unitario: proVenda
+        } : p
+      );
+      setProdutos(novosProdutos);
+      setAlertaPrecoMinimo(null);
+      return;
+    }
     if (valorAtual < precoMinimo) {
       setAlertaPrecoMinimo({
         index: idx,
-        mensagem: 'O preço informado está abaixo do valor mínimo permitido para este produto.',
+        mensagem: `O valor mínimo permitido é ${precoMinimo.toLocaleString('pt-BR', {minimumFractionDigits:2})}. Corrija o valor!`,
         precoMinimo
       });
-      
-      // Restaura o valor mínimo
-      const novosProdutos = [...produtos];
-      novosProdutos[idx] = {
-        ...novosProdutos[idx],
-        valor_unitario: precoMinimo,
-        valor_total: precoMinimo * produtoAtual.quantidade
-      };
+      // Limpa o campo para o usuário digitar novamente
+      const novosProdutos = produtos.map((p, i) =>
+        i === idx ? {
+          ...p,
+          valorUnitarioTexto: '',
+          valor_unitario: ''
+        } : p
+      );
       setProdutos(novosProdutos);
+      setTimeout(() => {
+        if (precoRefs.current[idx]) {
+          precoRefs.current[idx].focus();
+        }
+      }, 100);
+    } else {
+      setAlertaPrecoMinimo(null);
     }
   };
 
@@ -298,6 +311,7 @@ function OrcamentoForm({ darkMode = false }) {
     if (!produtoExistente) {
       // Adiciona um novo produto
       const valorUnit = produto.pro_venda || produto.valor_unitario || 0;
+      const valorUnitFormatado = Number(valorUnit).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const codigoProduto = produto.pro_codigo || produto.codigo;
       const novoItem = {
         codigo: codigoProduto,
@@ -305,11 +319,13 @@ function OrcamentoForm({ darkMode = false }) {
         descricao: produto.pro_descricao || produto.descricao,
         quantidade: 1,
         valor_unitario: valorUnit,
+        valorUnitarioTexto: valorUnitFormatado,
         valor_total: valorUnit * 1,
         imagem: produto.pro_imagem || produto.imagem || '',
         estoque_atual: produto.estoque || produto.pro_quantidade || produto.PRO_QUANTIDADE || 0,
         estoque_minimo: produto.pro_minimo_estoque || 0,
-        preco_minimo: produto.pro_descprovlr || 0
+        preco_minimo: produto.pro_descprovlr || 0,
+        pro_venda: produto.pro_venda || 0
       };
       const novosProdutos = [novoItem, ...produtos];
       setProdutos(novosProdutos);
@@ -525,19 +541,24 @@ function OrcamentoForm({ darkMode = false }) {
         observacao: String(observacao || ''),
         vendedor_codigo: String(vendedor || ''),
         especie: String(especie || '0'),
-        // Calcula o valor do desconto em reais (percentual sobre o subtotal)
         desconto: (() => {
           const subtotal = produtos.reduce((acc, p) => acc + Number(p.valor_total || 0), 0);
           return subtotal * (Number(desconto) / 100);
         })(),
-        produtos: produtos.map(p => ({
-          codigo: String(p.codigo || ''),
-          descricao: String(p.descricao || ''),
-          quantidade: Number(p.quantidade || 0),
-          valor_unitario: Number(p.valor_unitario || 0),
-          valor_total: Number(p.valor_total || 0),
-          imagem: String(p.imagem || '')
-        }))
+        produtos: produtos.map(p => {
+          let valorUnit = p.valor_unitario;
+          if (!valorUnit || valorUnit === '' || parseFloat(valorUnit) === 0) {
+            valorUnit = p.pro_venda || p.valorUnitarioOriginal || 0;
+          }
+          return {
+            codigo: String(p.codigo || ''),
+            descricao: String(p.descricao || ''),
+            quantidade: Number(p.quantidade || 0),
+            valor_unitario: Number(valorUnit),
+            valor_total: Number(p.valor_total || 0),
+            imagem: String(p.imagem || '')
+          };
+        })
       };
 
       // Log do payload para depuração
@@ -924,27 +945,14 @@ function OrcamentoForm({ darkMode = false }) {
                   ${isUltimoInserido ? 'animate-pulse' : ''}
                 `}
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`font-medium text-sm px-3 py-1 rounded-full ${
-                      darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
-                    }`}>
-                      {p.codigo}
-                    </div>
+                <div className="flex flex-row flex-nowrap items-center justify-between w-full">
+                  <div className="flex flex-row flex-nowrap items-center gap-2">
+                    <span className={`font-medium text-sm px-3 py-1 rounded-full ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>{p.codigo}</span>
                     {isUltimoInserido && (
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        darkMode ? 'bg-green-600 text-white' : 'bg-green-200 text-green-800'
-                      }`}>
-                        NOVO
-                      </span>
+                      <span className={`px-2 py-1 text-xs rounded-full ${darkMode ? 'bg-green-600 text-white' : 'bg-green-200 text-green-800'}`}>NOVO</span>
                     )}
-                    
-                    {/* Estoque Atual */}
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Estoque:
-                      </span>
-                      <span className={`px-2 py-1 text-sm rounded font-medium ${
+                    <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Estoque:
+                      <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${
                         parseFloat(p.estoque_atual) <= 0
                           ? darkMode 
                             ? 'bg-red-900/30 text-red-400 border border-red-700'
@@ -959,52 +967,36 @@ function OrcamentoForm({ darkMode = false }) {
                       }`}>
                         {parseFloat(p.estoque_atual).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                       </span>
-                    </div>
-
-                    {/* Preço Mínimo com Tooltip */}
-                    <div className="relative group">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Mínimo:
-                        </span>
-                        <span className={`px-2 py-1 text-sm rounded font-medium ${
-                          parseFloat(p.valor_unitario) <= parseFloat(p.preco_minimo)
-                            ? darkMode
-                              ? 'bg-red-900/30 text-red-400 border border-red-700'
-                              : 'bg-red-100 text-red-700 border border-red-200'
-                            : darkMode 
-                              ? 'bg-gray-700 text-gray-300'
-                              : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          {parseFloat(p.preco_minimo).toLocaleString('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                          })}
-                        </span>
-                      </div>
-                      
-                      {/* Tooltip de alerta sobre preço mínimo */}
-                      <div className={`absolute z-10 w-64 px-4 py-3 mt-2 text-sm rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none ${
-                        darkMode
-                          ? 'bg-yellow-900/50 border border-yellow-700 text-yellow-300'
-                          : 'bg-yellow-50 border border-yellow-200 text-yellow-800'
+                    </span>
+                    <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Mínimo:
+                      <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${
+                        parseFloat(p.valor_unitario) <= parseFloat(p.preco_minimo)
+                          ? darkMode
+                            ? 'bg-red-900/30 text-red-400 border border-red-700'
+                            : 'bg-red-100 text-red-700 border border-red-200'
+                          : darkMode 
+                            ? 'bg-gray-700 text-gray-300'
+                            : 'bg-gray-100 text-gray-700'
                       }`}>
-                        <div className="flex items-start gap-2">
-                          <svg className={`w-5 h-5 mt-0.5 flex-shrink-0 ${
-                            darkMode ? 'text-yellow-500' : 'text-yellow-500'
-                          }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                          </svg>
-                          <p>
-                            Utilize o preço mínimo com moderação. Vendas frequentes no valor mínimo podem impactar a rentabilidade do negócio.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                        {parseFloat(p.preco_minimo).toLocaleString('pt-BR', {
+                          style: 'currency',
+                          currency: 'BRL',
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </span>
+                    </span>
+                    <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Preço 2:
+                      <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                        {parseFloat(p.pro_vendapz || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </span>
+                    <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Marca:
+                      <span className={`ml-1 px-2 py-1 text-sm rounded font-medium ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'}`}>
+                        {p.PRO_MARCA || p.pro_marca || '-'}
+                      </span>
+                    </span>
                   </div>
-                  
                   <button 
                     type="button" 
                     onClick={() => handleRemoverProduto(idx)} 
@@ -1038,17 +1030,12 @@ function OrcamentoForm({ darkMode = false }) {
                         step="0.01"
                         value={p.quantidadeTexto || p.quantidade}
                         ref={el => quantidadeRefs.current[idx] = el}
+                        onFocus={e => e.target.select()}
                         onChange={e => {
-                          // Permite digitação de vírgulas/pontos sem filtrar nada - passar o valor bruto
                           handleQuantidadeChange(idx, e.target.value);
                         }}
-                        onFocus={() => {/* Removido select() Mendes*/}}
                         onKeyDown={e => {
-                          // Permitir explicitamente vírgulas e pontos
-                          if (e.key === ',' || e.key === '.') {
-                            return; // Deixa o caractere passar
-                          }
-                          
+                          if (e.key === ',' || e.key === '.') return;
                           if (e.key === 'Enter' || e.key === 'Tab') {
                             e.preventDefault();
                             if (precoRefs.current[idx]) precoRefs.current[idx].focus();
@@ -1060,9 +1047,9 @@ function OrcamentoForm({ darkMode = false }) {
                             : 'bg-white border-gray-300 text-gray-900 focus:ring-blue-500 focus:border-blue-500'
                         } focus:outline-none focus:ring-2 shadow-sm hover:border-blue-400 transition-colors`}
                         style={{
-                          fontSize: '16px', // Previne zoom no iOS
-                          WebkitAppearance: 'none', // Remove spinner nativo
-                          MozAppearance: 'textfield' // Remove spinner nativo no Firefox
+                          fontSize: '16px',
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'textfield'
                         }}
                       />
                       <div className={`absolute -top-2 right-2 text-xs px-2 py-0.5 rounded ${
@@ -1072,7 +1059,6 @@ function OrcamentoForm({ darkMode = false }) {
                       </div>
                     </div>
                   </div>
-
                   <div className="flex flex-col">
                     <label className={`text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       Valor Unitário
@@ -1085,15 +1071,15 @@ function OrcamentoForm({ darkMode = false }) {
                         step={0.01}
                         value={p.valorUnitarioTexto || p.valor_unitario}
                         ref={el => precoRefs.current[idx] = el}
+                        onFocus={e => e.target.select()}
                         onChange={e => {
-                          // Preserva o foco no campo atual sem criar loops
                           const campo = e.target;
-                          
-                          // Permite digitação de vírgulas/pontos sem filtrar nada - passar o valor bruto
                           handleValorUnitarioChange(idx, e.target.value);
-                          
-                          // Previne que o foco seja movido em outra parte do código
-                          // Executa depois que o React terminar o processamento do evento
+                          const valorDigitado = parseFloat(e.target.value.replace(',', '.')) || 0;
+                          const precoMinimo = parseFloat(p.preco_minimo) || 0;
+                          if (valorDigitado > 0 && valorDigitado < precoMinimo) {
+                            setTimeout(() => validarPrecoAoTerminar(idx), 1500);
+                          }
                           requestAnimationFrame(() => {
                             if (campo && document.contains(campo)) {
                               campo.focus();
@@ -1101,18 +1087,10 @@ function OrcamentoForm({ darkMode = false }) {
                           });
                         }}
                         onBlur={() => validarPrecoAoTerminar(idx)}
-                        onFocus={() => {/* Removido select() Mendes*/}}
                         onKeyDown={e => {
-                          // Permitir explicitamente vírgulas e pontos
-                          if (e.key === ',' || e.key === '.') {
-                            return; // Deixa o caractere passar
-                          }
-                        
+                          if (e.key === ',' || e.key === '.') return;
                           if (e.key === 'Enter' || e.key === 'Tab') {
                             validarPrecoAoTerminar(idx);
-                            // Comportamento de Tab mantido como padrão
-                            // Comportamento de Enter mantido como padrão
-                            // Removida a mudança automática de foco para evitar problemas de digitação
                           }
                         }}
                         className={`w-full h-12 px-4 py-2 rounded border text-right font-semibold text-base md:text-xl ${
@@ -1129,9 +1107,9 @@ function OrcamentoForm({ darkMode = false }) {
                             : 'focus:ring-blue-500 focus:border-blue-500'
                         } transition-colors`}
                         style={{
-                          fontSize: '16px', // Previne zoom no iOS
-                          WebkitAppearance: 'none', // Remove spinner nativo
-                          MozAppearance: 'textfield' // Remove spinner nativo no Firefox
+                          fontSize: '16px',
+                          WebkitAppearance: 'none',
+                          MozAppearance: 'textfield'
                         }}
                       />
                       <div className={`absolute -top-2 right-2 text-xs px-2 py-0.5 rounded ${
@@ -1141,7 +1119,6 @@ function OrcamentoForm({ darkMode = false }) {
                       </div>
                     </div>
                   </div>
-
                   <div className="flex flex-col">
                     <label className={`text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       Total do Item

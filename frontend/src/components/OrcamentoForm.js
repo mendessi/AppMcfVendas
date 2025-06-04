@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiSave, FiX, FiPlus, FiTrash2, FiArchive, FiAlertCircle } from 'react-icons/fi';
 import OrcamentoHeader from './OrcamentoHeader';
@@ -36,6 +36,10 @@ const OrcamentoForm = ({ numero, darkMode }) => {
   // Estados para modal de confirmação de produto existente
   const [showProdutoExistenteModal, setShowProdutoExistenteModal] = useState(false);
   const [produtoExistenteInfo, setProdutoExistenteInfo] = useState(null);
+
+  const [alertaValorUnitario, setAlertaValorUnitario] = useState({});
+
+  const inputRefs = useRef({});
 
   useEffect(() => {
     carregarDados();
@@ -235,12 +239,33 @@ const OrcamentoForm = ({ numero, darkMode }) => {
         p.codigo === codigo
           ? {
               ...p,
-              valor_unitario: parseFloat(valor) || 0,
-              valor_total: p.quantidade * (parseFloat(valor) || 0)
+              valor_unitario: valor,
+              valor_total: p.quantidade * (parseFloat(valor.replace(',', '.')) || 0)
             }
           : p
       )
     }));
+  };
+
+  const handleValorUnitarioBlur = (codigo) => {
+    setOrcamento(prev => {
+      // Não altera o valor, só alerta se for menor que o mínimo
+      const produtos = prev.produtos.map(p => {
+        if (p.codigo === codigo) {
+          let valorStr = (p.valor_unitario || '').replace(',', '.');
+          let valorAtual = parseFloat(valorStr);
+          const precoMinimo = parseFloat(p.preco_minimo) || 0;
+          if (valorStr && !isNaN(valorAtual) && valorAtual < precoMinimo) {
+            setAlertaValorUnitario(prevAlertas => ({ ...prevAlertas, [codigo]: true }));
+            setTimeout(() => {
+              setAlertaValorUnitario(prevAlertas => ({ ...prevAlertas, [codigo]: false }));
+            }, 2000);
+          }
+        }
+        return p;
+      });
+      return { ...prev, produtos };
+    });
   };
 
   const handleRemoveProduto = (codigo) => {
@@ -312,30 +337,32 @@ const OrcamentoForm = ({ numero, darkMode }) => {
 
   const handleSalvar = async () => {
     try {
-      // Obtém o nome do cliente formatado
-      const nomeCliente = getNomeCliente(orcamento.cliente);
-      
+      // Antes de salvar, validar todos os valores unitários
+      const produtosValidados = orcamento.produtos.map(p => {
+        let valorStr = (p.valor_unitario || '').replace(',', '.');
+        let valorAtual = parseFloat(valorStr);
+        const precoMinimo = parseFloat(p.preco_minimo) || 0;
+        const precoVenda = parseFloat(p.pro_venda || p.valor_unitario_original || p.valor_unitario || 0);
+        let valorFinal;
+        if (!valorStr || isNaN(valorAtual)) {
+          valorFinal = precoVenda;
+        } else if (valorAtual < precoMinimo) {
+          valorFinal = precoMinimo;
+        } else {
+          valorFinal = valorAtual;
+        }
+        // Formatar para string sem zeros à esquerda, com duas casas decimais e vírgula
+        const valorFormatado = Number(valorFinal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return {
+          ...p,
+          valor_unitario: valorFormatado,
+          valor_total: p.quantidade * Number(valorFinal)
+        };
+      });
       // Monta o JSON conforme backend
       const payload = {
-        cliente_codigo: String(orcamento.cliente?.cli_codigo || orcamento.cliente?.CLI_CODIGO || orcamento.cliente?.codigo || ''),
-        nome_cliente: nomeCliente,
-        tabela_codigo: String(orcamento.tabela || ''),
-        formapag_codigo: String(orcamento.forma_pagamento || ''),
-        valor_total: Number(calcularTotal()),
-        data_orcamento: String(orcamento.data || ''),
-        data_validade: String(orcamento.validade || ''),
-        observacao: String(orcamento.observacao || ''),
-        vendedor_codigo: String(orcamento.vendedor || ''),
-        especie: String(orcamento.especie || '0'),
-        desconto: Number(orcamento.desconto || 0),
-        produtos: orcamento.produtos.map(p => ({
-          codigo: String(p.codigo || ''),
-          descricao: String(p.descricao || ''),
-          quantidade: Number(p.quantidade || 0),
-          valor_unitario: Number(p.valor_unitario || 0),
-          valor_total: Number(p.valor_total || 0),
-          imagem: String(p.imagem || '')
-        }))
+        ...orcamento,
+        produtos: produtosValidados
       };
 
       const token = localStorage.getItem('token');
@@ -586,16 +613,17 @@ const OrcamentoForm = ({ numero, darkMode }) => {
                           type="text"
                           inputMode="decimal"
                           value={produto.valor_unitario}
+                          onFocus={e => e.target.select()}
                           onChange={e => {
-                            // Aceita apenas números e vírgula/ponto decimal
                             const value = e.target.value.replace(/[^0-9,.]/g, '');
                             handleValorUnitarioChange(produto.codigo, value);
                           }}
+                          onBlur={(e) => handleValorUnitarioBlur(produto.codigo)}
                           className={`w-24 text-right rounded-md font-semibold ${
                             darkMode
                               ? "bg-gray-600 border-gray-500 text-white"
                               : "bg-white border-gray-300 text-gray-900"
-                          }`}
+                          } ${alertaValorUnitario[produto.codigo] ? 'border-2 border-red-500 animate-pulse' : ''}`}
                           style={{fontVariantNumeric: 'tabular-nums'}}
                         />
                       </td>

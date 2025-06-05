@@ -142,7 +142,7 @@ const PositivacaoProdutos = ({ darkMode }) => {
                   </div>
                   {clientesFiltrados.map(c => (
                     <div key={c.cli_codigo} className="flex flex-col px-3 py-2 border-b border-gray-100 dark:border-gray-700">
-                      <div className="font-bold text-base md:text-sm">{c.cli_nome}</div>
+                      <div className={`font-bold text-base md:text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>{c.cli_nome}</div>
                       <div className="text-xs text-gray-500">CNPJ: {c.cnpj || '-'} | {c.cidade} {c.uf}</div>
                       <button
                         className={`mt-2 px-4 py-2 rounded text-base md:text-xs font-bold ${darkMode ? 'bg-blue-700 text-white' : 'bg-blue-500 text-white'} w-full md:w-max`}

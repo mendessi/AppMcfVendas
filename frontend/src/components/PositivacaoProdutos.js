@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import removeAccents from 'remove-accents';
+import Modal from './Modal';
 
 function primeiroDiaMesAtual() {
   const hoje = new Date();
@@ -24,9 +25,14 @@ const PositivacaoProdutos = ({ darkMode }) => {
   const [filtro, setFiltro] = useState('nao'); // todos, positivados, nao
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [showListaClientes, setShowListaClientes] = useState(false);
+  const [modalAviso, setModalAviso] = useState({ aberto: false, mensagem: '' });
 
   // Buscar clientes ao clicar em Filtrar
   const filtrarClientes = async () => {
+    if (!buscaCliente || buscaCliente.trim().length < 3) {
+      setModalAviso({ aberto: true, mensagem: 'Digite pelo menos 3 letras do nome ou código do cliente para buscar.\n\nDica: Você pode buscar por parte do nome, razão social ou CNPJ. Isso evita buscas muito amplas e melhora a performance.' });
+      return;
+    }
     setLoading(true);
     setErro(null);
     setShowListaClientes(false);
@@ -44,6 +50,10 @@ const PositivacaoProdutos = ({ darkMode }) => {
 
   // Buscar produtos do cliente ou todos
   const buscarProdutos = async () => {
+    if (!buscaProduto || buscaProduto.trim().length < 3) {
+      setModalAviso({ aberto: true, mensagem: 'Digite pelo menos 3 letras do nome ou código do produto para buscar.\n\nDica: Buscas mais específicas retornam resultados mais rápidos e relevantes.' });
+      return;
+    }
     setLoading(true);
     setErro(null);
     try {
@@ -63,15 +73,6 @@ const PositivacaoProdutos = ({ darkMode }) => {
     }
     setLoading(false);
   };
-
-  // Buscar ao mudar período/busca
-  useEffect(() => {
-    // Só buscar produtos se um cliente estiver selecionado
-    if (cliente) {
-      buscarProdutos();
-    }
-    // eslint-disable-next-line
-  }, [cliente, dataInicial, dataFinal]);
 
   // Filtro visual
   const produtosFiltrados = produtos.filter(p => {
@@ -146,7 +147,12 @@ const PositivacaoProdutos = ({ darkMode }) => {
                       <div className="text-xs text-gray-500">CNPJ: {c.cnpj || '-'} | {c.cidade} {c.uf}</div>
                       <button
                         className={`mt-2 px-4 py-2 rounded text-base md:text-xs font-bold ${darkMode ? 'bg-blue-700 text-white' : 'bg-blue-500 text-white'} w-full md:w-max`}
-                        onClick={() => { setCliente(c); setShowListaClientes(false); setBuscaCliente(c.cli_nome); setErro(null); }}
+                        onClick={() => {
+                          setCliente(c);
+                          setBuscaCliente(c.cli_nome);
+                          setShowListaClientes(false);
+                          setErro(null);
+                        }}
                       >Selecionar</button>
                     </div>
                   ))}
@@ -157,7 +163,7 @@ const PositivacaoProdutos = ({ darkMode }) => {
           <button
             className={`mt-2 md:mt-0 md:ml-2 px-2 py-1 rounded ${darkMode ? 'bg-blue-700 text-white' : 'bg-blue-500 text-white'}`}
             onClick={filtrarClientes}
-            disabled={!buscaCliente || loading}
+            disabled={loading}
             style={{ minWidth: 100 }}
           >Filtrar</button>
         </div>
@@ -185,6 +191,11 @@ const PositivacaoProdutos = ({ darkMode }) => {
             placeholder="Nome ou código"
             className={`rounded px-2 py-1 border w-full md:w-36 ${darkMode ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'}`}
           />
+          {buscaProduto.trim().length < 3 && (
+            <div className={`text-xs mt-1 ${darkMode ? 'text-yellow-300' : 'text-yellow-700'}`}>
+              Digite pelo menos 3 letras do nome ou código do produto para buscar.
+            </div>
+          )}
         </div>
         <div className="w-full md:w-auto">
           <label className="block text-sm mb-1">Filtro</label>
@@ -196,9 +207,13 @@ const PositivacaoProdutos = ({ darkMode }) => {
             <option value="nao">Só não positivados</option>
           </select>
         </div>
-        <button onClick={buscarProdutos} disabled={loading || showListaClientes}
+        <button
+          onClick={buscarProdutos}
+          disabled={loading || showListaClientes}
           className={`ml-0 md:ml-2 mt-2 md:mt-0 px-4 py-2 rounded font-bold ${darkMode ? 'bg-blue-700 hover:bg-blue-800 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
-        >Buscar</button>
+        >
+          Buscar
+        </button>
       </div>
       {/* Seção de produtos */}
       {erro && <div className="text-red-500 mb-2">{erro}</div>}
@@ -270,6 +285,15 @@ const PositivacaoProdutos = ({ darkMode }) => {
       ) : (
         <div className="text-center py-8 text-gray-500">Selecione um cliente ou clique em buscar para visualizar a positivação de produtos.</div>
       )}
+      {/* Modal de aviso para busca */}
+      <Modal
+        isOpen={modalAviso.aberto}
+        onClose={() => setModalAviso({ aberto: false, mensagem: '' })}
+        onConfirm={() => setModalAviso({ aberto: false, mensagem: '' })}
+        title="Atenção para a Busca"
+        message={modalAviso.mensagem}
+        darkMode={darkMode}
+      />
     </div>
   );
 };

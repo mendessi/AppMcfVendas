@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 
+const CACHE_KEY = 'positivacao_clientes_cache';
+
 function primeiroDiaMesAtual() {
   const hoje = new Date();
   return new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
@@ -11,19 +13,19 @@ function ultimoDiaMesAtual() {
 }
 
 const PositivacaoClientes = ({ darkMode }) => {
-  const [dataInicial, setDataInicial] = useState(primeiroDiaMesAtual());
-  const [dataFinal, setDataFinal] = useState(ultimoDiaMesAtual());
-  const [clientes, setClientes] = useState([]);
-  const [filtro, setFiltro] = useState('todos'); // todos, positivados, nao
+  // Tenta carregar do cache
+  const cache = localStorage.getItem(CACHE_KEY);
+  const cacheData = cache ? JSON.parse(cache) : null;
+
+  const [dataInicial, setDataInicial] = useState(cacheData?.dataInicial || primeiroDiaMesAtual());
+  const [dataFinal, setDataFinal] = useState(cacheData?.dataFinal || ultimoDiaMesAtual());
+  const [clientes, setClientes] = useState(cacheData?.clientes || []);
+  const [filtro, setFiltro] = useState(cacheData?.filtro || 'nao'); // todos, positivados, nao
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState(null);
-  const [busca, setBusca] = useState("");
-  const [buscaTemp, setBuscaTemp] = useState("");
-
-  useEffect(() => {
-    buscarClientes();
-    // eslint-disable-next-line
-  }, [dataInicial, dataFinal]);
+  const [busca, setBusca] = useState(cacheData?.busca || "");
+  const [buscaTemp, setBuscaTemp] = useState(cacheData?.busca || "");
+  const [emCache, setEmCache] = useState(!!cacheData?.clientes?.length);
 
   const buscarClientes = async (qBusca) => {
     setLoading(true);
@@ -33,10 +35,30 @@ const PositivacaoClientes = ({ darkMode }) => {
         params: { data_inicial: dataInicial, data_final: dataFinal, q: qBusca !== undefined ? qBusca : busca }
       });
       setClientes(resp.data.clientes || []);
+      setEmCache(false);
+      // Salvar no cache
+      localStorage.setItem(CACHE_KEY, JSON.stringify({
+        dataInicial,
+        dataFinal,
+        clientes: resp.data.clientes || [],
+        filtro,
+        busca: qBusca !== undefined ? qBusca : busca
+      }));
     } catch (err) {
       setErro('Erro ao buscar clientes.');
     }
     setLoading(false);
+  };
+
+  const limparCache = () => {
+    localStorage.removeItem(CACHE_KEY);
+    setClientes([]);
+    setBusca("");
+    setBuscaTemp("");
+    setDataInicial(primeiroDiaMesAtual());
+    setDataFinal(ultimoDiaMesAtual());
+    setFiltro('nao');
+    setEmCache(false);
   };
 
   const clientesFiltrados = clientes.filter(c => {
@@ -49,6 +71,11 @@ const PositivacaoClientes = ({ darkMode }) => {
   function formatarMoeda(valor) {
     return valor?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00';
   }
+
+  useEffect(() => {
+    setEmCache(!!cacheData?.clientes?.length);
+    // eslint-disable-next-line
+  }, []);
 
   return (
     <div className={`p-4 ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
@@ -91,8 +118,14 @@ const PositivacaoClientes = ({ darkMode }) => {
         <button onClick={() => { setBusca(buscaTemp); buscarClientes(buscaTemp); }} disabled={loading}
           className={`ml-2 px-4 py-2 rounded font-bold ${darkMode ? 'bg-blue-700 hover:bg-blue-800 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
         >Buscar</button>
+        <button onClick={limparCache} disabled={loading}
+          className={`ml-2 px-4 py-2 rounded font-bold ${darkMode ? 'bg-red-700 hover:bg-red-800 text-white' : 'bg-red-500 hover:bg-red-600 text-white'}`}
+        >Limpar Cache</button>
       </div>
       {erro && <div className="text-red-500 mb-2">{erro}</div>}
+      {emCache && clientes.length > 0 && (
+        <div className={`mb-2 inline-block px-2 py-1 rounded-full text-xs font-semibold ${darkMode ? 'bg-yellow-900 text-yellow-200' : 'bg-yellow-100 text-yellow-800'}`}>📦 Em cache</div>
+      )}
       {loading ? (
         <div>Carregando...</div>
       ) : (

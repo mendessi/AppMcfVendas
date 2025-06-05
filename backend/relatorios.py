@@ -1777,3 +1777,136 @@ async def positivacao_clientes(request: Request, data_inicial: Optional[str] = N
     except Exception as e:
         log.error(f"Erro na positivação de clientes: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Erro na positivação de clientes: {str(e)}")
+
+@router.get("/positivacao-produtos")
+async def positivacao_produtos(request: Request, cli_codigo: str = None, data_inicial: str = None, data_final: str = None, q: str = None):
+    """
+    Lista produtos do mix do cliente, indicando se foram comprados no período (positivados) ou não.
+    Parâmetros:
+      - cli_codigo: código do cliente (opcional)
+      - data_inicial, data_final: período
+      - q: busca por nome/código do produto (opcional)
+    """
+    from datetime import date, timedelta
+    try:
+        hoje = date.today()
+        if not data_inicial:
+            data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+        if not data_final:
+            if hoje.month == 12:
+                proximo_mes = date(hoje.year + 1, 1, 1)
+            else:
+                proximo_mes = date(hoje.year, hoje.month + 1, 1)
+            data_final = (proximo_mes - timedelta(days=1)).isoformat()
+
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+
+        # Filtro de busca de produto
+        filtro_produto = ""
+        params_produto = []
+        if q:
+            filtro_produto = " AND (UPPER(p.PRO_DESCRICAO) LIKE UPPER(?) OR CAST(p.PRO_CODIGO AS VARCHAR(20)) LIKE ?)"
+            params_produto = [f"%{q}%", f"%{q}%"]
+
+        produtos = []
+        if cli_codigo:
+            sql = f'''
+            SELECT
+              p.PRO_CODIGO,
+              p.PRO_DESCRICAO,
+              p.PRO_MARCA,
+              p.UNI_CODIGO,
+              (
+                SELECT MAX(v.ECF_DATA)
+                FROM ITVENDA i
+                JOIN VENDAS v ON v.ECF_NUMERO = i.ECF_NUMERO
+                WHERE i.PRO_CODIGO = p.PRO_CODIGO
+                  AND v.CLI_CODIGO = ?
+                  AND v.ECF_CANCELADA = 'N'
+                  AND v.ECF_CONCLUIDA = 'S'
+                  AND v.ECF_DATA BETWEEN ? AND ?
+              ) AS ULTIMA_COMPRA,
+              (
+                SELECT SUM(i2.PRO_QUANTIDADE)
+                FROM ITVENDA i2
+                JOIN VENDAS v2 ON v2.ECF_NUMERO = i2.ECF_NUMERO
+                WHERE i2.PRO_CODIGO = p.PRO_CODIGO
+                  AND v2.CLI_CODIGO = ?
+                  AND v2.ECF_CANCELADA = 'N'
+                  AND v2.ECF_CONCLUIDA = 'S'
+                  AND v2.ECF_DATA BETWEEN ? AND ?
+              ) AS QTDE_COMPRADA,
+              (
+                SELECT SUM(i3.PRO_QUANTIDADE * i3.PRO_VENDA)
+                FROM ITVENDA i3
+                JOIN VENDAS v3 ON v3.ECF_NUMERO = i3.ECF_NUMERO
+                WHERE i3.PRO_CODIGO = p.PRO_CODIGO
+                  AND v3.CLI_CODIGO = ?
+                  AND v3.ECF_CANCELADA = 'N'
+                  AND v3.ECF_CONCLUIDA = 'S'
+                  AND v3.ECF_DATA BETWEEN ? AND ?
+              ) AS VALOR_COMPRADO,
+              CASE
+                WHEN EXISTS (
+                  SELECT 1 FROM ITVENDA i4
+                  JOIN VENDAS v4 ON v4.ECF_NUMERO = i4.ECF_NUMERO
+                  WHERE i4.PRO_CODIGO = p.PRO_CODIGO
+                    AND v4.CLI_CODIGO = ?
+                    AND v4.ECF_CANCELADA = 'N'
+                    AND v4.ECF_CONCLUIDA = 'S'
+                    AND v4.ECF_DATA BETWEEN ? AND ?
+                ) THEN 1 ELSE 0
+              END AS POSITIVADO
+            FROM PRODUTO p
+            WHERE p.PRO_INATIVO = 'N' AND p.ITEM_TABLET = 'S'
+            {filtro_produto}
+            ORDER BY p.PRO_DESCRICAO
+            '''
+            params = [cli_codigo, data_inicial, data_final,
+                      cli_codigo, data_inicial, data_final,
+                      cli_codigo, data_inicial, data_final,
+                      cli_codigo, data_inicial, data_final] + params_produto
+            cursor.execute(sql, params)
+            for row in cursor.fetchall():
+                produtos.append({
+                    "pro_codigo": row[0],
+                    "pro_descricao": row[1],
+                    "pro_marca": row[2],
+                    "uni_codigo": row[3],
+                    "ultima_compra": row[4],
+                    "qtde_comprada": float(row[5] or 0),
+                    "valor_comprado": float(row[6] or 0),
+                    "positivado": bool(row[7])
+                })
+        else:
+            # Busca geral: só lista produtos do mix, sem info de positivação
+            sql = f'''
+            SELECT
+              p.PRO_CODIGO,
+              p.PRO_DESCRICAO,
+              p.PRO_MARCA,
+              p.UNI_CODIGO
+            FROM PRODUTO p
+            WHERE p.PRO_INATIVO = 'N' AND p.ITEM_TABLET = 'S'
+            {filtro_produto}
+            ORDER BY p.PRO_DESCRICAO
+            '''
+            cursor.execute(sql, params_produto)
+            for row in cursor.fetchall():
+                produtos.append({
+                    "pro_codigo": row[0],
+                    "pro_descricao": row[1],
+                    "pro_marca": row[2],
+                    "uni_codigo": row[3],
+                    "ultima_compra": None,
+                    "qtde_comprada": 0,
+                    "valor_comprado": 0,
+                    "positivado": False
+                })
+        conn.close()
+        return {"produtos": produtos, "total": len(produtos)}
+    except Exception as e:
+        import traceback
+        log.error(f"Erro na positivação de produtos: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro na positivação de produtos: {str(e)}")

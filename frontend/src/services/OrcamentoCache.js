@@ -1,7 +1,8 @@
 // Serviço para gerenciamento de cache de orçamentos
-const STORAGE_KEY = 'orcamentos_cache';
-const RASCUNHO_KEY = 'orcamento_rascunho';
-const CACHE_KEY = 'orcamentos_cache';
+// Função utilitária para obter a chave do cache de orçamentos por empresa
+const getEmpresa = () => localStorage.getItem('empresa_atual') || 'default';
+const getStorageKey = () => `orcamentos_cache_${getEmpresa()}`;
+const getRascunhoKey = () => `orcamento_rascunho_${getEmpresa()}`;
 
 class OrcamentoCache {
     // Gerar ID único para orçamentos offline
@@ -22,7 +23,7 @@ class OrcamentoCache {
             orcamento.ultima_modificacao = timestamp;
             orcamento.status = 'rascunho';
             
-            localStorage.setItem(RASCUNHO_KEY, JSON.stringify(orcamento));
+            localStorage.setItem(getRascunhoKey(), JSON.stringify(orcamento));
             return orcamento;
         } catch (error) {
             console.error('Erro ao salvar rascunho:', error);
@@ -33,7 +34,7 @@ class OrcamentoCache {
     // Obter rascunho do orçamento
     static async obterRascunho() {
         try {
-            const rascunho = localStorage.getItem(RASCUNHO_KEY);
+            const rascunho = localStorage.getItem(getRascunhoKey());
             return rascunho ? JSON.parse(rascunho) : null;
         } catch (error) {
             console.error('Erro ao obter rascunho:', error);
@@ -44,7 +45,7 @@ class OrcamentoCache {
     // Limpar rascunho
     static async limparRascunho() {
         try {
-            localStorage.removeItem(RASCUNHO_KEY);
+            localStorage.removeItem(getRascunhoKey());
         } catch (error) {
             console.error('Erro ao limpar rascunho:', error);
         }
@@ -72,7 +73,7 @@ class OrcamentoCache {
                 orcamentos.push(orcamento);
             }
             
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(orcamentos));
+            localStorage.setItem(getStorageKey(), JSON.stringify(orcamentos));
             return orcamento;
         } catch (error) {
             console.error('Erro ao salvar orçamento no cache:', error);
@@ -83,7 +84,7 @@ class OrcamentoCache {
     // Obter todos os orçamentos do cache
     static async obterTodos() {
         try {
-            const orcamentos = localStorage.getItem(STORAGE_KEY);
+            const orcamentos = localStorage.getItem(getStorageKey());
             return orcamentos ? JSON.parse(orcamentos) : [];
         } catch (error) {
             console.error('Erro ao obter orçamentos do cache:', error);
@@ -113,7 +114,7 @@ class OrcamentoCache {
                 if (numeroServidor) {
                     orcamentos[index].numero = numeroServidor;
                 }
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(orcamentos));
+                localStorage.setItem(getStorageKey(), JSON.stringify(orcamentos));
             }
         } catch (error) {
             console.error('Erro ao atualizar status do orçamento:', error);
@@ -126,7 +127,7 @@ class OrcamentoCache {
         try {
             const orcamentos = await this.obterTodos();
             const filtrados = orcamentos.filter(orc => orc.id !== id);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(filtrados));
+            localStorage.setItem(getStorageKey(), JSON.stringify(filtrados));
         } catch (error) {
             console.error('Erro ao remover orçamento do cache:', error);
             throw new Error('Falha ao remover orçamento do cache');
@@ -136,7 +137,7 @@ class OrcamentoCache {
     // Limpar cache
     static async limpar() {
         try {
-            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(getStorageKey());
         } catch (error) {
             console.error('Erro ao limpar cache de orçamentos:', error);
             throw new Error('Falha ao limpar cache de orçamentos');
@@ -157,14 +158,14 @@ class OrcamentoCache {
                 ...orcamento,
                 id,
                 timestamp: new Date().toISOString(),
-                empresa: localStorage.getItem('empresa_atual')
+                empresa: getEmpresa()
             };
             
             // Adicionar ao cache
             cacheAtual.push(orcamentoCache);
             
             // Salvar no localStorage
-            localStorage.setItem(CACHE_KEY, JSON.stringify(cacheAtual));
+            localStorage.setItem(getStorageKey(), JSON.stringify(cacheAtual));
             
             return id;
         } catch (error) {
@@ -176,7 +177,7 @@ class OrcamentoCache {
     // Listar todos os orçamentos em cache
     static async listar() {
         try {
-            const cache = localStorage.getItem(CACHE_KEY);
+            const cache = localStorage.getItem(getStorageKey());
             return cache ? JSON.parse(cache) : [];
         } catch (error) {
             console.error('Erro ao listar orçamentos do cache:', error);
@@ -200,7 +201,7 @@ class OrcamentoCache {
         try {
             const cache = await OrcamentoCache.listar();
             const novosOrcamentos = cache.filter(o => o.id !== id);
-            localStorage.setItem(CACHE_KEY, JSON.stringify(novosOrcamentos));
+            localStorage.setItem(getStorageKey(), JSON.stringify(novosOrcamentos));
         } catch (error) {
             console.error('Erro ao remover orçamento do cache:', error);
             throw error;
@@ -210,10 +211,10 @@ class OrcamentoCache {
     // Limpar todo o cache
     static async limparTudo() {
         try {
-            localStorage.removeItem(CACHE_KEY);
+            localStorage.removeItem(getStorageKey());
+            localStorage.removeItem(getRascunhoKey());
         } catch (error) {
-            console.error('Erro ao limpar cache de orçamentos:', error);
-            throw error;
+            console.error('Erro ao limpar tudo:', error);
         }
     }
 }

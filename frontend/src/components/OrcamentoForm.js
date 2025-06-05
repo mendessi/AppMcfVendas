@@ -4,7 +4,7 @@ import { FiSave, FiX, FiPlus, FiTrash2, FiArchive, FiAlertCircle } from 'react-i
 import OrcamentoHeader from './OrcamentoHeader';
 import ProdutoAutocomplete from './ProdutoAutocomplete';
 import api from '../services/api';
-import OrcamentosCache from './OrcamentosCache';
+import OrcamentoCache from '../services/OrcamentoCache';
 
 const OrcamentoForm = ({ numero, darkMode }) => {
   console.log('OrcamentoForm renderizado, props:', { numero, darkMode });
@@ -395,6 +395,21 @@ const OrcamentoForm = ({ numero, darkMode }) => {
       subtotal: orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0)
     });
   }, [orcamento.desconto, orcamento.valor_desconto, orcamento.produtos]);
+
+  useEffect(() => {
+    return () => {
+      // Só salva se tiver cliente e pelo menos um produto
+      if (
+        orcamento &&
+        orcamento.cliente &&
+        orcamento.cliente.codigo &&
+        orcamento.produtos &&
+        orcamento.produtos.length > 0
+      ) {
+        OrcamentoCache.salvar({ ...orcamento, status: 'pendente' });
+      }
+    };
+  }, [orcamento]);
 
   if (isLoading) {
     return (

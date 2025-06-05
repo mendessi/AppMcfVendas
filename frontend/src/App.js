@@ -21,6 +21,7 @@ import ClientesListNew from './components/ClientesListNew';
 
 import EmpresaSelector from './components/EmpresaSelector';
 import PositivacaoClientes from './components/PositivacaoClientes';
+import PositivacaoProdutos from './components/PositivacaoProdutos';
 
 // Componente principal da aplicação
 function App() {
@@ -766,6 +767,16 @@ function AppContent() {
                           <span>Clientes</span>
                         </Link>
                       </li>
+                      <li>
+                        <Link 
+                          to="/positivacao-produtos" 
+                          className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
+                          onClick={() => window.innerWidth < 768 && toggleSidebar()}
+                        >
+                          <FiPackage className="mr-3 h-5 w-5" />
+                          <span>Produtos</span>
+                        </Link>
+                      </li>
                     </ul>
                   </li>
                 </ul>
@@ -791,6 +802,7 @@ function AppContent() {
               <Route path="/orcamentos" element={<OrcamentosList darkMode={darkMode} />} />
               <Route path="/clientes-novo" element={<ClientesListNew darkMode={darkMode} />} />
               <Route path="/positivacao-clientes" element={<PositivacaoClientes darkMode={darkMode} />} />
+              <Route path="/positivacao-produtos" element={<PositivacaoProdutos darkMode={darkMode} />} />
               
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

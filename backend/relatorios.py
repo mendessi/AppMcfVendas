@@ -23,14 +23,16 @@ async def listar_clientes(request: Request, q: str = "", empresa: str = ""):
     try:
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
-        termo = f"%{q.strip()}%" if q else "%"
+        termo_nome = f"%{q.strip()}%" if q else "%"
+        termo_cnpj = f"%{q.strip()}%"[:14] if q else "%"
+        termo_cpf = f"%{q.strip()}%"[:11] if q else "%"
         sql = (
             "SELECT CLI_CODIGO, CLI_NOME, CNPJ, CPF, CLI_TIPO, CIDADE, UF, BAIRRO "
             "FROM CLIENTES "
             "WHERE CLI_NOME LIKE ? OR CNPJ LIKE ? OR CPF LIKE ? "
-            "ORDER BY CLI_NOME ROWS 30"
+            "ORDER BY CLI_NOME"
         )
-        cursor.execute(sql, (termo, termo, termo))
+        cursor.execute(sql, (termo_nome, termo_cnpj, termo_cpf))
         clientes = []
         for row in cursor.fetchall():
             clientes.append({
@@ -1221,11 +1223,11 @@ async def buscar_clientes_new(request: Request, q: str = ""):
         conn = await get_empresa_connection(request)
         cursor = conn.cursor()
 
-        # Truncar o parâmetro q para 14 caracteres se for mais longo
-        q_param = q[:14] if len(q) > 14 else q
+        # Usar o termo completo, sem truncar
+        q_param = q
         
         sql = """
-            SELECT FIRST 20
+            SELECT
                 CLI_CODIGO,
                 CLI_NOME,
                 APELIDO,
@@ -1522,7 +1524,13 @@ async def get_formas_pagamento(request: Request, search: str = "", empresa: str 
         conn.close()
         return JSONResponse(content=formas)
     except Exception as e:
-        return JSONResponse(content=[], status_code=200)
+        log.error(f"Erro ao listar formas de pagamento: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar formas de pagamento: {str(e)}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
 
 @router.post("/clientes-new")
 async def criar_cliente_new(request: Request, dados: dict = Body(...)):
@@ -1663,3 +1671,109 @@ async def listar_contas_cliente(cli_codigo: int, request: Request):
         except Exception as e_finally:
             print(f"Erro ao fechar conexão no endpoint contas: {str(e_finally)}")
             pass
+
+@router.get("/positivacao-clientes")
+async def positivacao_clientes(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None, q: Optional[str] = None):
+    """
+    Lista clientes com flag de positivado (comprou no período) e data da última compra.
+    Filtra automaticamente pelo vendedor logado (se for vendedor).
+    Permite filtrar por nome ou CNPJ do cliente (parâmetro q).
+    """
+    try:
+        # Datas padrão: mês atual
+        hoje = date.today()
+        if not data_inicial:
+            data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+        if not data_final:
+            if hoje.month == 12:
+                proximo_mes = date(hoje.year + 1, 1, 1)
+            else:
+                proximo_mes = date(hoje.year, hoje.month + 1, 1)
+            data_final = (proximo_mes - timedelta(days=1)).isoformat()
+
+        # Filtro de vendedor automático
+        filtro_vendedor, filtro_aplicado, codigo_vendedor = await obter_filtro_vendedor(request, "C")
+
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+
+        # Filtro de busca por nome ou CNPJ
+        filtro_busca = ""
+        params_busca = []
+        if q:
+            termo = f"%{q.strip().upper()}%"
+            filtro_busca = " AND (UPPER(c.CLI_NOME) LIKE ? OR c.CNPJ LIKE ?)"
+            params_busca = [termo, q.strip()]
+
+        sql = f'''
+        SELECT
+          c.CLI_CODIGO,
+          c.CLI_NOME,
+          c.CNPJ,
+          c.CIDADE,
+          c.UF,
+          (
+            SELECT MAX(v.ECF_DATA)
+            FROM VENDAS v
+            WHERE v.CLI_CODIGO = c.CLI_CODIGO
+              AND v.ECF_CANCELADA = 'N'
+              AND v.ECF_CONCLUIDA = 'S'
+              AND v.ECF_DATA BETWEEN ? AND ?
+          ) AS ULTIMA_OPERACAO,
+          CASE
+            WHEN EXISTS (
+              SELECT 1 FROM VENDAS v2
+              WHERE v2.CLI_CODIGO = c.CLI_CODIGO
+                AND v2.ECF_CANCELADA = 'N'
+                AND v2.ECF_CONCLUIDA = 'S'
+                AND v2.ECF_DATA BETWEEN ? AND ?
+            ) THEN 1 ELSE 0
+          END AS POSITIVADO,
+          (
+            SELECT COALESCE(SUM(v3.ECF_TOTAL), 0)
+            FROM VENDAS v3
+            WHERE v3.CLI_CODIGO = c.CLI_CODIGO
+              AND v3.ECF_CANCELADA = 'N'
+              AND v3.ECF_CONCLUIDA = 'S'
+              AND v3.ECF_DATA BETWEEN ? AND ?
+          ) AS TOTAL_COMPRAS,
+          (
+            SELECT COUNT(v4.ECF_NUMERO)
+            FROM VENDAS v4
+            WHERE v4.CLI_CODIGO = c.CLI_CODIGO
+              AND v4.ECF_CANCELADA = 'N'
+              AND v4.ECF_CONCLUIDA = 'S'
+              AND v4.ECF_DATA BETWEEN ? AND ?
+          ) AS QTDE_COMPRAS
+        FROM CLIENTES c
+        WHERE (c.CLI_INATIVO = 'N' OR c.CLI_INATIVO IS NULL)
+        {filtro_vendedor.replace('VENDAS', 'c')}
+        {filtro_busca}
+        ORDER BY c.CLI_NOME
+        '''
+        params = [data_inicial, data_final, data_inicial, data_final, data_inicial, data_final, data_inicial, data_final] + params_busca
+        cursor.execute(sql, params)
+        clientes = []
+        for row in cursor.fetchall():
+            clientes.append({
+                "cli_codigo": row[0],
+                "cli_nome": row[1],
+                "cnpj": row[2] or "",
+                "cidade": row[3],
+                "uf": row[4],
+                "ultima_operacao": row[5],
+                "positivado": bool(row[6]),
+                "total_compras": float(row[7] or 0),
+                "qtde_compras": int(row[8] or 0)
+            })
+        conn.close()
+        return {
+            "data_inicial": data_inicial,
+            "data_final": data_final,
+            "clientes": clientes,
+            "filtro_vendedor_aplicado": filtro_aplicado,
+            "codigo_vendedor": codigo_vendedor
+        }
+    except Exception as e:
+        log.error(f"Erro na positivação de clientes: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro na positivação de clientes: {str(e)}")

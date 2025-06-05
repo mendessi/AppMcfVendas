@@ -51,13 +51,35 @@ function ModalItensVenda({ open, onClose, itens, venda, darkMode }) {
   );
 }
 
-function ModalVendasCliente({ open, onClose, vendas, cliente, darkMode, onVerItensVenda }) {
+function getPrimeiroDiaMesAtual() {
+  const hoje = new Date();
+  return new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10);
+}
+function getUltimoDiaMesAtual() {
+  const hoje = new Date();
+  return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().slice(0, 10);
+}
+
+function ModalVendasCliente({ open, onClose, vendas, cliente, darkMode, onVerItensVenda, dataInicial, dataFinal, setDataInicial, setDataFinal, onBuscarVendas, buscando }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
       <div className={`bg-white ${darkMode ? 'dark:bg-gray-900 text-white' : 'text-gray-900'} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] p-2 md:p-8 relative flex flex-col border border-gray-300 dark:border-gray-700`} style={{width:'98vw', maxWidth: '700px'}}>
         <button className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-3xl z-10" onClick={onClose}>&times;</button>
         <h2 className="text-2xl font-extrabold mb-4 mt-10 md:mt-0 text-center tracking-tight text-gray-900 dark:text-white">Vendas de {cliente?.cli_nome}</h2>
+        <form className="flex flex-wrap gap-2 items-end justify-center mb-4" onSubmit={e => { e.preventDefault(); onBuscarVendas(); }}>
+          <div>
+            <label className="block text-xs mb-1">Data Inicial</label>
+            <input type="date" value={dataInicial} onChange={e => setDataInicial(e.target.value)} className={`rounded px-2 py-1 border ${darkMode ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'}`} />
+          </div>
+          <div>
+            <label className="block text-xs mb-1">Data Final</label>
+            <input type="date" value={dataFinal} onChange={e => setDataFinal(e.target.value)} className={`rounded px-2 py-1 border ${darkMode ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'}`} />
+          </div>
+          <button type="submit" className={`px-4 py-2 rounded font-semibold ${darkMode ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white'} ml-2`} disabled={buscando}>
+            {buscando ? 'Buscando...' : 'Buscar'}
+          </button>
+        </form>
         {vendas === null ? (
           <div className="text-center my-8">Carregando vendas...</div>
         ) : vendas.length === 0 ? (
@@ -193,6 +215,9 @@ export default function ClientesListNew({ darkMode = false }) {
   const [modalVendas, setModalVendas] = useState({ open: false, vendas: null, cliente: null });
   const [modalItens, setModalItens] = useState({ open: false, itens: null, venda: null });
   const [modalFinanceiro, setModalFinanceiro] = useState({ open: false, contas: null, cliente: null, alerta: false });
+  const [dataInicial, setDataInicial] = useState(getPrimeiroDiaMesAtual());
+  const [dataFinal, setDataFinal] = useState(getUltimoDiaMesAtual());
+  const [buscandoVendas, setBuscandoVendas] = useState(false);
 
   const carregarClientes = async (termo = '') => {
     setLoading(true);
@@ -234,11 +259,17 @@ export default function ClientesListNew({ darkMode = false }) {
     carregarClientes(busca);
   };
 
-  // Função para buscar vendas do cliente e abrir o modal
   const handleVerVendas = async (cliente) => {
+    setDataInicial(getPrimeiroDiaMesAtual());
+    setDataFinal(getUltimoDiaMesAtual());
     setModalVendas({ open: true, vendas: null, cliente });
+    await buscarVendas(cliente, getPrimeiroDiaMesAtual(), getUltimoDiaMesAtual());
+  };
+
+  const buscarVendas = async (cliente, dataIni, dataFim) => {
+    setBuscandoVendas(true);
     try {
-      const resp = await api.get(`/relatorios/clientes/${cliente.cli_codigo}/vendas`);
+      const resp = await api.get(`/relatorios/clientes/${cliente.cli_codigo}/vendas?data_inicial=${dataIni}&data_final=${dataFim}`);
       let vendas = [];
       if (Array.isArray(resp.data)) {
         vendas = resp.data;
@@ -257,6 +288,8 @@ export default function ClientesListNew({ darkMode = false }) {
       setModalVendas({ open: true, vendas, cliente });
     } catch (err) {
       setModalVendas({ open: true, vendas: [], cliente });
+    } finally {
+      setBuscandoVendas(false);
     }
   };
 
@@ -264,7 +297,6 @@ export default function ClientesListNew({ darkMode = false }) {
     setModalVendas({ open: false, vendas: null, cliente: null });
   };
 
-  // Função para buscar contas do cliente e abrir o modal
   const handleVerContas = async (cliente) => {
     setModalFinanceiro({ open: true, contas: null, cliente, alerta: false });
     try {
@@ -280,7 +312,6 @@ export default function ClientesListNew({ darkMode = false }) {
     setModalFinanceiro({ open: false, contas: null, cliente: null, alerta: false });
   };
 
-  // Função para buscar itens da venda e abrir o modal
   const handleVerItensVenda = async (venda) => {
     setModalItens({ open: true, itens: null, venda });
     try {
@@ -357,7 +388,6 @@ export default function ClientesListNew({ darkMode = false }) {
         <div>Carregando...</div>
       ) : (
         <div>
-          {/* Tabela para desktop/tablet */}
           <div className="hidden sm:block overflow-x-auto">
             <table className="min-w-full w-full break-words divide-y divide-gray-200">
               <thead className={darkMode ? "bg-gray-900" : "bg-gray-50"}>
@@ -422,7 +452,6 @@ export default function ClientesListNew({ darkMode = false }) {
               </tbody>
             </table>
           </div>
-          {/* Lista responsiva para mobile */}
           <div className="sm:hidden flex flex-col gap-3">
             {clientes.length > 0 ? (
               clientes.map((cliente) => (
@@ -473,7 +502,20 @@ export default function ClientesListNew({ darkMode = false }) {
           </div>
         </div>
       )}
-      <ModalVendasCliente open={modalVendas.open} onClose={handleCloseModalVendas} vendas={modalVendas.vendas} cliente={modalVendas.cliente} darkMode={darkMode} onVerItensVenda={handleVerItensVenda} />
+      <ModalVendasCliente
+        open={modalVendas.open}
+        onClose={handleCloseModalVendas}
+        vendas={modalVendas.vendas}
+        cliente={modalVendas.cliente}
+        darkMode={darkMode}
+        onVerItensVenda={handleVerItensVenda}
+        dataInicial={dataInicial}
+        dataFinal={dataFinal}
+        setDataInicial={setDataInicial}
+        setDataFinal={setDataFinal}
+        onBuscarVendas={() => buscarVendas(modalVendas.cliente, dataInicial, dataFinal)}
+        buscando={buscandoVendas}
+      />
       <ModalItensVenda open={modalItens.open} onClose={handleCloseModalItens} itens={modalItens.itens} venda={modalItens.venda} darkMode={darkMode} />
       <ModalFinanceiroCliente open={modalFinanceiro.open} onClose={handleCloseModalFinanceiro} contas={modalFinanceiro.contas} cliente={modalFinanceiro.cliente} darkMode={darkMode} />
     </div>

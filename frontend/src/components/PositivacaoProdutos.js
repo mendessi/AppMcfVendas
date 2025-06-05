@@ -25,15 +25,22 @@ const PositivacaoProdutos = ({ darkMode }) => {
   const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [showListaClientes, setShowListaClientes] = useState(false);
 
-  // Buscar clientes para autocomplete
-  useEffect(() => {
-    if (buscaCliente.length < 2) return;
-    let ativo = true;
-    api.get('/relatorios/clientes', { params: { q: buscaCliente } })
-      .then(resp => { if (ativo) setClientes(resp.data || []); })
-      .catch(() => { if (ativo) setClientes([]); });
-    return () => { ativo = false; };
-  }, [buscaCliente]);
+  // Buscar clientes ao clicar em Filtrar
+  const filtrarClientes = async () => {
+    setLoading(true);
+    setErro(null);
+    setShowListaClientes(false);
+    try {
+      const termoBusca = buscaCliente.toUpperCase().slice(0, 40); // Limite de 40 caracteres
+      const resp = await api.get('/relatorios/clientes', { params: { q: termoBusca } });
+      setClientesFiltrados(resp.data || []);
+      setShowListaClientes(true);
+    } catch (err) {
+      setErro('Erro ao buscar clientes.');
+      setClientesFiltrados([]);
+    }
+    setLoading(false);
+  };
 
   // Buscar produtos do cliente ou todos
   const buscarProdutos = async () => {
@@ -59,7 +66,10 @@ const PositivacaoProdutos = ({ darkMode }) => {
 
   // Buscar ao mudar período/busca
   useEffect(() => {
-    buscarProdutos();
+    // Só buscar produtos se um cliente estiver selecionado
+    if (cliente) {
+      buscarProdutos();
+    }
     // eslint-disable-next-line
   }, [cliente, dataInicial, dataFinal]);
 
@@ -79,22 +89,6 @@ const PositivacaoProdutos = ({ darkMode }) => {
     return removeAccents((str || '').toLowerCase().trim());
   }
 
-  // Buscar clientes ao clicar em Filtrar
-  const filtrarClientes = async () => {
-    setLoading(true);
-    setErro(null);
-    setShowListaClientes(false);
-    try {
-      const resp = await api.get('/relatorios/clientes', { params: { q: buscaCliente } });
-      setClientesFiltrados(resp.data || []);
-      setShowListaClientes(true);
-    } catch (err) {
-      setErro('Erro ao buscar clientes.');
-      setClientesFiltrados([]);
-    }
-    setLoading(false);
-  };
-
   return (
     <div className={`p-4 ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
       <h2 className="text-2xl font-bold mb-4">Positivação de Produtos</h2>
@@ -105,7 +99,7 @@ const PositivacaoProdutos = ({ darkMode }) => {
             <input
               type="text"
               value={buscaCliente}
-              onChange={e => setBuscaCliente(e.target.value)}
+              onChange={e => setBuscaCliente(e.target.value.toUpperCase().slice(0, 40))}
               placeholder="Buscar cliente..."
               className={`rounded px-2 py-1 border w-full md:w-[280px] ${darkMode ? 'bg-gray-800 text-white border-gray-600' : 'bg-white text-gray-900 border-gray-300'}`}
             />
@@ -121,17 +115,42 @@ const PositivacaoProdutos = ({ darkMode }) => {
             )}
             {/* Lista de clientes filtrados */}
             {showListaClientes && clientesFiltrados.length > 0 && (
-              <div className={`absolute z-20 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow w-full max-h-60 overflow-y-auto mt-1`}>
-                {clientesFiltrados.map(c => (
-                  <div key={c.cli_codigo} className="flex flex-col px-3 py-2 border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900 cursor-pointer">
-                    <div className="font-bold text-sm">{c.cli_nome}</div>
-                    <div className="text-xs text-gray-500">CNPJ: {c.cnpj || '-'} | {c.cidade} {c.uf}</div>
+              <div
+                className={`fixed inset-0 z-50 flex items-center justify-center md:absolute md:inset-auto md:z-20 md:mt-1 bg-black bg-opacity-40 md:bg-transparent`}
+                style={{
+                  // No mobile, ocupa quase toda a tela
+                  alignItems: 'flex-start',
+                  paddingTop: '10vh',
+                }}
+              >
+                <div
+                  className={`w-full max-w-md md:max-w-full md:w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded shadow-lg md:shadow w-full max-h-[70vh] overflow-y-auto`}
+                  style={{
+                    margin: '0 8px',
+                    zIndex: 1000,
+                  }}
+                >
+                  <div className="flex justify-between items-center p-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="font-bold text-lg">Selecione o Cliente</span>
                     <button
-                      className={`mt-1 px-2 py-1 rounded text-xs font-bold ${darkMode ? 'bg-blue-700 text-white' : 'bg-blue-500 text-white'} w-max`}
-                      onClick={() => { setCliente(c); setShowListaClientes(false); setBuscaCliente(c.cli_nome); setErro(null); buscarProdutos(); }}
-                    >Selecionar</button>
+                      type="button"
+                      className="text-gray-400 hover:text-red-600 text-2xl font-bold focus:outline-none"
+                      style={{ background: 'none', border: 'none', padding: 0 }}
+                      onClick={() => { setShowListaClientes(false); }}
+                      title="Fechar"
+                    >×</button>
                   </div>
-                ))}
+                  {clientesFiltrados.map(c => (
+                    <div key={c.cli_codigo} className="flex flex-col px-3 py-2 border-b border-gray-100 dark:border-gray-700">
+                      <div className="font-bold text-base md:text-sm">{c.cli_nome}</div>
+                      <div className="text-xs text-gray-500">CNPJ: {c.cnpj || '-'} | {c.cidade} {c.uf}</div>
+                      <button
+                        className={`mt-2 px-4 py-2 rounded text-base md:text-xs font-bold ${darkMode ? 'bg-blue-700 text-white' : 'bg-blue-500 text-white'} w-full md:w-max`}
+                        onClick={() => { setCliente(c); setShowListaClientes(false); setBuscaCliente(c.cli_nome); setErro(null); }}
+                      >Selecionar</button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

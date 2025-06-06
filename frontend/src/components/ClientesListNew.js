@@ -64,7 +64,7 @@ function ModalVendasCliente({ open, onClose, vendas, cliente, darkMode, onVerIte
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-      <div className={`bg-white ${darkMode ? 'dark:bg-gray-900 text-white' : 'text-gray-900'} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] p-2 md:p-8 relative flex flex-col border border-gray-300 dark:border-gray-700`} style={{width:'98vw', maxWidth: '700px'}}>
+      <div className={`bg-white${darkMode ? ' dark:bg-gray-900' : ' text-gray-900'} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] p-2 md:p-8 relative flex flex-col border border-gray-300 dark:border-gray-700`} style={{width:'98vw', maxWidth: '700px'}}>
         <button className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-3xl z-10" onClick={onClose}>&times;</button>
         <h2 className="text-2xl font-extrabold mb-4 mt-10 md:mt-0 text-center tracking-tight text-gray-900 dark:text-white">Vendas de {cliente?.cli_nome}</h2>
         <form className="flex flex-wrap gap-2 items-end justify-center mb-4" onSubmit={e => { e.preventDefault(); onBuscarVendas(); }}>

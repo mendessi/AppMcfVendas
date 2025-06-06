@@ -282,7 +282,7 @@ const ProdutosList = ({ darkMode, empresaSelecionada }) => {
       {/* Modal de histórico de compras */}
       {modalHistorico && produtoSelecionado && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-          <div className={`bg-white ${darkMode ? 'dark:bg-gray-900 text-white' : 'text-gray-900'} rounded-2xl shadow-2xl max-w-lg w-full p-4 relative`}>
+          <div className={`rounded-2xl shadow-2xl max-w-lg w-full p-4 relative ${darkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
             <button className="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-2xl z-10" onClick={() => setModalHistorico(false)}>&times;</button>
             <h2 className="text-lg font-bold mb-4">Últimas 5 Compras do Produto</h2>
             <div className="mb-2 text-sm font-semibold">{produtoSelecionado.descricao} <span className="ml-2 text-xs text-blue-400">(Código: {produtoSelecionado.codigo})</span></div>

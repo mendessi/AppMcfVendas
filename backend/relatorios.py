@@ -1244,9 +1244,11 @@ async def buscar_clientes_new(request: Request, q: str = ""):
                 CLI_EMAIL,
                 CLI_TIPO
             FROM CLIENTES
-            WHERE UPPER(CLI_NOME) LIKE ?
-               OR CNPJ LIKE ?
-               OR CPF LIKE ?
+            WHERE (CLI_INATIVO = 'N' OR CLI_INATIVO IS NULL)
+              AND CLI_TIPO = 1
+              AND (UPPER(CLI_NOME) LIKE ?
+                   OR CNPJ LIKE ?
+                   OR CPF LIKE ?)
             ORDER BY CLI_NOME
         """
         cursor.execute(sql, (termo_nome, termo_cnpj, termo_cpf))

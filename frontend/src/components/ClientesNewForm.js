@@ -38,7 +38,12 @@ export default function ClientesNewForm({ modoEdicao = false, dadosIniciais = {}
 
   const handleChange = e => {
     const { name, value } = e.target;
-    setForm(f => ({ ...f, [name]: value }));
+    // Lista de campos que devem ser uppercase
+    const camposUpper = ['cli_nome', 'apelido', 'contato', 'cidade', 'bairro'];
+    setForm(f => ({
+      ...f,
+      [name]: camposUpper.includes(name) ? value.toUpperCase() : value
+    }));
   };
 
   const handleSubmit = async e => {
@@ -76,15 +81,15 @@ export default function ClientesNewForm({ modoEdicao = false, dadosIniciais = {}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className={darkMode ? 'text-gray-300' : ''}>Nome *</label>
-          <input name="cli_nome" value={form.cli_nome} onChange={handleChange} className={`input ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} required />
+          <input name="cli_nome" value={form.cli_nome} onChange={handleChange} className={`input uppercase ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} required />
         </div>
         <div>
           <label className={darkMode ? 'text-gray-300' : ''}>Apelido</label>
-          <input name="apelido" value={form.apelido} onChange={handleChange} className={`input ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
+          <input name="apelido" value={form.apelido} onChange={handleChange} className={`input uppercase ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
         </div>
         <div>
           <label className={darkMode ? 'text-gray-300' : ''}>Contato</label>
-          <input name="contato" value={form.contato} onChange={handleChange} className={`input ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
+          <input name="contato" value={form.contato} onChange={handleChange} className={`input uppercase ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
         </div>
         <div>
           <label className={darkMode ? 'text-gray-300' : ''}>CPF</label>
@@ -104,11 +109,11 @@ export default function ClientesNewForm({ modoEdicao = false, dadosIniciais = {}
         </div>
         <div>
           <label className={darkMode ? 'text-gray-300' : ''}>Bairro</label>
-          <input name="bairro" value={form.bairro} onChange={handleChange} className={`input ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
+          <input name="bairro" value={form.bairro} onChange={handleChange} className={`input uppercase ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
         </div>
         <div>
           <label className={darkMode ? 'text-gray-300' : ''}>Cidade</label>
-          <input name="cidade" value={form.cidade} onChange={handleChange} className={`input ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
+          <input name="cidade" value={form.cidade} onChange={handleChange} className={`input uppercase ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900'}`} />
         </div>
         <div>
           <label className={darkMode ? 'text-gray-300' : ''}>UF</label>

@@ -1308,6 +1308,7 @@ async def buscar_produtos(request: Request, q: str = ""):
             OR CAST(P.PRO_CODIGO AS VARCHAR(20)) LIKE ?
             OR UPPER(P.PRO_MARCA) LIKE UPPER(?))
             AND P.ITEM_TABLET = 'S'
+            AND (P.PRO_INATIVO = 'N' OR P.PRO_INATIVO IS NULL)
             ORDER BY P.PRO_DESCRICAO
         """
         
@@ -2116,4 +2117,92 @@ async def listar_compras(request: Request, data_inicial: Optional[str] = None, d
             conn.close()
         except:
             pass
+
+@router.get("/produtos/{pro_codigo}/ultimas-compras")
+async def ultimas_compras_produto(request: Request, pro_codigo: int):
+    """
+    Retorna as últimas 5 compras do produto informado.
+    - ECF_DATA (data da compra)
+    - Nome do fornecedor
+    - ITCOMPRA.PRO_QUANTIDADE (quantidade)
+    - ITCOMPRA.PRO_COMPRA (valor da compra)
+    - PRODUTO.PRO_QUANTIDADE (estoque atual)
+    Se o usuário for VENDEDOR, não retorna PRO_COMPRA.
+    """
+    try:
+        usuario_nivel = None
+        try:
+            from auth import SECRET_KEY, ALGORITHM
+            from jose import jwt
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.replace("Bearer ", "")
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                usuario_nivel = payload.get("nivel", "").upper()
+        except Exception as e:
+            usuario_nivel = None
+        is_vendedor = usuario_nivel == "VENDEDOR"
+
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        if is_vendedor:
+            sql = '''
+                SELECT FIRST 5
+                    C.ECF_DATA,
+                    F.CLI_NOME AS nome_fornecedor,
+                    I.PRO_QUANTIDADE,
+                    P.PRO_QUANTIDADE AS estoque_atual
+                FROM COMPRAS C
+                JOIN ITCOMPRA I ON C.ECF_NUMERO = I.ECF_NUMERO
+                JOIN CLIENTES F ON F.CLI_CODIGO = C.CLI_CODIGO
+                JOIN PRODUTO P ON P.PRO_CODIGO = I.PRO_CODIGO
+                WHERE I.PRO_CODIGO = ?
+                ORDER BY C.ECF_DATA DESC
+            '''
+            cursor.execute(sql, (pro_codigo,))
+            rows = cursor.fetchall()
+            result = [
+                {
+                    "ecf_data": row[0].strftime('%Y-%m-%d') if isinstance(row[0], datetime) else str(row[0]),
+                    "nome_fornecedor": row[1],
+                    "quantidade": row[2],
+                    "estoque_atual": row[3]
+                }
+                for row in rows
+            ]
+        else:
+            sql = '''
+                SELECT FIRST 5
+                    C.ECF_DATA,
+                    F.CLI_NOME AS nome_fornecedor,
+                    I.PRO_QUANTIDADE,
+                    I.PRO_COMPRA,
+                    I.PRO_CUSTO,
+                    P.PRO_QUANTIDADE AS estoque_atual
+                FROM COMPRAS C
+                JOIN ITCOMPRA I ON C.ECF_NUMERO = I.ECF_NUMERO
+                JOIN CLIENTES F ON F.CLI_CODIGO = C.CLI_CODIGO
+                JOIN PRODUTO P ON P.PRO_CODIGO = I.PRO_CODIGO
+                WHERE I.PRO_CODIGO = ?
+                ORDER BY C.ECF_DATA DESC
+            '''
+            cursor.execute(sql, (pro_codigo,))
+            rows = cursor.fetchall()
+            result = [
+                {
+                    "ecf_data": row[0].strftime('%Y-%m-%d') if isinstance(row[0], datetime) else str(row[0]),
+                    "nome_fornecedor": row[1],
+                    "quantidade": row[2],
+                    "pro_compra": row[3],
+                    "pro_custo": row[4],
+                    "estoque_atual": row[5]
+                }
+                for row in rows
+            ]
+        cursor.close()
+        conn.close()
+        return JSONResponse(content=result)
+    except Exception as e:
+        log.error(f"Erro ao buscar últimas compras do produto: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar últimas compras do produto: {str(e)}")
 

@@ -131,7 +131,7 @@ const FornecedorAutocomplete = ({ value, onChange, onSelect, darkMode }) => {
           value={searchTerm.toUpperCase()}
           onChange={handleInputChange}
           placeholder="Buscar fornecedor..."
-          className={`pl-10 pr-24 w-full rounded-md ${
+          className={`pl-10 pr-24 w-full rounded-md uppercase ${
             darkMode
               ? "bg-gray-600 border-gray-500 text-white"
               : "bg-white border-gray-300 text-gray-700"

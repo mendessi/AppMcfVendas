@@ -82,6 +82,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
+      // Exibe mensagem elegante antes de redirecionar
+      alert('Sua sessão expirou. Por favor, faça login novamente.');
       window.location.href = '/login';
     }
     return Promise.reject(error);

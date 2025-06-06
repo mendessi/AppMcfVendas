@@ -178,9 +178,9 @@ export default function ListarCompras({ darkMode = false }) {
             <input
               type="text"
               value={buscaFornecedor}
-              onChange={e => setBuscaFornecedor(e.target.value)}
+              onChange={e => setBuscaFornecedor(e.target.value.toUpperCase())}
               placeholder="Buscar fornecedor"
-              className={`rounded px-2 py-1 border w-full ${
+              className={`rounded px-2 py-1 border w-full uppercase ${
                 darkMode
                   ? 'bg-gray-800 text-white border-gray-600'
                   : 'bg-white text-gray-900 border-gray-300'
@@ -209,9 +209,9 @@ export default function ListarCompras({ darkMode = false }) {
             <input
               type="text"
               value={buscaProduto}
-              onChange={e => setBuscaProduto(e.target.value)}
+              onChange={e => setBuscaProduto(e.target.value.toUpperCase())}
               placeholder="Buscar produto (ex: ABRACADEIRA%METAL)"
-              className={`rounded px-2 py-1 border w-full ${
+              className={`rounded px-2 py-1 border w-full uppercase ${
                 darkMode
                   ? 'bg-gray-800 text-white border-gray-600'
                   : 'bg-white text-gray-900 border-gray-300'
@@ -344,7 +344,10 @@ export default function ListarCompras({ darkMode = false }) {
               <ul className="divide-y divide-gray-200 dark:divide-gray-700 max-h-80 overflow-y-auto">
                 {fornecedores.map(f => (
                   <li key={f.cli_codigo} className="py-2 px-2 hover:bg-blue-100 dark:hover:bg-blue-800 cursor-pointer" onClick={() => handleSelecionarFornecedor(f)}>
-                    <b>{f.cli_nome}</b> <span className="text-xs">({f.cli_codigo})</span>
+                    <b>{f.cli_nome}</b>
+                    <div className="text-xs mt-1">
+                      Código: <span className="font-mono font-semibold">{f.cli_codigo}</span> &nbsp; CNPJ: <span className="font-mono">{f.cnpj || f.CNPJ || '-'}</span>
+                    </div>
                   </li>
                 ))}
               </ul>

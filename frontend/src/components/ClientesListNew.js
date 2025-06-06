@@ -232,10 +232,6 @@ export default function ClientesListNew({ darkMode = false }) {
     }
   };
 
-  useEffect(() => {
-    carregarClientes();
-  }, []);
-
   const handleNovo = () => {
     setClienteEdit(null);
     setModoEdicao(false);
@@ -255,6 +251,12 @@ export default function ClientesListNew({ darkMode = false }) {
 
   const handleBuscar = (e) => {
     e.preventDefault();
+    if (busca.trim().length < 5) {
+      setErro('Digite pelo menos 5 caracteres para buscar.');
+      setClientes([]);
+      return;
+    }
+    setErro('');
     setBuscaAtiva(busca);
     carregarClientes(busca);
   };
@@ -363,25 +365,31 @@ export default function ClientesListNew({ darkMode = false }) {
             onKeyDown={e => { if (e.key === 'Enter') handleBuscar(e); }}
             autoFocus
           />
-          <div className="flex flex-row gap-2 mt-2 sm:mt-0 w-full sm:w-auto justify-between sm:justify-start">
-            <button
-              type="submit"
-              className={`flex-1 sm:flex-none items-center gap-2 px-5 py-2 rounded-lg font-semibold shadow transition-all border-2 border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 ${darkMode ? 'bg-blue-700 hover:bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
-              disabled={loading || busca.trim().length === 0}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" /></svg>
-              Buscar
-            </button>
-            <button
-              type="button"
-              className={`flex-1 sm:flex-none items-center gap-2 px-5 py-2 rounded-lg font-semibold shadow transition-all border-2 border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}
-              onClick={() => { setBusca(''); setBuscaAtiva(''); carregarClientes(''); }}
-              disabled={loading || (!busca && !buscaAtiva)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              Limpar
-            </button>
+        </div>
+        {busca.trim().length > 0 && busca.trim().length < 5 && (
+          <div className={`w-full text-xs mt-1 ${darkMode ? 'text-yellow-300 bg-gray-800' : 'text-yellow-700 bg-yellow-50'} p-2 rounded`}
+            style={{fontWeight:'bold', letterSpacing:'0.5px'}}>
+            Digite pelo menos 5 caracteres para buscar.
           </div>
+        )}
+        <div className="flex flex-row gap-2 mt-2 sm:mt-0 w-full sm:w-auto justify-between sm:justify-start">
+          <button
+            type="submit"
+            className={`flex-1 sm:flex-none items-center gap-2 px-5 py-2 rounded-lg font-semibold shadow transition-all border-2 border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 ${darkMode ? 'bg-blue-700 hover:bg-blue-800 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+            disabled={loading || busca.trim().length < 5}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" /></svg>
+            Buscar
+          </button>
+          <button
+            type="button"
+            className={`flex-1 sm:flex-none items-center gap-2 px-5 py-2 rounded-lg font-semibold shadow transition-all border-2 border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}
+            onClick={() => { setBusca(''); setBuscaAtiva(''); carregarClientes(''); }}
+            disabled={loading || (!busca && !buscaAtiva)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            Limpar
+          </button>
         </div>
       </form>
       {loading ? (

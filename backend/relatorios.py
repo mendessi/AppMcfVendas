@@ -1224,8 +1224,9 @@ async def buscar_clientes_new(request: Request, q: str = ""):
         cursor = conn.cursor()
 
         # Usar o termo completo, sem truncar
-        q_param = q
-        
+        termo_nome = f"%{q.strip()}%" if q else "%"
+        termo_cnpj = f"%{q.strip()}%"[:14] if q else "%"
+        termo_cpf = f"%{q.strip()}%"[:11] if q else "%"
         sql = """
             SELECT
                 CLI_CODIGO,
@@ -1240,14 +1241,15 @@ async def buscar_clientes_new(request: Request, q: str = ""):
                 CIDADE,
                 UF,
                 TEL_WHATSAPP,
-                CLI_EMAIL
+                CLI_EMAIL,
+                CLI_TIPO
             FROM CLIENTES
-            WHERE UPPER(CLI_NOME) CONTAINING UPPER(?)
-               OR CNPJ CONTAINING ? 
+            WHERE UPPER(CLI_NOME) LIKE ?
+               OR CNPJ LIKE ?
+               OR CPF LIKE ?
             ORDER BY CLI_NOME
         """
-        # Usar o q_param truncado na consulta
-        cursor.execute(sql, (q_param, q_param))
+        cursor.execute(sql, (termo_nome, termo_cnpj, termo_cpf))
         rows = cursor.fetchall()
         
         clientes = []
@@ -1265,7 +1267,8 @@ async def buscar_clientes_new(request: Request, q: str = ""):
                 "cidade": row[9] if len(row) > 9 and row[9] is not None else "",
                 "uf": row[10] if len(row) > 10 and row[10] is not None else "",
                 "tel_whatsapp": row[11] if len(row) > 11 and row[11] is not None else "",
-                "email": row[12] if len(row) > 12 and row[12] is not None else ""
+                "email": row[12] if len(row) > 12 and row[12] is not None else "",
+                "cli_tipo": row[13] if len(row) > 13 else None
             }
             clientes.append(cliente)
         
@@ -1910,3 +1913,207 @@ async def positivacao_produtos(request: Request, cli_codigo: str = None, data_in
         import traceback
         log.error(f"Erro na positivação de produtos: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Erro na positivação de produtos: {str(e)}")
+
+@router.get("/entradas-produtos")
+async def get_entradas_produtos(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
+    """
+    Endpoint para listar entradas de produtos no período.
+    Retorna: data_entrada, produto, fornecedor, qtd, custo, total
+    """
+    log.info(f"[ENTRADAS] Headers recebidos: {dict(request.headers)}")
+    
+    try:
+        # Definir datas padrão se não fornecidas
+        hoje = date.today()
+        if not data_inicial:
+            data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+        if not data_final:
+            if hoje.month == 12:
+                proximo_mes = date(hoje.year + 1, 1, 1)
+            else:
+                proximo_mes = date(hoje.year, hoje.month + 1, 1)
+            data_final = (proximo_mes - timedelta(days=1)).isoformat()
+
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+
+        # Consulta para entradas de produtos
+        sql = """
+            SELECT 
+                E.ENT_DATA as data_entrada,
+                P.PRO_DESCRICAO as produto,
+                F.FOR_NOME as fornecedor,
+                E.ENT_QUANTIDADE as qtd,
+                E.ENT_CUSTO as custo,
+                (E.ENT_QUANTIDADE * E.ENT_CUSTO) as total
+            FROM ENTRADAS E
+            JOIN PRODUTO P ON P.PRO_CODIGO = E.PRO_CODIGO
+            LEFT JOIN FORNECEDOR F ON F.FOR_CODIGO = E.FOR_CODIGO
+            WHERE CAST(E.ENT_DATA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+            ORDER BY E.ENT_DATA DESC, P.PRO_DESCRICAO
+        """
+        
+        cursor.execute(sql, (data_inicial, data_final))
+        rows = cursor.fetchall()
+        
+        # Converter para lista de dicionários
+        entradas = []
+        for row in rows:
+            entradas.append({
+                'dataEntrada': row[0].strftime('%d/%m/%Y') if row[0] else None,
+                'produto': row[1],
+                'fornecedor': row[2] or 'Não informado',
+                'qtd': float(row[3] or 0),
+                'custo': float(row[4] or 0),
+                'total': float(row[5] or 0)
+            })
+        
+        log.info(f"[ENTRADAS] Encontradas {len(entradas)} entradas")
+        return entradas
+        
+    except Exception as e:
+        import traceback
+        log.error(f"[ENTRADAS] Erro ao listar entradas: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar entradas: {str(e)}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
+@router.get("/listar-compras")
+async def listar_compras(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
+    """
+    Endpoint para listar compras (entradas de produtos) no período.
+    Usa o SQL fornecido pelo usuário e filtra por COMPRAS.ECF_DATAENTRADA.
+    Se o usuário for VENDEDOR, oculta campos sensíveis como custo, compra, fornecedor e total.
+    """
+    from datetime import date
+    log.info(f"[COMPRAS] Headers recebidos: {dict(request.headers)}")
+    try:
+        # Verificar nível do usuário
+        auth_header = request.headers.get("Authorization")
+        is_vendedor = False
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
+            try:
+                from auth import SECRET_KEY, ALGORITHM
+                from jose import jwt
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                usuario_nivel = payload.get("nivel", "").upper()
+                is_vendedor = usuario_nivel == "VENDEDOR"
+                log.info(f"[COMPRAS] Nível do usuário: {usuario_nivel}, is_vendedor: {is_vendedor}")
+            except Exception as jwt_err:
+                log.error(f"[COMPRAS] Erro ao decodificar token JWT: {str(jwt_err)}")
+
+        hoje = date.today()
+        if not data_inicial:
+            data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+        if not data_final:
+            if hoje.month == 12:
+                proximo_mes = date(hoje.year + 1, 1, 1)
+            else:
+                proximo_mes = date(hoje.year, hoje.month + 1, 1)
+            data_final = (proximo_mes - timedelta(days=1)).isoformat()
+
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+
+        # SQL base
+        sql = '''
+            Select
+              Cast('ENTRADA' As VarChar(10)) As entrada,
+              COMPRAS.ECF_DATA, --DATA DA NOTA
+              COMPRAS.CLI_CODIGO, -- CODIGO FORNECEDOR
+              CLIENTES.CLI_NOME, -- NOME FORNECEDOR
+              ITCOMPRA.PRO_CODIGO,
+              COMPRAS.CON_DOC_ORIGEM, --NUMERO NF
+              PRODUTO.PRO_DESCRICAO, --DESCRICAO
+              ITCOMPRA.PRO_CODIGO, -- CODIGO DO ITEM  
+              ITCOMPRA.PRO_QUANTIDADE, --QTD COMPRADA
+        '''
+        
+        # Adiciona campos sensíveis apenas se não for vendedor
+        if not is_vendedor:
+            sql += '''
+              ITCOMPRA.PRO_CUSTO, -- CUSTO (VENDEDOR NAO PODE VER)
+              ITCOMPRA.PRO_COMPRA, -- COMPRA (VENDEDOR NAO PODE VER)
+              ITCOMPRA.MENORPRECO, -- PREÇO PROMOCIONAL 
+              COMPRAS.ECF_DATAENTRADA, --DATA DA ENTRADA
+              (ITCOMPRA.PRO_QUANTIDADE * ITCOMPRA.PRO_CUSTO) As total,
+            '''
+        else:
+            sql += '''
+              Cast(null As Double Precision) As PRO_CUSTO,
+              Cast(null As Double Precision) As PRO_COMPRA,
+              Cast(null As Double Precision) As MENORPRECO,
+              COMPRAS.ECF_DATAENTRADA, --DATA DA ENTRADA
+              Cast(null As Double Precision) As total,
+            '''
+        
+        sql += '''
+              PRODUTO.PRO_QUANTIDADE as estoque_atual,
+              PRODUTO.PRO_VENDA as preco_venda -- Preço1: preço de venda (todos podem ver)
+            From
+              COMPRAS
+              Join CLIENTES On COMPRAS.CLI_CODIGO = CLIENTES.CLI_CODIGO
+              Join ITCOMPRA On COMPRAS.ECF_NUMERO = ITCOMPRA.ECF_NUMERO
+              JOIN PRODUTO ON ITCOMPRA.PRO_CODIGO = PRODUTO.PRO_CODIGO 
+            Where
+              (COMPRAS.ECF_CONCLUIDA = 'S') And
+              (COMPRAS.ECF_CANCELADA = 'N')
+              And CAST(COMPRAS.ECF_DATAENTRADA AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+        '''
+        
+        params = [data_inicial, data_final]
+        fornecedor = request.query_params.get('fornecedor')
+        if fornecedor:
+            sql += '\n              AND COMPRAS.CLI_CODIGO = ?'
+            params.append(fornecedor)
+        produto = request.query_params.get('produto')
+        log.info(f"[COMPRAS] Parâmetro produto recebido: {produto}")
+        if produto:
+            sql += '\n              AND ITCOMPRA.PRO_CODIGO = ?'
+            params.append(str(produto).strip())
+        
+        log.info(f"[COMPRAS] SQL executado:\n{sql}\nParâmetros: {params}")
+        sql += '\n            ORDER BY COMPRAS.ECF_DATAENTRADA DESC, PRODUTO.PRO_DESCRICAO'
+        
+        cursor.execute(sql, tuple(params))
+        rows = cursor.fetchall()
+        entradas = []
+        
+        for row in rows:
+            entrada = {
+                'tipoEntrada': row[0],
+                'dataNota': row[1].strftime('%d/%m/%Y') if row[1] else None,
+                'codigoFornecedor': row[2],
+                'nomeFornecedor': row[3] if not is_vendedor else '***',  # Oculta nome do fornecedor para vendedor
+                'codigoProduto': row[4],
+                'numeroNf': row[5],
+                'descricaoProduto': row[6],
+                'codigoItem': row[7],
+                'quantidade': float(row[8] or 0),
+                'custo': float(row[9] or 0) if not is_vendedor else None,
+                'compra': float(row[10] or 0) if not is_vendedor else None,
+                'menorPreco': float(row[11] or 0) if not is_vendedor else None,
+                'dataEntrada': row[12].strftime('%d/%m/%Y') if row[12] else None,
+                'total': float(row[13] or 0) if not is_vendedor else None,
+                'estoqueAtual': float(row[14] or 0),
+                'precoVenda': float(row[15] or 0)  # Preço1: preço de venda (todos podem ver)
+            }
+            entradas.append(entrada)
+            
+        log.info(f"[COMPRAS] Encontradas {len(entradas)} compras/entradas")
+        return entradas
+        
+    except Exception as e:
+        import traceback
+        log.error(f"[COMPRAS] Erro ao listar compras: {str(e)}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar compras: {str(e)}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+

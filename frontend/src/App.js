@@ -7,7 +7,7 @@ import { checkAppVersion } from './utils/versionCheck';
 import UpdateNotification from './components/UpdateNotification';
 
 // Ícones
-import { FiMenu, FiX, FiHome, FiUsers, FiPackage, FiShoppingCart, FiPlusCircle, FiLogOut, FiMoon, FiSun, FiGrid, FiClipboard } from 'react-icons/fi';
+import { FiMenu, FiX, FiHome, FiUsers, FiPackage, FiShoppingCart, FiPlusCircle, FiLogOut, FiMoon, FiSun, FiGrid, FiClipboard, FiBox } from 'react-icons/fi';
 import OrcamentoForm from './OrcamentoForm';
 import OrcamentosList from './components/OrcamentosList';
 
@@ -22,6 +22,7 @@ import ClientesListNew from './components/ClientesListNew';
 import EmpresaSelector from './components/EmpresaSelector';
 import PositivacaoClientes from './components/PositivacaoClientes';
 import PositivacaoProdutos from './components/PositivacaoProdutos';
+import ListarCompras from './components/ListarCompras';
 
 // Componente principal da aplicação
 function App() {
@@ -755,6 +756,16 @@ function AppContent() {
                     </Link>
                   </li>
                   <li className="mb-2">
+                    <Link 
+                      to="/listar-compras" 
+                      className={`flex items-center px-4 py-3 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:text-white' : 'hover:bg-gray-100 text-gray-700 hover:text-gray-900'}`}
+                      onClick={() => window.innerWidth < 768 && toggleSidebar()}
+                    >
+                      <FiBox className="mr-3 h-5 w-5" />
+                      <span>Listar Compras</span>
+                    </Link>
+                  </li>
+                  <li className="mb-2">
                     <div className="font-bold px-4 py-2 text-xs uppercase text-gray-400">Positivação</div>
                     <ul className="ml-2">
                       <li>
@@ -803,6 +814,7 @@ function AppContent() {
               <Route path="/clientes-novo" element={<ClientesListNew darkMode={darkMode} />} />
               <Route path="/positivacao-clientes" element={<PositivacaoClientes darkMode={darkMode} />} />
               <Route path="/positivacao-produtos" element={<PositivacaoProdutos darkMode={darkMode} />} />
+              <Route path="/listar-compras" element={isLoggedIn ? <ListarCompras darkMode={darkMode} /> : <Navigate to="/login" />} />
               
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>

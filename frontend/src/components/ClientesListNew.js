@@ -361,7 +361,7 @@ export default function ClientesListNew({ darkMode = false }) {
             placeholder="Buscar por nome, CNPJ/CPF ou e-mail..."
             className={`w-full rounded-lg border-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all px-4 py-2 text-base shadow-sm ${darkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:ring-blue-700' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'}`}
             value={busca}
-            onChange={e => setBusca(e.target.value)}
+            onChange={e => setBusca(e.target.value.toUpperCase())}
             onKeyDown={e => { if (e.key === 'Enter') handleBuscar(e); }}
             autoFocus
           />

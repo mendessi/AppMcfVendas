@@ -21,16 +21,17 @@ DB_PASSWORD = os.getenv("DB_PASSWORD", "masterkey")
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "3050")
 
+from typing import ClassVar
 # Configurações de segurança
-SECRET_KEY = os.getenv("SECRET_KEY", "chave_secreta_temporaria_mude_em_producao")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 horas
+SECRET_KEY: ClassVar[str] = os.getenv("SECRET_KEY", "chave_secreta_temporaria_mude_em_producao")
+ALGORITHM: ClassVar[str] = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES: ClassVar[int] = 60 * 8  # 8 horas
 
 # Configuração da OpenAI
-OPENAI_API_KEY = ""
+OPENAI_API_KEY: ClassVar[str] = "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"
 
 # Configurações de CORS
-ALLOWED_ORIGINS = [
+ALLOWED_ORIGINS: ClassVar[list] = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",
@@ -40,8 +41,8 @@ ALLOWED_ORIGINS = [
 ]
 
 # Configurações de logging
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
-LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+LOG_LEVEL: ClassVar[str] = os.getenv("LOG_LEVEL", "INFO")
+LOG_FORMAT: ClassVar[str] = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
 class Settings(BaseSettings):
     # Configurações do banco de dados

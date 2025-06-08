@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste API - Correção</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+            width: 100%;
+        }
+        .error {
+            color: #f44336;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #4CAF50;
+            background-color: #e8f5e9;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .info {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Teste de Conexão API</h1>
+        
+        <div class="info">
+            <strong>Problema Identificado:</strong><br>
+            - Erro 500: Usuário não existe<br>
+            - CORS bloqueando acesso externo<br>
+            - Precisamos configurar HTTPS na VPS
+        </div>
+
+        <h2>1. Teste com Usuário Válido</h2>
+        <input type="text" id="email" placeholder="Email do sistema" value="">
+        <input type="password" id="senha" placeholder="Senha" value="">
+        <button onclick="testarLoginLocal()">Testar Login Local</button>
+        <div id="resultado"></div>
+
+        <h2>2. Instruções para VPS</h2>
+        <div class="info">
+            <strong>Execute na VPS via SSH:</strong><br>
+            <pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;">
+# 1. Conectar na VPS
+ssh root@189.107.150.129
+
+# 2. Ir para o diretório
+cd /root/AppMendes/backend
+
+# 3. Editar main.py para permitir CORS
+nano main.py
+
+# 4. Procurar por "CORSMiddleware" e mudar para:
+allow_origins=["*"]
+
+# 5. Salvar (Ctrl+O, Enter, Ctrl+X)
+
+# 6. Reiniciar a API
+pkill python
+python3 main.py --port 8000 &
+
+# 7. Testar localmente
+curl http://localhost:8000/</pre>
+        </div>
+
+        <h2>3. Configurar HTTPS (Solução Definitiva)</h2>
+        <button onclick="mostrarInstrucoes()">Ver Instruções HTTPS</button>
+        <div id="instrucoes" style="display: none;">
+            <pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;">
+# Na VPS:
+
+# 1. Instalar Nginx e Certbot
+apt update
+apt install nginx certbot python3-certbot-nginx -y
+
+# 2. Criar configuração Nginx
+cat > /etc/nginx/sites-available/api << 'EOF'
+server {
+    listen 80;
+    server_name api.mendessolucao.site;
+    
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+# 3. Habilitar site
+ln -s /etc/nginx/sites-available/api /etc/nginx/sites-enabled/
+rm /etc/nginx/sites-enabled/default
+
+# 4. Testar e reiniciar
+nginx -t
+systemctl restart nginx
+
+# 5. Obter certificado SSL
+certbot --nginx -d api.mendessolucao.site --non-interactive --agree-tos --email seu@email.com
+
+# 6. Testar
+curl https://api.mendessolucao.site/</pre>
+        </div>
+    </div>
+
+    <script>
+        async function testarLoginLocal() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const resultado = document.getElementById('resultado');
+            
+            if (!email || !senha) {
+                resultado.innerHTML = '<div class="error">Por favor, insira um email e senha válidos do sistema</div>';
+                return;
+            }
+            
+            resultado.innerHTML = '<div class="info">Testando...</div>';
+            
+            try {
+                // Testar localhost primeiro
+                const response = await fetch('http://localhost:8000/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        senha: senha
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultado.innerHTML = `
+                        <div class="success">
+                            ✅ Login bem-sucedido!<br>
+                            Token: ${data.access_token ? 'Recebido' : 'Não recebido'}<br>
+                            Usuário: ${data.nome || 'N/A'}
+                        </div>
+                    `;
+                } else {
+                    resultado.innerHTML = `
+                        <div class="error">
+                            ❌ Erro no login<br>
+                            Status: ${response.status}<br>
+                            Mensagem: ${data.detail || data.message || 'Erro desconhecido'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultado.innerHTML = `
+                    <div class="error">
+                        ❌ Erro de conexão<br>
+                        ${error.message}<br><br>
+                        <strong>Certifique-se que a API está rodando localmente:</strong><br>
+                        cd backend && python main.py --port 8000
+                    </div>
+                `;
+            }
+        }
+        
+        function mostrarInstrucoes() {
+            const div = document.getElementById('instrucoes');
+            div.style.display = div.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html> 

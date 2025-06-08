@@ -1,0 +1,69 @@
+PASSO A PASSO PARA SUBIR O APPMENDES NA VPS (BACKEND E FRONTEND)
+============================================================
+
+# 1. BACKEND (FastAPI compilado com PyInstaller)
+
+1.1. Acesse a pasta onde você copiou o backend (exemplo: C:\appmendes\backend)
+
+1.2. Confira se os arquivos estão presentes:
+    - main.exe
+    - .env (com dados do banco corretos)
+    - fbclient.dll
+    - (outros arquivos .py necessários, se usados pelo sistema)
+
+1.3. (Opcional) Dê permissão de execução, se necessário:
+    - No Windows normalmente não precisa, no Linux: chmod +x main.exe
+
+1.4. Inicie o backend com:
+    main.exe
+
+1.5. O backend ficará escutando na porta definida no .env/config.py (ex: 8000)
+
+
+# 2. FRONTEND (React)
+
+2.1. Acesse a pasta onde você copiou o frontend (exemplo: C:\appmendes\frontend)
+
+2.2. Confira se existe a pasta 'build' com arquivos index.html, main.js, etc.
+
+2.3. Para rodar localmente (teste rápido):
+    - Instale o pacote serve (se não tiver):
+      npm install -g serve
+    - Rode:
+      serve -s build -l 3001
+    - O frontend estará disponível em http://localhost:3001
+
+2.4. Para produção, configure um servidor web (nginx, apache, IIS, etc) apontando para a pasta build.
+
+
+# 3. DICAS E OBSERVAÇÕES
+
+- O arquivo .env do backend deve estar na mesma pasta do main.exe.
+- O frontend NÃO precisa de .env na VPS, só a pasta build.
+- O banco Firebird deve estar acessível pelo caminho do .env.
+- Se precisar rodar o backend em background, use ferramentas como pm2, NSSM, ou agende como serviço.
+- Se mudar o .env, reinicie o backend.
+
+
+# 4. EXEMPLO DE ESTRUTURA DE PASTAS NA VPS
+
+/appmendes/
+    backend/
+        main.exe
+        .env
+        fbclient.dll
+    frontend/
+        build/
+            index.html
+            ...
+
+
+# 5. TESTANDO
+
+- Teste o backend: http://<ip-da-vps>:8000/docs
+- Teste o frontend: http://<ip-da-vps>:3001
+
+
+# 6. SUPORTE
+
+- Dúvidas? Consulte o desenvolvedor ou documentação do projeto.

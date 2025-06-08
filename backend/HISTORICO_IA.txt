@@ -1,0 +1,45 @@
+# Histórico de Integração e Correções IA (Frontend/Backend)
+
+## 1. Diagnóstico Inicial
+- O frontend estava tentando acessar o endpoint `/ai/generate`, mas recebia erro 404.
+- Identificado que o endpoint correto deveria ser `/api/ai/generate`.
+- Backend não respondia corretamente e o código da empresa não era enviado nos headers.
+
+## 2. Ajustes no Frontend
+- Corrigida a URL do endpoint no arquivo `ChatIA.js` para:
+  fetch('http://localhost:8000/api/ai/generate', { ... })
+- Garantido o envio dos headers `Authorization` e `x-empresa-codigo`.
+
+## 3. Implementação e Correção do Backend
+- Criado o arquivo `ai_manager.py` com a classe `AIManager` para respostas simuladas/inteligentes.
+- Criado/ajustado o arquivo `ai_service.py` com:
+  - Definição do router: `router = APIRouter(prefix="/api/ai", tags=["IA"])`
+  - Endpoints `/test-prompt` e `/generate` para processar prompts e retornar respostas.
+- No arquivo `main.py`, incluído o router de IA:
+  from ai_service import router as ai_router
+  app.include_router(ai_router)
+
+## 4. Resolução de Problemas de Importação
+- Identificado erro: `ModuleNotFoundError: No module named 'ai_manager'`
+- Orientado a garantir que:
+  - O arquivo `ai_manager.py` estivesse na pasta `backend`.
+  - O comando para rodar o backend fosse executado **dentro da pasta `backend`**:
+    cd backend
+    python main.py
+  - O import em `ai_service.py` fosse: `from ai_manager import AIManager`
+- Sugerido apagar a pasta `__pycache__` para evitar conflitos de cache.
+
+## 5. Testes e Verificações
+- Confirmado que o backend subiu corretamente após os ajustes.
+- Orientado a acessar o Swagger (`/docs`) para verificar se o endpoint `/api/ai/generate` aparece.
+- Testado o chat no frontend, que passou a enviar corretamente as requisições para o backend.
+
+## Situação Atual
+- Backend rodando sem erros de importação.
+- Endpoint `/api/ai/generate` configurado e exposto.
+- Frontend enviando requisições para o endpoint correto.
+- Sistema pronto para receber e responder prompts via IA.
+
+---
+
+**Última atualização:** [preencher data/hora manualmente] 

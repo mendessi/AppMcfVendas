@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import LoadingSpinner from './LoadingSpinner';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FiEdit2, FiTrash2, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, FiEye, FiPrinter } from 'react-icons/fi';
 import api from '../services/api';
 
@@ -9,6 +9,9 @@ const OrcamentosList = ({ darkMode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedOrcamento, setExpandedOrcamento] = useState(null);
+  const navigate = useNavigate();
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [orcamentoParaEditar, setOrcamentoParaEditar] = useState(null);
   
   // Cache keys
   const CACHE_KEY_FILTERS = 'orcamentos_filtros_cache';
@@ -341,6 +344,19 @@ const OrcamentosList = ({ darkMode }) => {
         alert('Erro ao gerar PDF do orçamento: ' + (error.response?.data?.detail || error.message));
       }
     }
+  };
+
+  // Adicionar função para abrir modal de edição
+  const handleEditar = (orcamento) => {
+    setOrcamentoParaEditar(orcamento);
+    setShowEditModal(true);
+  };
+
+  const handleConfirmarEditar = () => {
+    if (orcamentoParaEditar) {
+      navigate(`/orcamentos/${orcamentoParaEditar.numero}/editar`);
+    }
+    setShowEditModal(false);
   };
 
   if (isLoading) {
@@ -705,6 +721,16 @@ const OrcamentosList = ({ darkMode }) => {
                     </button>
                     
                     <button
+                      onClick={() => handleEditar(orcamento)}
+                      className={`px-3 py-2 border border-transparent text-sm font-medium rounded hover:${
+                        darkMode ? 'bg-yellow-700' : 'bg-yellow-700'
+                      } ${darkMode ? 'text-yellow-300 hover:text-white' : 'text-yellow-600 hover:text-white'} transition-colors duration-200`}
+                      title="Editar orçamento"
+                    >
+                      <FiEdit2 />
+                    </button>
+                    
+                    <button
                       onClick={() => handleImprimir(orcamento.numero)}
                       className={`px-3 py-2 border border-transparent text-sm font-medium rounded hover:${
                         darkMode ? 'bg-green-700' : 'bg-green-700'
@@ -761,7 +787,7 @@ const OrcamentosList = ({ darkMode }) => {
           </div>
           
           {/* Tabela para Desktop */}
-          <div className="hidden md:block overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto w-full">
             <table className={`min-w-full divide-y ${
               darkMode ? "divide-gray-700" : "divide-gray-200"
             }`}>
@@ -792,7 +818,7 @@ const OrcamentosList = ({ darkMode }) => {
                       <tr className={`hover:${darkMode ? 'bg-gray-700' : 'bg-gray-50'} cursor-pointer ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.numero}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">{formatarData(orcamento.data)}</td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.cliente_nome}</td>
+                        <td className="px-4 py-4 whitespace-normal break-words text-sm max-w-xs">{orcamento.cliente_nome}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.vendedor || '-'}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.forma_pagamento || '-'}</td>
                         <td className="px-4 py-4 whitespace-nowrap text-sm">{orcamento.tabela || '-'}</td>
@@ -815,7 +841,15 @@ const OrcamentosList = ({ darkMode }) => {
                               {expandedOrcamento === orcamento.numero ? <FiChevronUp /> : <FiChevronDown />}
                               <FiEye className="ml-1" />
                             </button>
-                            
+                            <button
+                              onClick={() => handleEditar(orcamento)}
+                              className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded hover:${
+                                darkMode ? 'bg-yellow-700' : 'bg-yellow-700'
+                              } ${darkMode ? 'text-yellow-300 hover:text-white' : 'text-yellow-600 hover:text-white'} transition-colors duration-200`}
+                              title="Editar orçamento"
+                            >
+                              <FiEdit2 />
+                            </button>
                             <button
                               onClick={() => handleImprimir(orcamento.numero)}
                               className={`inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded hover:${
@@ -879,6 +913,33 @@ const OrcamentosList = ({ darkMode }) => {
             </table>
           </div>
         </>
+      )}
+
+      {/* Modal de confirmação de edição */}
+      {showEditModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}>
+          <div className={`rounded-lg shadow-lg p-6 max-w-sm w-full border ${darkMode ? 'bg-gray-900 text-white border-gray-700' : 'bg-white text-gray-900 border-gray-200'}`}> 
+            <h2 className={`text-lg font-bold mb-4 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>Confirmar Edição</h2>
+            <p className="mb-2 text-base">
+              Deseja editar o orçamento <b>Nº {orcamentoParaEditar?.numero}</b>?
+            </p>
+            <p className={`mb-6 text-lg font-semibold ${darkMode ? 'text-green-300' : 'text-green-700'}`}>Valor: {orcamentoParaEditar ? formatarValor(orcamentoParaEditar.valor_total) : '-'}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                className={`px-4 py-2 rounded font-semibold ${darkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                className={`px-4 py-2 rounded font-semibold ${darkMode ? 'bg-blue-700 text-white hover:bg-blue-800' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                onClick={handleConfirmarEditar}
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

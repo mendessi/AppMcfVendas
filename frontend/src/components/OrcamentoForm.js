@@ -96,7 +96,27 @@ const OrcamentoForm = ({ numero, darkMode }) => {
         }
       });
 
-      setOrcamento(response.data);
+      const orcamentoData = response.data;
+      setOrcamento({
+        ...orcamentoData,
+        cliente: {
+          codigo: orcamentoData.cliente_codigo,
+          nome: orcamentoData.cliente_nome
+        },
+        data: orcamentoData.data_emissao,
+        validade: orcamentoData.data_validade,
+        tabela: orcamentoData.tabela_codigo,
+        forma_pagamento: orcamentoData.formapag_codigo,
+        vendedor: orcamentoData.vendedor_codigo,
+        desconto: orcamentoData.desconto,
+        valor_desconto: orcamentoData.valor_desconto,
+        observacao: orcamentoData.observacao,
+        produtos: orcamentoData.produtos.map(p => ({
+          ...p,
+          valor_unitario: Number(p.valor_unitario).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          valor_total: Number(p.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        }))
+      });
     } catch (error) {
       console.error('Erro ao carregar orçamento:', error);
       setError('Erro ao carregar orçamento. Por favor, tente novamente.');
@@ -119,10 +139,31 @@ const OrcamentoForm = ({ numero, darkMode }) => {
         'x-empresa-codigo': empresa
       };
 
+      // Preparar dados para envio
+      const payload = {
+        cliente_codigo: orcamento.cliente.codigo,
+        cliente_nome: orcamento.cliente.nome,
+        data_emissao: orcamento.data,
+        data_validade: orcamento.validade,
+        tabela_codigo: orcamento.tabela,
+        formapag_codigo: orcamento.forma_pagamento,
+        vendedor_codigo: orcamento.vendedor,
+        desconto: orcamento.desconto,
+        valor_desconto: orcamento.valor_desconto,
+        observacao: orcamento.observacao,
+        produtos: orcamento.produtos.map(p => ({
+          codigo: p.codigo,
+          descricao: p.descricao,
+          quantidade: Number(p.quantidade),
+          valor_unitario: Number(p.valor_unitario.replace(/\./g, '').replace(',', '.')),
+          valor_total: Number(p.valor_total.replace(/\./g, '').replace(',', '.'))
+        }))
+      };
+
       if (numero) {
-        await api.put(`/orcamentos/${numero}`, orcamento, { headers });
+        await api.put(`/orcamentos/${numero}`, payload, { headers });
       } else {
-        await api.post('/orcamentos', orcamento, { headers });
+        await api.post('/orcamentos', payload, { headers });
       }
 
       navigate('/orcamentos');
@@ -423,60 +464,8 @@ const OrcamentoForm = ({ numero, darkMode }) => {
   }
 
   return (
-    <div className={`container mx-auto p-4 ${darkMode ? 'dark' : ''}`}>
-      <div className="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold dark:text-white">
-            {numero ? `Editar Pedido de Venda ${numero}` : 'Pedido de Venda'}
-          </h2>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setShowCacheModal(true)}
-              className={`flex items-center px-3 py-2 rounded-md ${
-                darkMode
-                  ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-              }`}
-            >
-              <FiArchive className="mr-2" />
-              <span className="text-sm">Pedidos em Cache</span>
-            </button>
-          </div>
-          <div className="flex items-center space-x-4">
-            <button
-              type="button"
-              onClick={() => navigate('/orcamentos')}
-              className={`px-4 py-2 rounded-md ${
-                darkMode
-                  ? "bg-gray-700 hover:bg-gray-600 text-white"
-                  : "bg-gray-200 hover:bg-gray-300 text-gray-800"
-              }`}
-            >
-              <FiX className="inline-block mr-2" />
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className={`px-4 py-2 rounded-md ${
-                darkMode
-                  ? "bg-blue-600 hover:bg-blue-700 text-white"
-                  : "bg-blue-500 hover:bg-blue-600 text-white"
-              }`}
-            >
-              <FiSave className="inline-block mr-2" />
-              Salvar
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className={`p-4 rounded-md ${
-            darkMode ? "bg-red-900 text-white" : "bg-red-100 text-red-700"
-          }`}>
-            {error}
-          </div>
-        )}
-
+    <div className={`container mx-auto p-4 ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-800'}`}>
+      <form onSubmit={handleSubmit}>
         <OrcamentoHeader
           darkMode={darkMode}
           orcamento={orcamento}
@@ -484,280 +473,94 @@ const OrcamentoForm = ({ numero, darkMode }) => {
           tabelas={tabelas}
           formasPagamento={formasPagamento}
           vendedores={vendedores}
-          onClienteSelect={handleClienteSelect}
         />
 
-        <div className={`p-4 rounded-lg ${
-          darkMode ? "bg-gray-700" : "bg-gray-50"
-        }`}>
-          <div className="mb-4">
-            <label className={`block text-sm font-medium mb-1 ${
-              darkMode ? "text-gray-300" : "text-gray-700"
-            }`}>
-              Produto
-            </label>
-            {console.log('Renderizando ProdutoAutocomplete, handleProdutoSelect:', typeof handleProdutoSelect)}
-            <ProdutoAutocomplete
-              onSelect={(produto) => {
-                console.log('onSelect wrapper chamado com:', produto);
-                console.log('handleProdutoSelect existe?', typeof handleProdutoSelect);
-                if (typeof handleProdutoSelect === 'function') {
-                  return handleProdutoSelect(produto);
-                } else {
-                  console.error('handleProdutoSelect não é uma função!');
-                }
-              }}
-              darkMode={darkMode}
-            />
-          </div>
-
-          {orcamento.produtos.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className={`min-w-full divide-y ${
-                darkMode ? "divide-gray-600" : "divide-gray-200"
-              }`}>
-                <thead className={darkMode ? "bg-gray-600" : "bg-gray-100"}>
-                  <tr>
-                    <th className={`px-6 py-3 text-left text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Código
-                    </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Descrição
-                    </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Marca
-                    </th>
-                    <th className={`px-6 py-3 text-center text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Unid.
-                    </th>
-                    <th className={`px-6 py-3 text-right text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Quantidade
-                    </th>
-                    <th className={`px-6 py-3 text-right text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Valor Unitário
-                    </th>
-                    <th className={`px-6 py-3 text-right text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Preço 2
-                    </th>
-                    <th className={`px-6 py-3 text-right text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Preço Mín.
-                    </th>
-                    <th className={`px-6 py-3 text-right text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Estoque
-                    </th>
-                    <th className={`px-6 py-3 text-right text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Total
-                    </th>
-                    <th className={`px-6 py-3 text-right text-xs font-medium ${
-                      darkMode ? "text-gray-300" : "text-gray-500"
-                    } uppercase tracking-wider`}>
-                      Ações
-                    </th>
+        {/* Lista de Produtos */}
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold mb-4">Produtos</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className={`${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Código</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Descrição</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Quantidade</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Valor Unitário</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Valor Total</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
+                {orcamento.produtos.map((produto, index) => (
+                  <tr key={index} id={`produto-row-${produto.codigo}`}>
+                    <td className="px-6 py-4 whitespace-nowrap">{produto.codigo}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">{produto.descricao}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="number"
+                        value={produto.quantidade}
+                        onChange={(e) => handleQuantidadeChange(produto.codigo, e.target.value)}
+                        className={`w-20 rounded-md ${
+                          darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
+                        }`}
+                        min="1"
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <input
+                        type="text"
+                        value={produto.valor_unitario}
+                        onChange={(e) => handleValorUnitarioChange(produto.codigo, e.target.value)}
+                        className={`w-32 rounded-md ${
+                          darkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
+                        } ${alertaValorUnitario[produto.codigo] ? 'border-red-500' : ''}`}
+                      />
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">{produto.valor_total}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveProduto(produto.codigo)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className={`divide-y ${
-                  darkMode ? "divide-gray-600 bg-gray-700" : "divide-gray-200 bg-white"
-                }`}>
-                  {orcamento.produtos.map((produto) => (
-                    <tr 
-                      key={produto.codigo} 
-                      id={`produto-row-${produto.codigo}`}
-                      className={darkMode ? "hover:bg-gray-600" : "hover:bg-gray-50"}
-                    >
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}>
-                        {produto.codigo}
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}>
-                        {produto.descricao}
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}>
-                        {produto.marca}
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-center ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}>
-                        {produto.unidade}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={produto.quantidade}
-                          onChange={e => {
-                            // Aceita apenas números e vírgula/ponto decimal
-                            const value = e.target.value.replace(/[^0-9,.]/g, '');
-                            handleQuantidadeChange(produto.codigo, value);
-                          }}
-                          className={`w-20 text-right rounded-md ${
-                            darkMode
-                              ? "bg-gray-600 border-gray-500 text-white"
-                              : "bg-white border-gray-300 text-gray-700"
-                          }`}
-                        />
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-right ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={produto.valor_unitario}
-                          onFocus={e => e.target.select()}
-                          onChange={e => {
-                            const value = e.target.value.replace(/[^0-9,.]/g, '');
-                            handleValorUnitarioChange(produto.codigo, value);
-                          }}
-                          onBlur={(e) => handleValorUnitarioBlur(produto.codigo)}
-                          className={`w-24 text-right rounded-md font-semibold ${
-                            darkMode
-                              ? "bg-gray-600 border-gray-500 text-white"
-                              : "bg-white border-gray-300 text-gray-900"
-                          } ${alertaValorUnitario[produto.codigo] ? 'border-2 border-red-500 animate-pulse' : ''}`}
-                          style={{fontVariantNumeric: 'tabular-nums'}}
-                        />
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-right ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}>
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(produto.preco_prazo)}
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-right ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}>
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(produto.preco_minimo)}
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-right ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}>
-                        {produto.estoque_atual}
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-right ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}>
-                        {new Intl.NumberFormat('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL'
-                        }).format(produto.valor_total)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveProduto(produto.codigo)}
-                          className={`text-red-500 hover:text-red-700 ${
-                            darkMode ? "text-red-300 hover:text-red-400" : ""
-                          }`}
-                        >
-                          <FiTrash2 className="inline-block" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : null}
-        </div>
-
-        <div className={`p-4 rounded-lg ${
-          darkMode ? "bg-gray-700" : "bg-gray-50"
-        }`}>
-          <div className="flex flex-col space-y-2 mt-4">
-            <div className="flex justify-between items-center">
-              <span>Qtde de Itens:</span>
-              <span>{orcamento.produtos.length}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>Soma das Qtdades:</span>
-              <span>{orcamento.produtos.reduce((total, produto) => total + produto.quantidade, 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>Subtotal:</span>
-              <span>{orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center">
-                <span>Desconto:</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={orcamento.desconto}
-                  onChange={(e) => {
-                    console.log('OrcamentoForm - Input desconto onChange:', e.target.value);
-                    const valor = parseFloat(e.target.value) || 0;
-                    const subtotal = orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0);
-                    const valorDesconto = (subtotal * valor) / 100;
-                    
-                    setOrcamento(prev => {
-                      const novo = {
-                        ...prev,
-                        desconto: valor,
-                        valor_desconto: valorDesconto
-                      };
-                      console.log('OrcamentoForm - Novo estado após desconto:', novo);
-                      return novo;
-                    });
-                  }}
-                  onBlur={(e) => {
-                    console.log('OrcamentoForm - Input desconto onBlur:', e.target.value);
-                    const valor = parseFloat(e.target.value) || 0;
-                    const subtotal = orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0);
-                    const valorDesconto = (subtotal * valor) / 100;
-                    
-                    setOrcamento(prev => ({
-                      ...prev,
-                      desconto: valor,
-                      valor_desconto: valorDesconto
-                    }));
-                  }}
-                  className="w-16 mx-2 px-2 py-1 text-right border rounded"
-                />
-                <span>%</span>
-              </div>
-              <span>R$ {(() => {
-                const valor = calcularValorDesconto();
-                console.log('OrcamentoForm - Renderizando valor do desconto:', valor);
-                return valor.toFixed(2);
-              })()}</span>
-            </div>
-            <div className="flex justify-between items-center font-bold text-blue-500">
-              <span>TOTAL:</span>
-              <span>R$ {(orcamento.produtos.reduce((total, produto) => total + produto.valor_total, 0) * (1 - orcamento.desconto/100)).toFixed(2)}</span>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
+
+        {/* Botões de Ação */}
+        <div className="mt-6 flex justify-end space-x-4">
+          <button
+            type="button"
+            onClick={() => navigate('/orcamentos')}
+            className={`px-4 py-2 rounded-md ${
+              darkMode ? 'bg-gray-600 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'
+            }`}
+          >
+            <FiX className="inline-block mr-2" />
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+          >
+            <FiSave className="inline-block mr-2" />
+            {isLoading ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+
+      {error && (
+        <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-md">
+          {error}
+        </div>
+      )}
 
       {/* Modal de Produto Já Existente */}
       {showProdutoExistenteModal && produtoExistenteInfo && (

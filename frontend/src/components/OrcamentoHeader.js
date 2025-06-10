@@ -211,6 +211,14 @@ const OrcamentoHeader = ({
   // Adiciona o campo para mostrar o valor em reais
   const valorDescontoReais = calcularValorDesconto().toFixed(2);
 
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setOrcamento(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   return (
     <div className={`p-4 rounded-lg ${
       darkMode ? "bg-gray-700" : "bg-gray-50"
@@ -223,17 +231,11 @@ const OrcamentoHeader = ({
           }`}>
             Cliente
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FiUser className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
-            </div>
-            <ClienteAutocomplete
-              value={clienteNome}
-              onChange={handleClienteChange}
-              onSelect={handleClienteSelect}
-              darkMode={darkMode}
-            />
-          </div>
+          <ClienteAutocomplete
+            onSelect={handleClienteSelect}
+            darkMode={darkMode}
+            value={clienteNome}
+          />
         </div>
 
         {/* Data */}
@@ -249,8 +251,9 @@ const OrcamentoHeader = ({
             </div>
             <input
               type="text"
+              name="data"
               value={isUnifiedMode ? orcamento.data : (data || '')}
-              disabled
+              onChange={handleInputChange}
               className={`pl-10 w-full rounded-md ${
                 darkMode
                   ? "bg-gray-600 border-gray-500 text-white"
@@ -273,8 +276,9 @@ const OrcamentoHeader = ({
             </div>
             <input
               type="date"
+              name="validade"
               value={validadeValue || ''}
-              onChange={(e) => handleValidadeChange(e.target.value)}
+              onChange={handleInputChange}
               min={new Date().toISOString().slice(0, 10)}
               placeholder="dd/mm/aaaa"
               className={`pl-10 w-full rounded-md ${
@@ -342,14 +346,10 @@ const OrcamentoHeader = ({
               </div>
               <input
                 type="text"
+                name="desconto"
                 inputMode="decimal"
                 value={descontoValue}
-                onChange={(e) => {
-                  let valor = parseFloat(e.target.value) || 0;
-                  const maximo = vendedorValue?.desconto_maximo || 100;
-                  if (valor > maximo) valor = maximo;
-                  handleDescontoChange(valor);
-                }}
+                onChange={handleInputChange}
                 className={`pl-10 w-full rounded-md ${
                   darkMode
                     ? "bg-gray-600 border-gray-500 text-white"
@@ -373,8 +373,9 @@ const OrcamentoHeader = ({
               <FiFileText className={`h-5 w-5 ${darkMode ? "text-gray-400" : "text-gray-500"}`} />
             </div>
             <textarea
+              name="observacao"
               value={observacaoValue}
-              onChange={(e) => handleObservacaoChange(e.target.value)}
+              onChange={handleInputChange}
               rows="3"
               className={`pl-10 w-full rounded-md ${
                 darkMode

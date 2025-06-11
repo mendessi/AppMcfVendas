@@ -77,6 +77,7 @@ class DashboardStats(BaseModel):
     total_clientes: int = 0
     total_produtos: int = 0
     total_pedidos: int = 0
+    total_pedidos_dia: int = 0  # Novo campo
     valor_total_pedidos: float = 0
     vendas_nao_autenticadas: float = 0
     percentual_crescimento: float = 0
@@ -433,7 +434,9 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
         try:
             # Consulta para vendas do dia
             sql_vendas_dia = f"""
-                SELECT COALESCE(SUM(ECF_TOTAL), 0)
+                SELECT 
+                    COALESCE(SUM(ECF_TOTAL), 0),
+                    COUNT(*)
                 FROM VENDAS
                 WHERE VENDAS.ecf_cancelada = 'N'
                 AND VENDAS.ecf_concluida = 'S'
@@ -442,8 +445,9 @@ async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = No
             """
             cursor.execute(sql_vendas_dia, (data_hoje,))
             row = cursor.fetchone()
-            if row and row[0] is not None:
-                stats.vendas_dia = float(row[0])
+            if row:
+                stats.vendas_dia = float(row[0] or 0)
+                stats.total_pedidos_dia = int(row[1] or 0)
             
             # Consulta para vendas do mês (parametrizada)
             try:

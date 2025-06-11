@@ -27,7 +27,9 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     vendasMes: 0,
     vendasNaoAutenticadas: 0,
     vendasAutenticadas: 0,
-    percentualCrescimento: 0
+    percentualCrescimento: 0,
+    total_pedidos_dia: 0,
+    valor_total_pedidos: 0
   };
   const [stats, setStats] = useState(statsDefault);
   const [loading, setLoading] = useState(true);
@@ -202,6 +204,9 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
 
   // Inicializar as datas para o primeiro e último dia do mês atual
   useEffect(() => {
+    // Limpar cache ao iniciar
+    limparCache();
+    
     // Definir datas padrão (primeiro e último dia do mês atual)
     const hoje = new Date();
     const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
@@ -247,59 +252,55 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       // Adicionar o código da empresa, se disponível
       if (empresaSelecionada && empresaSelecionada.codigo) {
         headers['x-empresa-codigo'] = empresaSelecionada.codigo.toString();
-        console.log(`Usando empresa código: ${empresaSelecionada.codigo}`);
+        console.log('Headers com empresa:', headers);
       } else {
-        console.warn('Nenhuma empresa selecionada ou código não disponível');
+        console.warn('Empresa não selecionada ou código não disponível');
+        console.log('Empresa selecionada:', empresaSelecionada);
       }
-      
-      // Preparar parâmetros de consulta para as datas
-      const params = {};
-      if (dataInicial) params.data_inicial = dataInicial;
-      if (dataFinal) params.data_final = dataFinal;
-      
-      // Construir a URL com os parâmetros
-      const queryString = new URLSearchParams(params).toString();
-      const url = `${API_URL}/relatorios/dashboard-stats${queryString ? `?${queryString}` : ''}`;
-      
-      console.log('Buscando estatísticas do dashboard:', url);
-      
-      // Fazer a requisição para o backend
+
+      // Construir a URL com os parâmetros de data
+      const url = `${API_URL}/relatorios/dashboard-stats?data_inicial=${dataInicial}&data_final=${dataFinal}`;
+      console.log('Buscando dados do dashboard:', url);
+      console.log('Headers completos:', headers);
+
       const response = await axios.get(url, { headers });
       
       if (response.status === 200) {
         const dashboardData = response.data;
-        console.log('Dados do dashboard recebidos:', dashboardData);
+        console.log('Dados recebidos do dashboard:', dashboardData);
         
-        // Verificar se os dados estão vindo como números válidos
-        const vendasDia = parseFloat(dashboardData.vendas_dia) || 0;
-        const vendasMes = parseFloat(dashboardData.vendas_mes) || 0;
-        
-        // Atualizar os estados com os dados reais
-        const novoStats = {
+        // Atualizar o estado com os dados recebidos
+        const novosStats = {
           totalClientes: parseInt(dashboardData.total_clientes) || 0,
           totalProdutos: parseInt(dashboardData.total_produtos) || 0,
           totalPedidos: parseInt(dashboardData.total_pedidos) || 0,
           valorTotalPedidos: parseFloat(dashboardData.valor_total_pedidos) || 0,
-          vendasDia: vendasDia,
-          vendasMes: vendasMes,
+          vendasDia: parseFloat(dashboardData.vendas_dia) || 0,
+          vendasMes: parseFloat(dashboardData.vendas_mes) || 0,
           vendasNaoAutenticadas: parseFloat(dashboardData.vendas_nao_autenticadas) || 0,
           percentualCrescimento: parseFloat(dashboardData.percentual_crescimento) || 0,
-          vendasAutenticadas: parseFloat(dashboardData.vendas_autenticadas) || 0
+          vendasAutenticadas: parseFloat(dashboardData.vendas_autenticadas) || 0,
+          total_pedidos_dia: parseInt(dashboardData.total_pedidos_dia) || 0,
+          valor_total_pedidos: parseFloat(dashboardData.valor_total_pedidos) || 0
         };
         
-        console.log('Atualizando stats com:', novoStats);
-        setStats(novoStats);
-        return novoStats; // Retornar os dados para o cache
-      } else {
-        console.error('Erro ao buscar dados do dashboard:', response.statusText);
-        return null;
+        console.log('Novos stats processados:', novosStats);
+        setStats(novosStats);
+        setLoading(false);
+        return novosStats;
       }
     } catch (error) {
       console.error('Erro ao buscar dados do dashboard:', error);
-      return null;
+      if (error.response) {
+        console.error('Dados da resposta de erro:', error.response.data);
+        console.error('Status de erro:', error.response.status);
+        console.error('Headers de erro:', error.response.headers);
+      }
+      handleAuthError(error);
     } finally {
       setLoading(false);
     }
+    return null;
   };
   
   // Função para buscar top vendedores da API real com o período selecionado
@@ -591,6 +592,20 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     return nomes.slice(0, 2).join(' ');
   };
 
+  // Função para calcular o ticket médio
+  const calcularTicketMedio = (valorTotal, quantidade) => {
+    if (!quantidade || quantidade === 0) return 0;
+    return valorTotal / quantidade;
+  };
+
+  // Função para formatar valor em reais
+  const formatarValor = (valor) => {
+    return valor.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  };
+
   return (
     <div className="w-full max-w-full overflow-x-hidden">
       {/* Componente flutuante com informações detalhadas da empresa */}
@@ -705,6 +720,38 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
           </div>
         </div>
 
+        {/* Card - Ticket Médio do Dia */}
+        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-3 sm:p-6`}>
+          <div className="flex items-center">
+            <div className={`p-2 rounded-full ${darkMode ? "bg-purple-900 text-purple-400" : "bg-purple-100 text-purple-600"}`}>
+              <FiShoppingCart className="h-5 w-5" />
+            </div>
+            <div className="ml-3">
+              <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Ticket Médio do Dia</p>
+              <p className={`text-base sm:text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                {formatCurrency(calcularTicketMedio(stats.vendasDia, stats.total_pedidos_dia))}
+              </p>
+              <p className="text-xs text-gray-500">{stats.total_pedidos_dia} pedidos hoje</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card - Ticket Médio do Período */}
+        <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-3 sm:p-6`}>
+          <div className="flex items-center">
+            <div className={`p-2 rounded-full ${darkMode ? "bg-pink-900 text-pink-400" : "bg-pink-100 text-pink-600"}`}>
+              <FiShoppingCart className="h-5 w-5" />
+            </div>
+            <div className="ml-3">
+              <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Ticket Médio do Período</p>
+              <p className={`text-base sm:text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                {formatCurrency(calcularTicketMedio(stats.valor_total_pedidos, stats.totalPedidos))}
+              </p>
+              <p className="text-xs text-gray-500">{stats.totalPedidos} pedidos no período</p>
+            </div>
+          </div>
+        </div>
+
         {/* Card - Vendas do Mês */}
         <div className={`${darkMode ? "bg-gray-800" : "bg-white"} rounded-lg shadow-md p-3 sm:p-6`}>
           <div className="flex items-center">
@@ -712,12 +759,9 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
               <FiCalendar className="h-5 w-5" />
             </div>
             <div className="ml-3">
-              <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas do Mês</p>
+              <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Vendas do Período</p>
               <p className={`text-base sm:text-xl font-semibold ${darkMode ? "text-white" : "text-gray-800"}`}>
                 {formatCurrency(stats?.vendasMes ?? 0)}
-              </p>
-              <p className={`text-xs ${stats?.percentualCrescimento >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                {stats?.percentualCrescimento >= 0 ? '+' : ''}{stats?.percentualCrescimento}% em relação ao mês anterior
               </p>
             </div>
           </div>
@@ -761,7 +805,6 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
             <Link to="/vendas-autenticadas" className={`text-xs ${darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-800"}`}>Ver autenticadas →</Link>
           </div>
         </div>
-
       </div>
 
       {/* Gráfico de Vendas por Dia */}

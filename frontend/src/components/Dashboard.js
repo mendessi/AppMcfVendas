@@ -47,6 +47,24 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
   const [vendasPorDia, setVendasPorDia] = useState([]);
   const [loadingProdutos, setLoadingProdutos] = useState(false);
 
+  // Cache keys
+  const CACHE_KEY_FILTERS = 'orcamentos_filtros_cache';
+  const CACHE_KEY_DATA = 'orcamentos_data_cache';
+  const CACHE_KEY_TIMESTAMP = 'orcamentos_timestamp_cache';
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+  // Função para limpar cache
+  const clearCache = () => {
+    try {
+      localStorage.removeItem(CACHE_KEY_DATA);
+      localStorage.removeItem(CACHE_KEY_FILTERS);
+      localStorage.removeItem(CACHE_KEY_TIMESTAMP);
+      console.log('🔍 DEBUG - Cache limpo');
+    } catch (error) {
+      console.error('Erro ao limpar cache:', error);
+    }
+  };
+
   // Função para salvar dados no cache
   const salvarDadosNoCache = (dados) => {
     const cacheData = {
@@ -291,6 +309,9 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     setVendedoresError(null);
     
     try {
+      // Limpar cache antes de buscar novos dados
+      clearCache();
+      
       // Verificar token de autenticação
       const token = localStorage.getItem('token');
       if (!token) {
@@ -340,9 +361,6 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       
       console.log('Dashboard - Resposta da API de top vendedores:', response.data);
       
-      console.log('Dashboard - Resposta completa:', response);
-      console.log('Dashboard - Status da resposta:', response.status);
-      
       if (response.data && response.data.top_vendedores) {
         console.log('Dashboard - Dados de vendedores recebidos:', response.data.top_vendedores.length, 'registros');
         // Mapear os dados recebidos para o formato que usamos no componente
@@ -358,9 +376,10 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
             id: index + 1,
             codigo: vendedor.codigo,
             nome: vendedor.nome,
-            meta: meta, // Garantir meta mínima de 50.000,00
-            total: vendedor.total, // Valor total de vendas
-            vendas: vendedor.qtde_vendas, // Quantidade de vendas (novo campo)
+            meta: meta,
+            total: vendedor.total,
+            vendas: vendedor.qtde_vendas,
+            ticket_medio: vendedor.ticket_medio,
             percentual: percentual,
             status: percentual >= 100 ? 'acima' : 'abaixo'
           };
@@ -370,15 +389,16 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
         
         setTopVendedores(vendedores);
         console.log(`Dashboard - ${vendedores.length} vendedores processados`);
-        return vendedores; // Retornar os dados para o cache
+        return vendedores;
       } else {
         console.warn('Dashboard - Resposta da API não contém dados de vendedores');
         console.log('Dashboard - Conteúdo da resposta:', response.data);
         setTopVendedores([]);
-        return []; // Retornar array vazio para o cache
+        return [];
       }
       
     } catch (error) {
+      if (handleAuthError(error)) return;
       console.error('Dashboard - Erro ao buscar top vendedores:', error);
       console.error('Dashboard - Mensagem de erro:', error.message);
       if (error.response) {
@@ -390,7 +410,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       }
       setVendedoresError(error.message || 'Erro ao buscar dados de vendedores');
       setTopVendedores([]);
-      return []; // Retornar array vazio para o cache
+      return [];
     } finally {
       setLoadingVendedores(false);
     }
@@ -521,6 +541,16 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     }
   };
 
+  const handleAuthError = (error) => {
+    if (error.response && error.response.status === 401) {
+      alert('Sua sessão expirou ou a senha foi alterada. Por favor, faça login novamente.');
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+      return true;
+    }
+    return false;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -552,6 +582,13 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     if (percentual >= 100) return 'text-green-500';
     if (percentual >= 70) return 'text-yellow-500';
     return 'text-red-500';
+  };
+
+  // Função para formatar o nome do vendedor (primeiros dois nomes)
+  const formatarNomeVendedor = (nome) => {
+    if (!nome) return '';
+    const nomes = nome.split(' ');
+    return nomes.slice(0, 2).join(' ');
   };
 
   return (
@@ -771,6 +808,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
                 <th className="px-4 py-2 text-left">Nome</th>
                 <th className="px-4 py-2 text-center">Qtd. Vendas</th>
                 <th className="px-4 py-2 text-right">Valor Total</th>
+                <th className="px-4 py-2 text-right">Ticket Médio</th>
                 <th className="px-4 py-2 text-right">Meta</th>
                 <th className="px-4 py-2 text-center">Desempenho</th>
               </tr>
@@ -788,17 +826,18 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
                         </span>
                       )}
                       <div>
-                        <div className="font-medium">{vendedor.nome}</div>
-                        <div className="text-xs text-gray-500">{vendedor.email}</div>
+                        <div className="font-medium">{formatarNomeVendedor(vendedor.nome)}</div>
+                        <div className="text-xs text-gray-500">{vendedor.codigo}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">{vendedor.vendas}</td>
                   <td className="px-4 py-3 text-right">{formatCurrency(vendedor.total)}</td>
+                  <td className="px-4 py-3 text-right">{formatCurrency(vendedor.ticket_medio)}</td>
                   <td className="px-4 py-3 text-right">{formatCurrency(vendedor.meta)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <div className="flex items-center justify-center">
-                      <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2 max-w-[150px]">
+                      <div className="w-24 bg-gray-200 rounded-full h-2.5 mr-2">
                         <div 
                           className={`h-2.5 rounded-full ${getProgressColor(vendedor.percentual, darkMode)}`} 
                           style={{ width: `${Math.min(vendedor.percentual, 100)}%` }}
@@ -831,7 +870,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
             </div>
           ) : (
             topVendedores.map((vendedor, index) => (
-              <div key={vendedor.id} className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"}`}>
+              <div key={vendedor.id} className={`p-3 rounded-lg ${darkMode ? "bg-gray-700" : "bg-gray-50"} mb-3`}>
                 <div className="flex items-center mb-2">
                   {index < 3 && (
                     <span className="mr-2">
@@ -841,7 +880,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
                     </span>
                   )}
                   <div className="flex-grow">
-                    <div className="font-medium">{vendedor.nome}</div>
+                    <div className="font-medium">{formatarNomeVendedor(vendedor.nome)}</div>
                     <div className="text-xs text-gray-500">{vendedor.codigo ? `Código: ${vendedor.codigo}` : ''}</div>
                   </div>
                   <div className="text-right">
@@ -850,10 +889,18 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
                   </div>
                 </div>
                 
-                <div className="flex items-center mt-2">
-                  <div className="text-xs mr-2">
-                    Meta: {formatCurrency(vendedor.meta)}
+                <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                  <div>
+                    <span className="text-gray-500">Ticket Médio:</span>
+                    <span className="ml-1 font-medium">{formatCurrency(vendedor.ticket_medio)}</span>
                   </div>
+                  <div>
+                    <span className="text-gray-500">Meta:</span>
+                    <span className="ml-1 font-medium">{formatCurrency(vendedor.meta)}</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center">
                   <div className="flex-grow">
                     <div className="w-full bg-gray-200 rounded-full h-2.5">
                       <div 

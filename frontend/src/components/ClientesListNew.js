@@ -257,8 +257,8 @@ export default function ClientesListNew({ darkMode = false }) {
       return;
     }
     setErro('');
-    setBuscaAtiva(busca);
-    carregarClientes(busca);
+    setBuscaAtiva(busca.toUpperCase());
+    carregarClientes(busca.toUpperCase());
   };
 
   const handleVerVendas = async (cliente) => {

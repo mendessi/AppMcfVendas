@@ -61,6 +61,7 @@ class TopVendedor(BaseModel):
     qtde_vendas: int = 0
     codigo: Optional[int] = None
     meta: Optional[float] = 50000.00
+    ticket_medio: Optional[float] = 0.00
 
 class TopVendedoresResponse(BaseModel):
     """Modelo para a resposta do endpoint de top vendedores"""
@@ -589,7 +590,8 @@ async def get_top_vendedores(request: Request, data_inicial: Optional[str] = Non
                     V.VEN_CODIGO,
                     COUNT(*) as QTD_VENDAS,
                     COALESCE(SUM(VENDAS.ECF_TOTAL), 0) as TOTAL,
-                    COALESCE(V.VEN_META, 50000.00) as META
+                    COALESCE(V.VEN_META, 50000.00) as META,
+                    COALESCE(1.0 * SUM(VENDAS.ECF_TOTAL) / NULLIF(COUNT(*), 0), 0) as TICKET_MEDIO
                 FROM VENDAS
                 LEFT JOIN VENDEDOR V ON VENDAS.VEN_CODIGO = V.VEN_CODIGO
                 WHERE VENDAS.ECF_CANCELADA = 'N'
@@ -603,16 +605,39 @@ async def get_top_vendedores(request: Request, data_inicial: Optional[str] = Non
             cursor.execute(sql, (data_inicial, data_final))
             rows = cursor.fetchall()
             
+            # Log para debug
+            log.info(f"Consulta SQL executada: {sql}")
+            log.info(f"Parâmetros: data_inicial={data_inicial}, data_final={data_final}")
+            
             top_vendedores = []
             for row in rows:
-                vendedor = TopVendedor(
-                    nome=row[0] or "Nome não informado",
-                    codigo=row[1],
-                    qtde_vendas=int(row[2] or 0),
-                    total=float(row[3] or 0),
-                    meta=float(row[4] or 50000.00)
-                )
-                top_vendedores.append(vendedor)
+                try:
+                    # Log para debug de cada linha
+                    log.info(f"Processando linha: {row}")
+                    
+                    total = float(row[3] or 0)
+                    qtd_vendas = int(row[2] or 0)
+                    ticket_medio = round(total / qtd_vendas, 2) if qtd_vendas > 0 else 0
+                    
+                    # Log para debug dos cálculos
+                    log.info(f"Vendedor: {row[0]}")
+                    log.info(f"Total: {total}")
+                    log.info(f"Qtd Vendas: {qtd_vendas}")
+                    log.info(f"Ticket Médio Calculado: {ticket_medio}")
+                    
+                    vendedor = TopVendedor(
+                        nome=row[0] or "Nome não informado",
+                        codigo=row[1],
+                        qtde_vendas=qtd_vendas,
+                        total=total,
+                        meta=float(row[4] or 50000.00),
+                        ticket_medio=ticket_medio
+                    )
+                    top_vendedores.append(vendedor)
+                except Exception as e:
+                    log.error(f"Erro ao processar vendedor: {str(e)}")
+                    log.error(f"Dados da linha que causou erro: {row}")
+                    continue
             
             # Log para debug
             if filtro_aplicado:

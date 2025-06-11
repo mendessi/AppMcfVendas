@@ -39,7 +39,7 @@ def obter_conexao_controladora():
         return conn
     except Exception as e:
         logging.error(f"Erro ao conectar ao banco controlador: {str(e)}")
-        raise
+        raise Exception("Não foi possível conectar ao banco controlador. Verifique se o servidor está online ou tente novamente mais tarde.")
 
 def obter_conexao_cliente(empresa):
     """
@@ -114,20 +114,27 @@ def obter_conexao_cliente(empresa):
                 )
                 logging.info("Conexão estabelecida com sucesso usando DLL do cliente")
                 return conn
+            except Exception as e:
+                logging.error(f"Erro ao conectar ao banco do cliente: {str(e)}")
+                raise Exception("Não foi possível conectar ao banco da empresa. Verifique se o servidor está online ou tente novamente mais tarde.")
             finally:
                 # Restaura o PATH original independentemente do resultado
                 os.environ['PATH'] = original_path
         else:
             # Usa a DLL padrão
             logging.info("Usando DLL padrão do Firebird")
-            conn = fdb.connect(
-                dsn=dsn,
-                user=settings.db_user,
-                password=settings.db_password,
-                charset=settings.db_charset
-            )
-            logging.info("Conexão estabelecida com sucesso")
-            return conn
+            try:
+                conn = fdb.connect(
+                    dsn=dsn,
+                    user=settings.db_user,
+                    password=settings.db_password,
+                    charset=settings.db_charset
+                )
+                logging.info("Conexão estabelecida com sucesso")
+                return conn
+            except Exception as e:
+                logging.error(f"Erro ao conectar ao banco do cliente: {str(e)}")
+                raise Exception("Não foi possível conectar ao banco da empresa. Verifique se o servidor está online ou tente novamente mais tarde.")
     except Exception as e:
         logging.error(f"Erro ao conectar ao banco do cliente: {str(e)}")
         raise Exception(f"Erro ao conectar ao banco Firebird: {str(e)}\nDSN tentado: {dsn}")

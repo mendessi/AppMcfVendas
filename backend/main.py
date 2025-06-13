@@ -38,6 +38,9 @@ from relatorios import router as relatorios_router
 # Importar o router de informações detalhadas da empresa
 from empresa_info_detalhada import router as empresa_info_detalhada_router
 
+# Importar o router de teste de conexão
+from teste_conexao_api import router as teste_conexao_router
+
 # Função para obter a sessão do banco de dados
 def get_db():
     db = database.get_connection()
@@ -207,7 +210,7 @@ app.include_router(relatorios_router)
 # app.include_router(teste_cabecalhos_router)
 
 # Inclui as rotas de teste de conexão
-# app.include_router(teste_conexao_router)
+app.include_router(teste_conexao_router)
 
 # Inclui as rotas de teste empresa CRUD
 # app.include_router(teste_empresa_crud_router)

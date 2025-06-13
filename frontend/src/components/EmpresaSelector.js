@@ -11,6 +11,8 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
   const [testingSql, setTestingSql] = useState(false);
   const [sqlResult, setSqlResult] = useState(null);
   const [selectedEmpresaForTest, setSelectedEmpresaForTest] = useState(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorModalMsg, setErrorModalMsg] = useState('');
   const navigate = useNavigate();
   
   // URL da API - Deteção automática de ambiente
@@ -63,10 +65,33 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
         
         // Os dados já estão no formato JSON com axios
         const data = response.data;
-        console.log('Resposta da API:', data);
+        console.log('Resposta bruta da API:', data);
         
-        // A API já retorna os dados no formato correto
-        setEmpresas(data);
+        // Verificar se os dados estão em um array ou em um objeto com propriedade 'empresas'
+        const empresasData = Array.isArray(data) ? data : (data.empresas || []);
+        console.log('Dados das empresas extraídos:', empresasData);
+        
+        // Verificar se os dados estão no formato esperado
+        const empresasFormatadas = empresasData.map(empresa => {
+          console.log('Empresa antes da formatação:', empresa);
+          
+          // Garantir que todos os campos necessários estejam presentes
+          const empresaFormatada = {
+            cli_codigo: empresa.cli_codigo || empresa.codigo || empresa.emp_cod || 0,
+            cli_nome: empresa.cli_nome || empresa.nome || empresa.emp_nome || '',
+            cli_caminho_base: empresa.cli_caminho_base || empresa.caminho_base || empresa.emp_caminho_base || '',
+            cli_ip_servidor: empresa.cli_ip_servidor || empresa.ip || empresa.emp_ip || '',
+            cli_nome_base: empresa.cli_nome_base || empresa.nome_base || empresa.emp_nome_base || '',
+            cli_porta: empresa.cli_porta || empresa.porta || empresa.emp_porta || '3050',
+            cli_bloqueadoapp: empresa.cli_bloqueadoapp || 'N'
+          };
+
+          console.log('Empresa após formatação:', empresaFormatada);
+          return empresaFormatada;
+        });
+        
+        console.log('Todas as empresas formatadas:', empresasFormatadas);
+        setEmpresas(empresasFormatadas);
       } catch (err) {
         console.error('Erro ao buscar empresas:', err);
         
@@ -89,45 +114,101 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
   }, [navigate, API_URL]);
 
   const handleTestConnection = async (empresa, e) => {
-    e.preventDefault(); // Impede que o clique propague para o botão de selecionar empresa
-    e.stopPropagation();
-    
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
     try {
       setTestingConnection(true);
       setConnectionResult(null);
       setSelectedEmpresaForTest(empresa.cli_codigo);
       setError('');
-      
-      // Usar o token armazenado no localStorage
+
+      console.log('Empresa selecionada para teste:', empresa);
+
       const token = localStorage.getItem('token');
-      
-      // Configurar o cabeçalho de autorização para o axios
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       axios.defaults.headers.common['Content-Type'] = 'application/json';
-      
-      // Preparar dados para o teste de conexão
+
+      // Garantir que todos os campos necessários estejam presentes
       const dadosEmpresa = {
         cli_codigo: parseInt(empresa.cli_codigo, 10),
         cli_nome: empresa.cli_nome || '',
         cli_caminho_base: empresa.cli_caminho_base || '',
-        cli_ip_servidor: empresa.cli_ip_servidor || '127.0.0.1',
+        cli_ip_servidor: empresa.cli_ip_servidor || '',
         cli_nome_base: empresa.cli_nome_base || '',
         cli_porta: empresa.cli_porta || '3050'
       };
-      
-      console.log('Testando conexão para empresa:', dadosEmpresa);
-      
-      // Chamar o endpoint para testar a conexão
+
+      console.log('Dados da empresa para teste:', dadosEmpresa);
+
+      // Validar campos obrigatórios
+      if (!dadosEmpresa.cli_caminho_base) {
+        console.error('Caminho da base não informado. Dados completos:', {
+          empresaOriginal: empresa,
+          dadosEmpresa: dadosEmpresa
+        });
+        throw new Error('Caminho da base de dados não informado');
+      }
+
+      if (!dadosEmpresa.cli_ip_servidor) {
+        console.error('IP do servidor não informado. Dados completos:', {
+          empresaOriginal: empresa,
+          dadosEmpresa: dadosEmpresa
+        });
+        throw new Error('IP do servidor não informado');
+      }
+
       const response = await axios.post(`${API_URL}/testar-conexao-empresa`, dadosEmpresa);
-      
-      console.log('Resultado do teste de conexão:', response.data);
+      console.log('Resposta do teste de conexão:', response.data);
+
       setConnectionResult(response.data);
+
+      if (response.data.sucesso) {
+        const empresaData = {
+          codigo: empresa.cli_codigo,
+          nome: empresa.cli_nome,
+          ip: empresa.cli_ip_servidor,
+          porta: empresa.cli_porta || "3050",
+          caminho_base: empresa.cli_caminho_base,
+          nome_base: empresa.cli_nome_base,
+          cli_codigo: empresa.cli_codigo,
+          cli_nome: empresa.cli_nome,
+          cli_ip_servidor: empresa.cli_ip_servidor,
+          cli_porta: empresa.cli_porta,
+          cli_caminho_base: empresa.cli_caminho_base,
+          cli_nome_base: empresa.cli_nome_base
+        };
+
+        console.log('Dados da empresa para salvar:', empresaData);
+
+        // Salva no localStorage
+        localStorage.setItem('empresaSelecionada', JSON.stringify(empresaData));
+        localStorage.setItem('empresa_atual', JSON.stringify(empresaData));
+        localStorage.setItem('empresa', empresa.cli_codigo.toString());
+
+        // Atualiza headers do axios
+        axios.defaults.headers.common['x-empresa-codigo'] = empresa.cli_codigo.toString();
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+        // Atualiza o estado global (App)
+        if (typeof onSelectEmpresa === 'function') {
+          onSelectEmpresa(empresaData);
+        }
+
+        // Redireciona para o dashboard
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err) {
       console.error('Erro ao testar conexão:', err);
+      const msg = err.response?.data?.detail || err.message || 'Erro ao testar conexão';
       setConnectionResult({
         sucesso: false,
-        mensagem: err.response?.data?.detail || err.message || 'Erro ao testar conexão'
+        mensagem: msg
       });
+      setErrorModalMsg(msg);
+      setShowErrorModal(true);
     } finally {
       setTestingConnection(false);
     }
@@ -209,6 +290,21 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
     }
   };
 
+  // Função utilitária para categorizar e formatar mensagens de erro
+  function getMensagemErroDetalhada(mensagem) {
+    if (!mensagem) return 'Erro desconhecido.';
+    if (mensagem.toLowerCase().includes('caminho da base')) {
+      return '❗ Caminho da base de dados não informado. Verifique o cadastro da empresa.';
+    }
+    if (mensagem.toLowerCase().includes('ip do servidor')) {
+      return '❗ IP do servidor não informado. Verifique o cadastro da empresa.';
+    }
+    if (mensagem.toLowerCase().includes('não foi possível conectar') || mensagem.toLowerCase().includes('erro ao conectar') || mensagem.toLowerCase().includes('timeout') || mensagem.toLowerCase().includes('esgotado o tempo')) {
+      return '🔌 Não foi possível conectar ao banco de dados. Verifique se o servidor está online, o IP está correto e a rede está liberada.';
+    }
+    return mensagem;
+  }
+
   if (loading) {
     return (
       <div className={`min-h-screen flex flex-col items-center justify-center ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
@@ -242,7 +338,7 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
               {empresas.map((empresa) => (
                 <li key={empresa.cli_codigo} className="py-4">
                   <div
-                    onClick={() => handleEmpresaSelect(empresa)}
+                    onClick={(e) => handleTestConnection(empresa, e)}
                     className={`w-full text-left px-4 py-3 rounded-lg transition-colors cursor-pointer ${empresa.cli_bloqueadoapp === 'S' 
                       ? `${darkMode ? 'bg-gray-700' : 'bg-gray-100'} cursor-not-allowed` 
                       : `${darkMode ? 'hover:bg-gray-700' : 'hover:bg-blue-50'} focus:outline-none focus:ring-2 focus:ring-blue-500`}`}
@@ -312,7 +408,7 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
                             disabled={testingConnection && selectedEmpresaForTest === empresa.cli_codigo}
                           >
                             {testingConnection && selectedEmpresaForTest === empresa.cli_codigo ? (
-                              <span>Testando...</span>
+                              <span><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Testando...</span>
                             ) : (
                               <span>Testar Conexão</span>
                             )}
@@ -378,6 +474,27 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
           </button>
         </div>
       </div>
+      {/* Modal de erro global, aparece para qualquer erro de conexão */}
+      {showErrorModal && (
+        <div className="modal-erro-overlay" style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
+        }}>
+          <div className="modal-erro-content" style={{
+            background: '#fff', borderRadius: 12, padding: 24, minWidth: 280, maxWidth: '90vw', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', textAlign: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+          }}>
+            <span style={{ fontSize: '2.5rem', color: 'red', marginBottom: 8 }}>❌</span>
+            <h4 style={{ color: '#e53e3e', marginBottom: 8 }}>Erro de conexão</h4>
+            <p style={{ color: '#333', marginBottom: 16, wordBreak: 'break-word', fontSize: 16 }}>{getMensagemErroDetalhada(errorModalMsg)}</p>
+            <button className="btn btn-secondary" style={{
+              background: '#e53e3e', color: '#fff', border: 'none', borderRadius: 6, padding: '12px 32px', fontWeight: 'bold', fontSize: 18, cursor: 'pointer', width: '100%', maxWidth: 220
+            }} onClick={() => setShowErrorModal(false)}>
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -6,13 +6,14 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
   const [empresas, setEmpresas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [testingConnection, setTestingConnection] = useState(false);
-  const [connectionResult, setConnectionResult] = useState(null);
+  const [testingConnection, setTestingConnection] = useState({});
+  const [connectionResult, setConnectionResult] = useState({});
   const [testingSql, setTestingSql] = useState(false);
   const [sqlResult, setSqlResult] = useState(null);
   const [selectedEmpresaForTest, setSelectedEmpresaForTest] = useState(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMsg, setErrorModalMsg] = useState('');
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
   const navigate = useNavigate();
   
   // URL da API - Deteção automática de ambiente
@@ -119,19 +120,17 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
       e.stopPropagation();
     }
 
+    setSelectedEmpresaForTest(empresa.cli_codigo);
+    setTestingConnection(prev => ({ ...prev, [empresa.cli_codigo]: true }));
+    setConnectionResult(prev => ({ ...prev, [empresa.cli_codigo]: null }));
+    setError('');
+    setShowLoadingModal(true);
+
     try {
-      setTestingConnection(true);
-      setConnectionResult(null);
-      setSelectedEmpresaForTest(empresa.cli_codigo);
-      setError('');
-
-      console.log('Empresa selecionada para teste:', empresa);
-
       const token = localStorage.getItem('token');
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       axios.defaults.headers.common['Content-Type'] = 'application/json';
 
-      // Garantir que todos os campos necessários estejam presentes
       const dadosEmpresa = {
         cli_codigo: parseInt(empresa.cli_codigo, 10),
         cli_nome: empresa.cli_nome || '',
@@ -141,29 +140,15 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
         cli_porta: empresa.cli_porta || '3050'
       };
 
-      console.log('Dados da empresa para teste:', dadosEmpresa);
-
-      // Validar campos obrigatórios
       if (!dadosEmpresa.cli_caminho_base) {
-        console.error('Caminho da base não informado. Dados completos:', {
-          empresaOriginal: empresa,
-          dadosEmpresa: dadosEmpresa
-        });
         throw new Error('Caminho da base de dados não informado');
       }
-
       if (!dadosEmpresa.cli_ip_servidor) {
-        console.error('IP do servidor não informado. Dados completos:', {
-          empresaOriginal: empresa,
-          dadosEmpresa: dadosEmpresa
-        });
         throw new Error('IP do servidor não informado');
       }
 
       const response = await axios.post(`${API_URL}/testar-conexao-empresa`, dadosEmpresa);
-      console.log('Resposta do teste de conexão:', response.data);
-
-      setConnectionResult(response.data);
+      setConnectionResult(prev => ({ ...prev, [empresa.cli_codigo]: response.data }));
 
       if (response.data.sucesso) {
         const empresaData = {
@@ -180,37 +165,24 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
           cli_caminho_base: empresa.cli_caminho_base,
           cli_nome_base: empresa.cli_nome_base
         };
-
-        console.log('Dados da empresa para salvar:', empresaData);
-
-        // Salva no localStorage
         localStorage.setItem('empresaSelecionada', JSON.stringify(empresaData));
         localStorage.setItem('empresa_atual', JSON.stringify(empresaData));
         localStorage.setItem('empresa', empresa.cli_codigo.toString());
-
-        // Atualiza headers do axios
         axios.defaults.headers.common['x-empresa-codigo'] = empresa.cli_codigo.toString();
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-        // Atualiza o estado global (App)
         if (typeof onSelectEmpresa === 'function') {
           onSelectEmpresa(empresaData);
         }
-
-        // Redireciona para o dashboard
         navigate('/dashboard', { replace: true });
       }
     } catch (err) {
-      console.error('Erro ao testar conexão:', err);
       const msg = err.response?.data?.detail || err.message || 'Erro ao testar conexão';
-      setConnectionResult({
-        sucesso: false,
-        mensagem: msg
-      });
+      setConnectionResult(prev => ({ ...prev, [empresa.cli_codigo]: { sucesso: false, mensagem: msg } }));
       setErrorModalMsg(msg);
       setShowErrorModal(true);
     } finally {
-      setTestingConnection(false);
+      setTestingConnection(prev => ({ ...prev, [empresa.cli_codigo]: false }));
+      setShowLoadingModal(false);
     }
   };
 
@@ -355,15 +327,15 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
                         </p>
                         
                         {/* Resultado do teste de conexão */}
-                        {selectedEmpresaForTest === empresa.cli_codigo && connectionResult && (
-                          <div className={`mt-2 p-2 rounded text-sm ${connectionResult.sucesso ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        {selectedEmpresaForTest === empresa.cli_codigo && connectionResult[empresa.cli_codigo] && (
+                          <div className={`mt-2 p-2 rounded text-sm ${connectionResult[empresa.cli_codigo].sucesso ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                             <p className="font-medium">
-                              {connectionResult.sucesso ? '✓ Conexão bem-sucedida!' : `✗ ${connectionResult.mensagem}`}
+                              {connectionResult[empresa.cli_codigo].sucesso ? '✓ Conexão bem-sucedida!' : `✗ ${connectionResult[empresa.cli_codigo].mensagem}`}
                             </p>
-                            {connectionResult.sucesso && connectionResult.info_banco && (
+                            {connectionResult[empresa.cli_codigo].sucesso && connectionResult[empresa.cli_codigo].info_banco && (
                               <div className="text-xs mt-1">
-                                <p>Versão Firebird: {connectionResult.info_banco.versao}</p>
-                                <p>Usuário: {connectionResult.info_banco.usuario}</p>
+                                <p>Versão Firebird: {connectionResult[empresa.cli_codigo].info_banco.versao}</p>
+                                <p>Usuário: {connectionResult[empresa.cli_codigo].info_banco.usuario}</p>
                               </div>
                             )}
                           </div>
@@ -405,9 +377,9 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
                               handleTestConnection(empresa, e);
                             }}
                             className={`px-3 py-1 text-xs rounded-md ${darkMode ? 'bg-blue-700 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-700'} text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                            disabled={testingConnection && selectedEmpresaForTest === empresa.cli_codigo}
+                            disabled={!!testingConnection[empresa.cli_codigo] || empresa.cli_bloqueadoapp === 'S'}
                           >
-                            {testingConnection && selectedEmpresaForTest === empresa.cli_codigo ? (
+                            {testingConnection[empresa.cli_codigo] ? (
                               <span><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Testando...</span>
                             ) : (
                               <span>Testar Conexão</span>
@@ -492,6 +464,27 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
             }} onClick={() => setShowErrorModal(false)}>
               Fechar
             </button>
+          </div>
+        </div>
+      )}
+      {showLoadingModal && (
+        <div className="modal-loading-dark" style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999
+        }}>
+          <div className="modal-loading-content-dark" style={{
+            padding: 32, minWidth: 260, maxWidth: '90vw', textAlign: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center',
+          }}>
+            <div style={{ fontSize: 32, marginBottom: 16 }}>
+              <span className="loading-dots">
+                <span style={{ animation: 'bounce 1s infinite' }}>•</span>
+                <span style={{ animation: 'bounce 1s infinite 0.2s' }}>•</span>
+                <span style={{ animation: 'bounce 1s infinite 0.4s' }}>•</span>
+              </span>
+            </div>
+            <div style={{ fontWeight: 'bold', color: '#4fc3f7', fontSize: 22, marginBottom: 8 }}>Aguarde</div>
+            <div style={{ color: '#e0e6f0', fontSize: 16 }}>Verificando conexão...</div>
           </div>
         </div>
       )}

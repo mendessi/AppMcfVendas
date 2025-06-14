@@ -210,10 +210,10 @@ async def listar_orcamentos(request: Request, data_inicial: str = None, data_fin
                     CLIENTES.CNPJ as cnpj,
                     'N' as importado
                 FROM ORCAMENT
-                LEFT JOIN CLIENTES ON ORCAMENT.CLI_CODIGO = CLIENTES.CLI_CODIGO
-                LEFT JOIN VENDEDOR ON ORCAMENT.VEN_CODIGO = VENDEDOR.VEN_CODIGO
-                LEFT JOIN FORMAPAG ON ORCAMENT.ECF_FPG_COD = FORMAPAG.FPG_COD
-                LEFT JOIN TABPRECO ON ORCAMENT.ECF_TAB_COD = TABPRECO.TAB_COD
+                JOIN CLIENTES ON ORCAMENT.CLI_CODIGO = CLIENTES.CLI_CODIGO
+                JOIN VENDEDOR ON ORCAMENT.VEN_CODIGO = VENDEDOR.VEN_CODIGO
+                JOIN FORMAPAG ON ORCAMENT.ECF_FPG_COD = FORMAPAG.FPG_COD
+                JOIN TABPRECO ON ORCAMENT.ECF_TAB_COD = TABPRECO.TAB_COD
             """
             
             # Adicionar filtro de data se os parâmetros forem fornecidos

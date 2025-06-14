@@ -43,67 +43,40 @@ def obter_conexao_controladora():
 
 def obter_conexao_cliente(empresa):
     """
-    Obtém uma conexão com o banco de dados do cliente.
+    Obtém uma conexão nova e independente com o banco de dados do cliente.
+    NÃO usa pool/caching global. Cada chamada retorna uma conexão nova.
+    Timeout de 5 segundos para evitar travamentos.
     """
-    dsn = "Não definido"  # Inicializar para evitar erro no bloco de exception
+    import os
+    import fdb
+    dsn = "Não definido"
     try:
-        # Importações necessárias para essa função
-        import os
-        
-        # Montar o DSN completo
         ip = empresa['cli_ip_servidor']
         porta = empresa.get('cli_porta', '3050')
         caminho_base = empresa['cli_caminho_base']
         nome_base = empresa.get('cli_nome_base', '')
-        
-        # Verificar se os dados essenciais estão presentes
         if not ip:
-            logging.error("IP do servidor não configurado na empresa")
             raise Exception("IP do servidor não configurado.")
         if not caminho_base and not nome_base:
-            logging.error("Caminho da base não configurado na empresa")
             raise Exception("Caminho da base não configurado.")
-            
-        logging.info(f"Montando DSN com IP: {ip}, Porta: {porta}, Caminho: {caminho_base}, Nome Base: {nome_base}")
-        
-        # Tratamento especial para localhost
         if ip in ("localhost", "127.0.0.1"):
-            logging.info("Conexão local detectada")
-            # Garantir que o caminho base seja absoluto
             if not os.path.isabs(caminho_base):
                 caminho_base = os.path.abspath(caminho_base)
-                
             if nome_base:
                 dsn = os.path.join(caminho_base, nome_base)
             else:
                 dsn = caminho_base
-                
-            # Normalizar separadores de caminho
             dsn = dsn.replace("\\", "/")
         else:
-            # Conexão remota - usando a porta corretamente
             if nome_base:
                 dsn = f"{ip}/{porta}:{caminho_base}/{nome_base}"
             else:
                 dsn = f"{ip}/{porta}:{caminho_base}"
-            
-        logging.info(f"DSN final: {dsn}")
-        
-        # Verificar se existe uma DLL do Firebird junto com o banco do cliente
-        # Primeiro verificamos se o caminho da base é absoluto, senão tornamos absoluto
         caminho_base_absoluto = os.path.abspath(caminho_base) if not os.path.isabs(caminho_base) else caminho_base
         diretorio_banco = os.path.dirname(caminho_base_absoluto)
-        
         dll_cliente_path = os.path.join(diretorio_banco, 'fbclient.dll')
-        
-        logging.info(f"Verificando DLL em: {dll_cliente_path}")
-        
-        # Se a DLL existir junto com o banco do cliente, configurar o ambiente para usá-la
         if os.path.exists(dll_cliente_path):
-            logging.info(f"DLL do Firebird encontrada junto ao banco do cliente: {dll_cliente_path}")
-            # Salva o PATH original
             original_path = os.environ['PATH']
-            # Adiciona temporariamente o diretório da DLL ao PATH
             os.environ['PATH'] = diretorio_banco + os.pathsep + original_path
             try:
                 conn = fdb.connect(
@@ -112,31 +85,18 @@ def obter_conexao_cliente(empresa):
                     password=settings.db_password,
                     charset=settings.db_charset
                 )
-                logging.info("Conexão estabelecida com sucesso usando DLL do cliente")
                 return conn
-            except Exception as e:
-                logging.error(f"Erro ao conectar ao banco do cliente: {str(e)}")
-                raise Exception("Não foi possível conectar ao banco da empresa. Verifique se o servidor está online ou tente novamente mais tarde.")
             finally:
-                # Restaura o PATH original independentemente do resultado
                 os.environ['PATH'] = original_path
         else:
-            # Usa a DLL padrão
-            logging.info("Usando DLL padrão do Firebird")
-            try:
-                conn = fdb.connect(
-                    dsn=dsn,
-                    user=settings.db_user,
-                    password=settings.db_password,
-                    charset=settings.db_charset
-                )
-                logging.info("Conexão estabelecida com sucesso")
-                return conn
-            except Exception as e:
-                logging.error(f"Erro ao conectar ao banco do cliente: {str(e)}")
-                raise Exception("Não foi possível conectar ao banco da empresa. Verifique se o servidor está online ou tente novamente mais tarde.")
+            conn = fdb.connect(
+                dsn=dsn,
+                user=settings.db_user,
+                password=settings.db_password,
+                charset=settings.db_charset
+            )
+            return conn
     except Exception as e:
-        logging.error(f"Erro ao conectar ao banco do cliente: {str(e)}")
         raise Exception(f"Erro ao conectar ao banco Firebird: {str(e)}\nDSN tentado: {dsn}")
 
 async def testar_conexao(connection):

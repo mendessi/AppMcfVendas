@@ -53,96 +53,141 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
   const CACHE_KEY_FILTERS = 'orcamentos_filtros_cache';
   const CACHE_KEY_DATA = 'orcamentos_data_cache';
   const CACHE_KEY_TIMESTAMP = 'orcamentos_timestamp_cache';
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+  const CACHE_DURATION = 4 * 60 * 60 * 1000; // 4 horas em milissegundos
+
+  // Função para verificar se o cache é válido
+  const isCacheValid = () => {
+    try {
+      const cacheData = localStorage.getItem('dashboardCache');
+      if (!cacheData) {
+        console.log('Nenhum cache encontrado');
+        return false;
+      }
+
+      const dados = JSON.parse(cacheData);
+      const agora = new Date().getTime();
+      const cacheTimestamp = dados.timestamp || 0;
+      const empresaAtual = empresaSelecionada?.codigo || empresaSelecionada?.cli_codigo;
+      
+      console.log('Verificando cache:', {
+        empresaAtual,
+        empresaCache: dados.empresaCodigo,
+        tempoCache: agora - cacheTimestamp,
+        cacheValido: agora - cacheTimestamp < CACHE_DURATION
+      });
+      
+      return (agora - cacheTimestamp < CACHE_DURATION) && 
+             dados.empresaCodigo === empresaAtual;
+    } catch (error) {
+      console.error('Erro ao verificar cache:', error);
+      return false;
+    }
+  };
+
+  // Função para verificar se o cache está velho (mais de 4 horas)
+  const isCacheOld = () => {
+    try {
+      const cacheData = localStorage.getItem('dashboardCache');
+      if (!cacheData) return false;
+
+      const dados = JSON.parse(cacheData);
+      const agora = new Date().getTime();
+      const cacheTimestamp = dados.timestamp || 0;
+      
+      return (agora - cacheTimestamp >= CACHE_DURATION);
+    } catch (error) {
+      console.error('Erro ao verificar idade do cache:', error);
+      return false;
+    }
+  };
 
   // Função para limpar cache
-  const clearCache = () => {
-    try {
-      localStorage.removeItem(CACHE_KEY_DATA);
-      localStorage.removeItem(CACHE_KEY_FILTERS);
-      localStorage.removeItem(CACHE_KEY_TIMESTAMP);
-      console.log('🔍 DEBUG - Cache limpo');
-    } catch (error) {
-      console.error('Erro ao limpar cache:', error);
-    }
+  const limparCache = () => {
+    console.log('Limpando cache do dashboard');
+    localStorage.removeItem('dashboardCache');
+    setDadosEmCache(false);
   };
 
   // Função para salvar dados no cache
   const salvarDadosNoCache = (dados) => {
-    const cacheData = {
-      stats: dados.stats,
-      topVendedores: dados.topVendedores,
-      vendasPorDia: dados.vendasPorDia,
-      topClientes: dados.topClientes,
-      topProdutos: dados.topProdutos,
-      dataInicial: dataInicial,
-      dataFinal: dataFinal,
-      timestamp: new Date().getTime()
-    };
-    localStorage.setItem('dashboardCache', JSON.stringify(cacheData));
-    setDadosEmCache(true);
+    try {
+      const cacheData = {
+        stats: dados.stats,
+        topVendedores: dados.topVendedores,
+        vendasPorDia: dados.vendasPorDia,
+        topClientes: dados.topClientes,
+        topProdutos: dados.topProdutos,
+        dataInicial: dataInicial,
+        dataFinal: dataFinal,
+        empresaCodigo: empresaSelecionada?.codigo || empresaSelecionada?.cli_codigo,
+        timestamp: new Date().getTime()
+      };
+      
+      console.log('Salvando dados no cache:', {
+        ...cacheData,
+        vendasPorDia: Array.isArray(cacheData.vendasPorDia) ? `${cacheData.vendasPorDia.length} registros` : 'não é array'
+      });
+      
+      localStorage.setItem('dashboardCache', JSON.stringify(cacheData));
+      setDadosEmCache(true);
+    } catch (error) {
+      console.error('Erro ao salvar cache:', error);
+    }
   };
 
   // Função para carregar dados do cache
   const carregarDadosDoCache = () => {
     try {
       const cacheData = localStorage.getItem('dashboardCache');
-      if (cacheData) {
-        const dados = JSON.parse(cacheData);
-        console.log('Dados encontrados no cache:', dados);
-        
-        // Verifica se o cache é do mesmo período
-        if (dados.dataInicial === dataInicial && dados.dataFinal === dataFinal) {
-          console.log('Cache válido para o período atual');
-          setStats(dados.stats || statsDefault);
-          setTopVendedores(dados.topVendedores);
-          
-          // Atualizar dados do gráfico de vendas por dia
-          if (dados.vendasPorDia) {
-            setVendasPorDia(dados.vendasPorDia);
-          }
-          
-          // Atualizar dados de top clientes
-          if (dados.topClientes) {
-            setTopClientes(dados.topClientes);
-          }
-
-          // Atualizar dados de top produtos
-          if (dados.topProdutos) {
-            setTopProdutos(dados.topProdutos);
-          }
-          
-          setDadosEmCache(true);
-          setLoading(false);
-          setLoadingVendedores(false);
-          return true;
-        } else {
-          console.log('Cache inválido - período diferente');
-          limparCache();
-        }
-      } else {
+      if (!cacheData) {
         console.log('Nenhum dado encontrado no cache');
+        return false;
+      }
+
+      const dados = JSON.parse(cacheData);
+      console.log('Dados encontrados no cache:', {
+        ...dados,
+        vendasPorDia: Array.isArray(dados.vendasPorDia) ? `${dados.vendasPorDia.length} registros` : 'não é array'
+      });
+      
+      const empresaAtual = empresaSelecionada?.codigo || empresaSelecionada?.cli_codigo;
+      if (dados.empresaCodigo === empresaAtual) {
+        console.log('Cache válido para a empresa atual');
+        
+        // Garantir que vendasPorDia seja um array
+        const vendasPorDia = Array.isArray(dados.vendasPorDia) ? dados.vendasPorDia : [];
+        console.log('Dados de vendas por dia:', vendasPorDia);
+        
+        setStats(dados.stats || statsDefault);
+        setTopVendedores(dados.topVendedores || []);
+        setVendasPorDia(vendasPorDia);
+        setTopClientes(dados.topClientes || []);
+        setTopProdutos(dados.topProdutos || []);
+        setDadosEmCache(true);
+        setLoading(false);
+        setLoadingVendedores(false);
+        return true;
+      } else {
+        console.log('Cache inválido - empresa diferente');
+        return false;
       }
     } catch (error) {
       console.error('Erro ao carregar cache:', error);
-      limparCache();
+      return false;
     }
-    return false;
-  };
-
-  // Função para limpar o cache
-  const limparCache = () => {
-    console.log('Limpando cache');
-    localStorage.removeItem('dashboardCache');
-    setDadosEmCache(false);
   };
 
   // Função para buscar todos os dados com base no filtro de período
   const fetchAllData = async (forcarAtualizacao = false) => {
-    // Se não forçar atualização, tenta carregar do cache
-    if (!forcarAtualizacao && carregarDadosDoCache()) {
-      console.log('Dados carregados do cache');
-      return;
+    console.log('fetchAllData chamado - forcarAtualizacao:', forcarAtualizacao);
+    
+    // Se não forçar atualização, tenta usar o cache primeiro
+    if (!forcarAtualizacao) {
+      console.log('Verificando cache...');
+      if (isCacheValid() && carregarDadosDoCache()) {
+        console.log('Dados carregados do cache com sucesso');
+        return;
+      }
     }
 
     console.log('Buscando dados atualizados do servidor');
@@ -168,17 +213,21 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       const dadosParaCache = {
         stats: statsResponse,
         topVendedores: vendedoresResponse,
-        vendasPorDia: Array.isArray(vendasPorDiaResponse) ? vendasPorDiaResponse : [],
+        vendasPorDia: vendasPorDiaResponse,
         topClientes: topClientesResponse,
         topProdutos: topProdutosResponse,
         dataInicial: dataInicial,
         dataFinal: dataFinal,
+        empresaCodigo: empresaSelecionada?.codigo || empresaSelecionada?.cli_codigo,
         timestamp: new Date().getTime()
       };
       
-      console.log('Salvando dados no cache:', dadosParaCache);
-      localStorage.setItem('dashboardCache', JSON.stringify(dadosParaCache));
-      setDadosEmCache(true);
+      console.log('Salvando dados no cache:', {
+        ...dadosParaCache,
+        vendasPorDia: Array.isArray(dadosParaCache.vendasPorDia) ? `${dadosParaCache.vendasPorDia.length} registros` : 'não é array'
+      });
+      
+      salvarDadosNoCache(dadosParaCache);
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
     } finally {
@@ -186,26 +235,46 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     }
   };
 
+  // Efeito para carregar dados ao montar o componente
+  useEffect(() => {
+    console.log('Componente Dashboard montado');
+    if (dataInicial && dataFinal) {
+      console.log('Datas definidas, tentando carregar do cache primeiro');
+      fetchAllData(false);
+    }
+  }, [dataInicial, dataFinal]);
+
+  // Efeito para limpar cache quando mudar de empresa
+  useEffect(() => {
+    if (empresaSelecionada) {
+      console.log('Empresa alterada, verificando cache');
+      const cacheData = localStorage.getItem('dashboardCache');
+      if (cacheData) {
+        const dados = JSON.parse(cacheData);
+        const empresaAtual = empresaSelecionada?.codigo || empresaSelecionada?.cli_codigo;
+        const empresaCache = dados.empresaCodigo;
+        
+        if (empresaAtual !== empresaCache) {
+          console.log('Empresa alterada, limpando cache');
+          limparCache();
+          // Buscar novos dados após limpar o cache
+          fetchAllData(true);
+        }
+      }
+    }
+  }, [empresaSelecionada]);
+
   // Handler para o botão de filtrar
   const handleFilterSubmit = (e) => {
     e.preventDefault();
     console.log('Atualizando dashboard - forçando busca de dados');
-    limparCache();
-    fetchAllData(true);
+    fetchAllData(true); // Força atualização sem limpar cache
   };
-
-  // Buscar dados quando as datas estiverem definidas
-  useEffect(() => {
-    if (dataInicial && dataFinal && !dadosEmCache) {
-      console.log('Datas definidas, buscando dados...');
-      fetchAllData(false);
-    }
-  }, [dataInicial, dataFinal, dadosEmCache]);
 
   // Inicializar as datas para o primeiro e último dia do mês atual
   useEffect(() => {
-    // Limpar cache ao iniciar
-    limparCache();
+    // Não limpar o cache ao iniciar
+    // limparCache(); // Removido
     
     // Definir datas padrão (primeiro e último dia do mês atual)
     const hoje = new Date();
@@ -225,8 +294,11 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       return `${ano}-${mes}-${dia}`;
     };
     
-    setDataInicial(formatarData(primeiroDiaMes));
-    setDataFinal(formatarData(ultimoDiaMes));
+    const novaDataInicial = formatarData(primeiroDiaMes);
+    const novaDataFinal = formatarData(ultimoDiaMes);
+    
+    setDataInicial(novaDataInicial);
+    setDataFinal(novaDataFinal);
   }, []);
 
   // Função para buscar dados reais do Dashboard do backend
@@ -311,7 +383,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
     
     try {
       // Limpar cache antes de buscar novos dados
-      clearCache();
+      limparCache();
       
       // Verificar token de autenticação
       const token = localStorage.getItem('token');
@@ -423,7 +495,7 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       const token = localStorage.getItem('token');
       if (!token) {
         console.error('Token não encontrado');
-        return null;
+        return [];
       }
 
       const headers = {
@@ -443,8 +515,13 @@ const Dashboard = ({ user, darkMode, empresaSelecionada }) => {
       if (response.status === 200) {
         const vendasPorDia = response.data;
         console.log('Dados de vendas por dia recebidos:', vendasPorDia);
-        setVendasPorDia(Array.isArray(vendasPorDia) ? vendasPorDia : []);
-        return Array.isArray(vendasPorDia) ? vendasPorDia : [];
+        
+        // Garantir que o retorno seja um array
+        const dadosFormatados = Array.isArray(vendasPorDia) ? vendasPorDia : [];
+        console.log('Dados formatados de vendas por dia:', dadosFormatados);
+        
+        setVendasPorDia(dadosFormatados);
+        return dadosFormatados;
       }
       return [];
     } catch (error) {

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { API_URL } from '../config';
 
-const VendasPorDiaChart = ({ empresaSelecionada, dataInicial, dataFinal, darkMode }) => {
+const VendasPorDiaChart = ({ empresaSelecionada, dataInicial, dataFinal, darkMode, dadosEmCache, vendasPorDia }) => {
   const [dados, setDados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
@@ -23,6 +23,20 @@ const VendasPorDiaChart = ({ empresaSelecionada, dataInicial, dataFinal, darkMod
       setLoading(true);
       setErro(null);
       try {
+        // Se temos dados em cache, usamos eles
+        if (dadosEmCache && Array.isArray(vendasPorDia) && vendasPorDia.length > 0) {
+          console.log('Usando dados do cache para o gráfico:', vendasPorDia);
+          const dadosProcessados = vendasPorDia.map(item => ({
+            ...item,
+            dataCompleta: item.data,
+            data: formatarDia(item.data)
+          }));
+          setDados(dadosProcessados);
+          setLoading(false);
+          return;
+        }
+
+        // Se não temos cache, buscamos da API
         const token = localStorage.getItem('token');
         const headers = {
           'Authorization': `Bearer ${token}`,
@@ -43,8 +57,8 @@ const VendasPorDiaChart = ({ empresaSelecionada, dataInicial, dataFinal, darkMod
         // Processar os dados para incluir formatação do dia
         const dadosProcessados = response.data.map(item => ({
           ...item,
-          dataCompleta: item.data, // Manter a data completa para o tooltip
-          data: formatarDia(item.data) // Apenas o dia para o eixo X
+          dataCompleta: item.data,
+          data: formatarDia(item.data)
         }));
         
         setDados(dadosProcessados);
@@ -57,7 +71,7 @@ const VendasPorDiaChart = ({ empresaSelecionada, dataInicial, dataFinal, darkMod
     if (dataInicial && dataFinal) {
       fetchData();
     }
-  }, [empresaSelecionada, dataInicial, dataFinal]);
+  }, [empresaSelecionada, dataInicial, dataFinal, dadosEmCache, vendasPorDia]);
 
   // Formatação para tooltip
   const formatCurrency = (value) => {
@@ -87,7 +101,6 @@ const VendasPorDiaChart = ({ empresaSelecionada, dataInicial, dataFinal, darkMod
                 contentStyle={{ background: darkMode ? '#222' : '#fff', borderRadius: 8, fontSize: 14 }}
                 formatter={(value) => formatCurrency(value)}
                 labelFormatter={(label, payload) => {
-                  // Mostrar a data completa no tooltip
                   if (payload && payload[0] && payload[0].payload.dataCompleta) {
                     return `Data: ${payload[0].payload.dataCompleta}`;
                   }

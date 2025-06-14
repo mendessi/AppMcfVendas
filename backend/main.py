@@ -22,6 +22,7 @@ from empresa_manager_corrigido import get_empresa_connection
 import models
 import database
 from starlette.middleware.base import BaseHTTPMiddleware
+from server_config import create_app, run_server
 
 # Importar o router de orçamentos
 from orcamento_router import router as orcamento_router
@@ -63,7 +64,7 @@ else:
 #     app.include_router(orcamento_router, prefix="/api", tags=["Orçamentos"])
 #     return app
 
-app = FastAPI(title="API Força de Vendas", description="API para aplicativo de força de vendas")
+app = create_app()
 
 dll_path = os.path.join(base_path, "fbclient.dll")
 
@@ -91,19 +92,9 @@ from empresa_manager import (
     ALGORITHM
 )
 
-# Configuração de logging
-logging.basicConfig(
-    level=logging.WARNING,  # Alterado de INFO para WARNING para reduzir logs
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("app.log"),
-        logging.StreamHandler()
-    ]
-)
-
-# Configurar logs específicos para serem mais silenciosos
-logging.getLogger('empresa_manager').setLevel(logging.WARNING)
-logging.getLogger('root').setLevel(logging.WARNING)
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Configurar CORS - permitir origens específicas para credenciais
 origins = [
@@ -341,24 +332,24 @@ async def listar_empresas(request: Request):
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
-        logging.info(f"Listando empresas para o email: {email}")
+        logger.info(f"Listando empresas para o email: {email}")
         
         # Obter as empresas usando o email
         empresas = await obter_empresas_usuario(email)
         
         if not empresas:
-            logging.warning(f"Nenhuma empresa encontrada para o email: {email}")
+            logger.warning(f"Nenhuma empresa encontrada para o email: {email}")
             raise HTTPException(
                 status_code=404,
                 detail="Nenhuma empresa encontrada para este usuário"
             )
             
-        logging.info(f"Encontradas {len(empresas)} empresas para o email: {email}")
+        logger.info(f"Encontradas {len(empresas)} empresas para o email: {email}")
         return empresas
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao listar empresas: {str(e)}")
+        logger.error(f"Erro ao listar empresas: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao listar empresas: {str(e)}"
@@ -372,38 +363,38 @@ async def selecionar_empresa_route(empresa: EmpresaSelect, user_data = Depends(g
     """
     try:
         # Log detalhado para debugging
-        logging.info("===== INICIANDO SELEÇÃO DE EMPRESA =====")
-        logging.info(f"Dados recebidos: {empresa.dict()}")
-        logging.info(f"Usuário autenticado: {user_data}")
-        logging.info(f"Tipo de cli_codigo: {type(empresa.cli_codigo)}")
+        logger.info("===== INICIANDO SELEÇÃO DE EMPRESA =====")
+        logger.info(f"Dados recebidos: {empresa.dict()}")
+        logger.info(f"Usuário autenticado: {user_data}")
+        logger.info(f"Tipo de cli_codigo: {type(empresa.cli_codigo)}")
         
         # Verifica se os dados necessários estão presentes
         if not empresa.cli_codigo:
-            logging.error("Código da empresa não fornecido")
+            logger.error("Código da empresa não fornecido")
             raise HTTPException(status_code=400, detail="Código da empresa é obrigatório")
             
         if not user_data or not user_data.user_id:
-            logging.error("Dados do usuário inválidos")
+            logger.error("Dados do usuário inválidos")
             raise HTTPException(status_code=401, detail="Usuário não autenticado")
         
-        logging.info(f"Chamando selecionar_empresa com usuario_id={user_data.user_id}, cli_codigo={empresa.cli_codigo}")
+        logger.info(f"Chamando selecionar_empresa com usuario_id={user_data.user_id}, cli_codigo={empresa.cli_codigo}")
         resultado = await selecionar_empresa(user_data.user_id, empresa.cli_codigo)
-        logging.info(f"Empresa selecionada com sucesso: {resultado}")
+        logger.info(f"Empresa selecionada com sucesso: {resultado}")
         
         return resultado
     except HTTPException as he:
-        logging.error(f"Erro HTTP ao selecionar empresa: {str(he)}")
+        logger.error(f"Erro HTTP ao selecionar empresa: {str(he)}")
         raise
     except Exception as e:
         import traceback
-        logging.error(f"Erro ao selecionar empresa: {str(e)}")
-        logging.error(f"Tipo do erro: {type(e).__name__}")
-        logging.error(f"Traceback:\n{traceback.format_exc()}")
+        logger.error(f"Erro ao selecionar empresa: {str(e)}")
+        logger.error(f"Tipo do erro: {type(e).__name__}")
+        logger.error(f"Traceback:\n{traceback.format_exc()}")
         # Log dos dados recebidos novamente no erro para debugging
         try:
-            logging.error(f"Dados da empresa que causaram erro: {empresa.dict() if empresa else 'Nenhum'}")
+            logger.error(f"Dados da empresa que causaram erro: {empresa.dict() if empresa else 'Nenhum'}")
         except Exception as err:
-            logging.error(f"Erro ao logar dados da empresa: {str(err)}")
+            logger.error(f"Erro ao logar dados da empresa: {str(err)}")
         
         raise HTTPException(
             status_code=500,
@@ -421,7 +412,7 @@ async def empresa_atual_route(request: Request):
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Erro ao obter empresa atual: {str(e)}")
+        logger.error(f"Erro ao obter empresa atual: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Erro ao obter empresa atual: {str(e)}"
@@ -1128,12 +1119,4 @@ async def listar_vendedores(request: Request):
             conn.close()
 
 if __name__ == "__main__":
-    import argparse
-    
-    # Configurar argumentos de linha de comando
-    parser = argparse.ArgumentParser(description="Servidor API Força de Vendas")
-    parser.add_argument("--port", type=int, default=8000, help="Porta para executar o servidor (padrão: 8000)")
-    args = parser.parse_args()
-    
-    print(f"Iniciando servidor na porta {args.port}...")
-    uvicorn.run(app, host="0.0.0.0", port=args.port)
+    run_server()

@@ -9,6 +9,8 @@ from auth import SECRET_KEY, ALGORITHM
 from conexao_firebird import obter_conexao_cliente, obter_conexao_controladora
 import database
 import models
+from server_config import thread_pool
+import asyncio
 
 # Configurar o logger
 logging.basicConfig(level=logging.INFO)
@@ -273,43 +275,133 @@ async def verificar_acesso_empresa(usuario_id: int, cli_codigo: int):
         return False
 
 async def selecionar_empresa(usuario_id: int, cli_codigo: int):
-    log.info(f"Iniciando seleção de empresa. Usuario ID: {usuario_id}, Codigo Empresa: {cli_codigo}")
+    """
+    Seleciona uma empresa para o usuário.
+    Implementação assíncrona que não bloqueia outras requisições.
+    Usa pool de threads para operações bloqueantes.
+    """
+    log.info(f"Selecionando empresa {cli_codigo} para usuário {usuario_id}")
     
-    # Verifica se o usuário tem acesso à empresa
-    tem_acesso = await verificar_acesso_empresa(usuario_id, cli_codigo)
-    if not tem_acesso:
-        log.warning(f"Usuário {usuario_id} não tem acesso à empresa {cli_codigo}")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuário não tem acesso a esta empresa"
-        )
-
-    # Obtém os dados da empresa
+    # Verificar se o usuário existe
     try:
-        empresa = await obter_empresa_por_codigo(cli_codigo)
+        # Usar pool de threads para operações bloqueantes
+        loop = asyncio.get_event_loop()
+        conn_controladora = await loop.run_in_executor(thread_pool, obter_conexao_controladora)
+        cursor_controladora = conn_controladora.cursor()
+        
+        cursor_controladora.execute("""
+            SELECT ID, NIVEL_ACESSO FROM USUARIOS_APP 
+            WHERE ID = ?
+        """, (usuario_id,))
+        
+        usuario = cursor_controladora.fetchone()
+        conn_controladora.close()
+        
+        if not usuario:
+            log.error(f"Usuário {usuario_id} não encontrado")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuário não encontrado"
+            )
+            
+        nivel_acesso = usuario[1]
     except Exception as e:
-        log.error(f"Erro ao obter dados da empresa {cli_codigo}: {str(e)}")
+        log.error(f"Erro ao verificar usuário: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao verificar usuário: {str(e)}"
+        )
+    
+    # Obter dados da empresa
+    try:
+        # Usar pool de threads para operações bloqueantes
+        loop = asyncio.get_event_loop()
+        conn_controladora = await loop.run_in_executor(thread_pool, obter_conexao_controladora)
+        cursor_controladora = conn_controladora.cursor()
+        
+        cursor_controladora.execute("""
+            SELECT 
+                CLI_CODIGO, 
+                CLI_NOME, 
+                CLI_CAMINHO_BASE, 
+                CLI_IP_SERVIDOR,
+                CLI_NOME_BASE,
+                CAST(CLI_PORTA AS VARCHAR(10)) as CLI_PORTA,
+                CLI_MENSAGEM,
+                CLI_BLOQUEADOAPP
+            FROM CLIENTES
+            WHERE CLI_CODIGO = ?
+        """, (cli_codigo,))
+        
+        row = cursor_controladora.fetchone()
+        conn_controladora.close()
+        
+        if not row:
+            log.error(f"Empresa {cli_codigo} não encontrada")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Empresa não encontrada"
+            )
+            
+        empresa = {
+            "cli_codigo": row[0],
+            "cli_nome": row[1],
+            "cli_caminho_base": row[2],
+            "cli_ip_servidor": row[3],
+            "cli_nome_base": row[4],
+            "cli_porta": str(row[5]) if row[5] else '3050',
+            "cli_mensagem": row[6],
+            "cli_bloqueadoapp": row[7]
+        }
+    except Exception as e:
+        log.error(f"Erro ao obter dados da empresa: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Erro ao obter dados da empresa: {str(e)}"
         )
     
-    if not empresa:
-        log.warning(f"Empresa {cli_codigo} não encontrada")
+    # Verificar se a empresa está bloqueada
+    if empresa['cli_bloqueadoapp'] == 'S':
+        log.warning(f"Empresa {cli_codigo} está bloqueada")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Empresa não encontrada"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=empresa['cli_mensagem'] or "Empresa bloqueada para acesso"
         )
     
-    # Verificar conexão com o banco de dados da empresa selecionada
-    connection_info = None
-    connection_success = False
-    error_message = None
-    
+    # Verificar se o usuário tem acesso à empresa
     try:
-        # Tenta obter conexão com a base do cliente
-        from conexao_firebird import obter_conexao_cliente, testar_conexao
-        connection = obter_conexao_cliente(empresa)
+        # Usar pool de threads para operações bloqueantes
+        loop = asyncio.get_event_loop()
+        conn_controladora = await loop.run_in_executor(thread_pool, obter_conexao_controladora)
+        cursor_controladora = conn_controladora.cursor()
+        
+        cursor_controladora.execute("""
+            SELECT COUNT(*) 
+            FROM USUARIOS_CLIENTES 
+            WHERE USUARIO_ID = ? AND CLI_CODIGO = ?
+        """, (usuario_id, cli_codigo))
+        
+        tem_acesso = cursor_controladora.fetchone()[0] > 0
+        conn_controladora.close()
+        
+        if not tem_acesso and nivel_acesso != 'A':
+            log.warning(f"Usuário {usuario_id} não tem acesso à empresa {cli_codigo}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Usuário não tem acesso a esta empresa"
+            )
+    except Exception as e:
+        log.error(f"Erro ao verificar acesso do usuário: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao verificar acesso: {str(e)}"
+        )
+    
+    # Testar conexão com a empresa de forma assíncrona
+    try:
+        # Usar pool de threads para operações bloqueantes
+        loop = asyncio.get_event_loop()
+        connection = await loop.run_in_executor(thread_pool, obter_conexao_cliente, empresa)
         
         # Testa a conexão fazendo uma consulta simples
         conexao_ok, info = await testar_conexao(connection)
@@ -323,7 +415,9 @@ async def selecionar_empresa(usuario_id: int, cli_codigo: int):
         if connection_success:
             # Obter dados do usuário para verificar se é vendedor
             try:
-                conn_controladora = obter_conexao_controladora()
+                # Usar pool de threads para operações bloqueantes
+                loop = asyncio.get_event_loop()
+                conn_controladora = await loop.run_in_executor(thread_pool, obter_conexao_controladora)
                 cursor_controladora = conn_controladora.cursor()
                 
                 cursor_controladora.execute("""
@@ -334,105 +428,51 @@ async def selecionar_empresa(usuario_id: int, cli_codigo: int):
                 usuario_info = cursor_controladora.fetchone()
                 conn_controladora.close()
                 
-                if usuario_info and usuario_info[2] and 'vendedor' in usuario_info[2].lower():
-                    log.info(f"Usuário {usuario_id} é vendedor. Verificando email na tabela VENDEDOR da empresa selecionada.")
-                    # É vendedor, precisa verificar se o email existe na tabela VENDEDOR da empresa
-                    usuario_email = usuario_info[1]
+                if not usuario_info:
+                    log.error(f"Usuário {usuario_id} não encontrado após conexão bem-sucedida")
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Usuário não encontrado"
+                    )
                     
-                    # Usar a conexão com a empresa selecionada
-                    conn_empresa = obter_conexao_cliente(empresa)
-                    cursor_empresa = conn_empresa.cursor()
-                    
-                    # Verificar se a tabela VENDEDOR existe
-                    try:
-                        cursor_empresa.execute("""SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'VENDEDOR'""")
-                        tabela_vendedor_existe = cursor_empresa.fetchone() is not None
-                        
-                        if tabela_vendedor_existe:
-                            # Verificar se existe um vendedor com o email do usuário
-                            cursor_empresa.execute("""
-                                SELECT VEN_CODIGO, VEN_NOME FROM VENDEDOR 
-                                WHERE VEN_EMAIL = ?
-                            """, (usuario_email,))
-                            
-                            vendedor = cursor_empresa.fetchone()
-                            if not vendedor:
-                                log.warning(f"VENDEDOR SEM EMAIL NO CADASTRO DA EMPRESA {cli_codigo}: {usuario_email}")
-                                if usuario_id in empresa_sessions:
-                                    del empresa_sessions[usuario_id]
-                                    
-                                conn_empresa.close()
-                                raise HTTPException(
-                                    status_code=status.HTTP_403_FORBIDDEN,
-                                    detail="VENDEDOR SEM EMAIL NO CADASTRO. Contacte o administrador para atualizar seu cadastro na empresa selecionada."
-                                )
-                            else:
-                                codigo_vendedor = str(vendedor[0]).strip()  # Garantir que seja string e sem espaços
-                                nome_vendedor = vendedor[1] if vendedor[1] else usuario_email
-                                log.info(f"Vendedor validado com sucesso na empresa {cli_codigo}: {nome_vendedor} (Código: {codigo_vendedor})")
-                                
-                                # Armazenar o código do vendedor junto com os dados da empresa
-                                if not isinstance(empresa, dict):
-                                    empresa = dict(empresa)
-                                    
-                                # Adicionar o código do vendedor aos dados da empresa para uso nos relatórios
-                                empresa['codigo_vendedor'] = codigo_vendedor
-                                empresa['nome_vendedor'] = nome_vendedor
-                        else:
-                            log.warning(f"Tabela VENDEDOR não existe na empresa {cli_codigo}. Vendedor não pode ser validado.")
-                            if usuario_id in empresa_sessions:
-                                del empresa_sessions[usuario_id]
-                                
-                            conn_empresa.close()
-                            raise HTTPException(
-                                status_code=status.HTTP_403_FORBIDDEN,
-                                detail="A empresa selecionada não possui tabela de vendedores. Contacte o administrador."
-                            )
-                    except Exception as e:
-                        log.error(f"Erro ao verificar vendedor na empresa {cli_codigo}: {str(e)}")
-                        if usuario_id in empresa_sessions:
-                            del empresa_sessions[usuario_id]
-                        raise HTTPException(
-                            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Erro ao verificar vendedor: {str(e)}"
-                        )
-                    finally:
-                        if 'conn_empresa' in locals():
-                            try:
-                                conn_empresa.close()
-                            except:
-                                pass
-            except HTTPException:
-                raise
+                email = usuario_info[1]
+                nivel_acesso = usuario_info[2]
+                
+                # Se for vendedor, verificar se tem email cadastrado
+                if nivel_acesso == 'V' and not email:
+                    log.warning(f"Vendedor {usuario_id} não tem email cadastrado")
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Vendedores precisam ter um email cadastrado"
+                    )
             except Exception as e:
-                log.error(f"Erro ao verificar nível do usuário {usuario_id}: {str(e)}")
-                # Continua sem validar vendedor em caso de erro neste ponto
-            
-            # Armazena a empresa na sessão se todas as validações passarem
-            empresa_sessions[usuario_id] = empresa
+                log.error(f"Erro ao verificar dados do usuário: {str(e)}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Erro ao verificar dados do usuário: {str(e)}"
+                )
     except Exception as e:
-        log.error(f"Erro ao conectar com a base do cliente {cli_codigo}: {str(e)}")
-        error_message = str(e)
+        log.error(f"Erro ao testar conexão com a empresa: {str(e)}")
         connection_success = False
-        # Remove a empresa da sessão em caso de erro
-        if usuario_id in empresa_sessions:
-            del empresa_sessions[usuario_id]
+        connection_info = {"erro": str(e)}
     
-    # Converter empresa para dicionário e adicionar informações de conexão
-    if isinstance(empresa, dict):
-        empresa_dict = empresa
-    else:
-        empresa_dict = dict(empresa)
-    
-    # Adicionar informações de conexão à resposta
-    empresa_dict["conexao_estabelecida"] = connection_success
-    empresa_dict["conexao_info"] = connection_info
-    empresa_dict["dsn"] = f"{empresa_dict['cli_ip_servidor']}:{empresa_dict['cli_caminho_base']}/{empresa_dict['cli_nome_base']}"
+    # Preparar resposta
+    empresa_dict = {
+        "cli_codigo": empresa['cli_codigo'],
+        "cli_nome": empresa['cli_nome'],
+        "cli_caminho_base": empresa['cli_caminho_base'],
+        "cli_ip_servidor": empresa['cli_ip_servidor'],
+        "cli_nome_base": empresa['cli_nome_base'],
+        "cli_porta": empresa['cli_porta'],
+        "cli_mensagem": empresa['cli_mensagem'],
+        "cli_bloqueadoapp": empresa['cli_bloqueadoapp'],
+        "conexao_sucesso": connection_success,
+        "conexao_info": connection_info
+    }
     
     if not connection_success:
-        empresa_dict["conexao_erro"] = error_message
-        log.warning(f"Conexão com a base do cliente {cli_codigo} falhou: {error_message}")
-        # Não retorna erro, apenas informa que houve falha na conexão
+        empresa_dict["conexao_erro"] = str(connection_info.get('erro', 'Erro desconhecido'))
+        log.warning(f"Conexão com a base do cliente {cli_codigo} falhou: {connection_info.get('erro')}")
     else:
         log.info(f"Conexão com a base do cliente {cli_codigo} estabelecida com sucesso")
     

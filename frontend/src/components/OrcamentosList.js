@@ -5,10 +5,12 @@ import { FiEdit2, FiTrash2, FiSearch, FiCalendar, FiChevronDown, FiChevronUp, Fi
 import api from '../services/api';
 
 const OrcamentosList = ({ darkMode }) => {
-  const [orcamentos, setOrcamentos] = useState([]);
+  const [orcamentos, setOrcamentos] = useState({ total: 0, orcamentos: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedOrcamento, setExpandedOrcamento] = useState(null);
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const porPagina = 20; // Valor padrão do backend
   
   // Cache keys
   const CACHE_KEY_FILTERS = 'orcamentos_filtros_cache';
@@ -67,8 +69,8 @@ const OrcamentosList = ({ darkMode }) => {
         const data = JSON.parse(cachedData);
         const filters = JSON.parse(cachedFilters);
         
-        console.log('🔍 DEBUG - Carregando do cache:', data.length, 'orçamentos');
-        setOrcamentos(data);
+        console.log('🔍 DEBUG - Carregando do cache:', data.total, 'orçamentos');
+        setOrcamentos({ total: data.total, orcamentos: data.orcamentos });
         setFiltros(filters);
         setIsLoading(false);
         return true;
@@ -85,7 +87,7 @@ const OrcamentosList = ({ darkMode }) => {
       localStorage.setItem(CACHE_KEY_DATA, JSON.stringify(data));
       localStorage.setItem(CACHE_KEY_FILTERS, JSON.stringify(filters));
       localStorage.setItem(CACHE_KEY_TIMESTAMP, Date.now().toString());
-      console.log('🔍 DEBUG - Dados salvos no cache:', data.length, 'orçamentos');
+      console.log('🔍 DEBUG - Dados salvos no cache:', data.total, 'orçamentos');
     } catch (error) {
       console.error('Erro ao salvar no cache:', error);
     }
@@ -120,41 +122,37 @@ const OrcamentosList = ({ darkMode }) => {
     
     // Se não conseguiu carregar do cache, fazer requisição
     if (!cacheLoaded) {
-      buscarOrcamentos();
+      buscarOrcamentos(1);
     }
   }, []);
 
-  const buscarOrcamentos = async () => {
+  const buscarOrcamentos = async (pagina = 1) => {
     setIsLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem('token');
       const empresa = localStorage.getItem('empresa_atual');
-      
       const params = new URLSearchParams();
-      
-      // Sempre enviar as datas se estiverem preenchidas
       if (filtros.data_inicio) {
         params.append('data_inicial', filtros.data_inicio);
-        console.log('🔍 DEBUG - Data inicial enviada:', filtros.data_inicio);
       }
       if (filtros.data_fim) {
         params.append('data_final', filtros.data_fim);
-        console.log('🔍 DEBUG - Data final enviada:', filtros.data_fim);
       }
-      
-      console.log('🔍 DEBUG - Parâmetros da requisição:', params.toString());
-
+      // Garantir que page e per_page são sempre números válidos
+      const paginaValida = Number.isInteger(pagina) && pagina > 0 ? pagina : 1;
+      const porPaginaValido = Number.isInteger(porPagina) && porPagina > 0 ? porPagina : 20;
+      params.append('page', paginaValida);
+      params.append('per_page', porPaginaValido);
       const response = await api.get(`/orcamentos?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'x-empresa-codigo': empresa
         }
       });
-
-      console.log('🔍 DEBUG - Orçamentos recebidos:', response.data);
-      setOrcamentos(response.data);
+      setOrcamentos({ total: response.data.total, orcamentos: response.data.orcamentos });
       saveToCache(response.data, filtros);
+      setPaginaAtual(paginaValida);
     } catch (error) {
       console.error('Erro ao buscar orçamentos:', error);
       setError('Erro ao carregar orçamentos. Por favor, tente novamente.');
@@ -179,7 +177,10 @@ const OrcamentosList = ({ darkMode }) => {
         }
       });
 
-      setOrcamentos(orcamentos.filter(o => o.numero !== numero));
+      setOrcamentos(prev => ({
+        ...prev,
+        orcamentos: prev.orcamentos.filter(o => o.numero !== numero)
+      }));
     } catch (error) {
       console.error('Erro ao excluir orçamento:', error);
       alert('Erro ao excluir orçamento. Por favor, tente novamente.');
@@ -192,7 +193,7 @@ const OrcamentosList = ({ darkMode }) => {
     } else {
       setExpandedOrcamento(orcamentoNumero);
       // Buscar itens do orçamento se ainda não carregou
-      const orcamento = orcamentos.find(o => o.numero === orcamentoNumero);
+      const orcamento = orcamentos.orcamentos.find(o => o.numero === orcamentoNumero);
       if (orcamento && (!orcamento.itens || orcamento.itens.length === 0)) {
         try {
           const token = localStorage.getItem('token');
@@ -206,9 +207,12 @@ const OrcamentosList = ({ darkMode }) => {
           });
           
           const itens = response.data;
-          setOrcamentos(prev => prev.map(o => 
-            o.numero === orcamentoNumero ? { ...o, itens } : o
-          ));
+          setOrcamentos(prev => ({
+            ...prev,
+            orcamentos: prev.orcamentos.map(o => 
+              o.numero === orcamentoNumero ? { ...o, itens } : o
+            )
+          }));
         } catch (error) {
           console.error('Erro ao buscar itens do orçamento:', error);
           // Continuar mesmo com erro
@@ -260,7 +264,7 @@ const OrcamentosList = ({ darkMode }) => {
   };
 
   // Função para filtrar orçamentos
-  const orcamentosFiltrados = orcamentos.filter(orcamento => {
+  const orcamentosFiltrados = (orcamentos.orcamentos || []).filter(orcamento => {
     // Filtro por cliente
     if (filtros.cliente) {
       const clienteMatch = orcamento.cliente_nome?.toLowerCase().includes(filtros.cliente.toLowerCase());
@@ -619,7 +623,7 @@ const OrcamentosList = ({ darkMode }) => {
       </div>
 
       {/* Lista de Orçamentos */}
-      {orcamentos.length === 0 ? (
+      {orcamentos.orcamentos.length === 0 ? (
         <div className={`text-center py-8 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
           Nenhum orçamento encontrado
         </div>
@@ -879,6 +883,27 @@ const OrcamentosList = ({ darkMode }) => {
             </table>
           </div>
         </>
+      )}
+
+      {/* Adicionar paginação visual após a lista de orçamentos */}
+      {orcamentos.orcamentos.length > 0 && (
+        <div className="flex justify-center items-center gap-2 mt-4">
+          <button
+            onClick={() => buscarOrcamentos(paginaAtual - 1)}
+            disabled={paginaAtual === 1}
+            className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400 disabled:opacity-50"
+          >
+            Anterior
+          </button>
+          <span>Página {paginaAtual} de {Math.max(1, Math.ceil(orcamentos.total / porPagina))}</span>
+          <button
+            onClick={() => buscarOrcamentos(paginaAtual + 1)}
+            disabled={paginaAtual >= Math.ceil(orcamentos.total / porPagina)}
+            className="px-3 py-1 rounded bg-gray-300 hover:bg-gray-400 disabled:opacity-50"
+          >
+            Próxima
+          </button>
+        </div>
       )}
     </div>
   );

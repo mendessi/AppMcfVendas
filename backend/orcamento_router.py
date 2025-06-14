@@ -148,25 +148,21 @@ async def criar_orcamento(request: Request, orcamento: OrcamentoCreate):
 @router.get("/orcamentos")
 @router.get("/orcamento")
 @router.get("/api/orcamentos")
-async def listar_orcamentos(request: Request, data_inicial: str = None, data_final: str = None):
+async def listar_orcamentos(request: Request, data_inicial: str = None, data_final: str = None, page: int = 1, per_page: int = 20):
     logging.info("Iniciando busca de orçamentos")
     try:
-        # Log dos headers para diagnóstico
         empresa_header = request.headers.get("x-empresa-codigo")
         logging.info(f"Header x-empresa-codigo: {empresa_header}")
-        
-        # Obter conexão com o banco com mais logs
         logging.info("Tentando obter conexão com o banco de dados")
         try:
             conn = await get_empresa_connection(request)
             if not conn:
                 logging.error("Conexão com o banco não foi estabelecida - retornou None")
-                return []
+                return {"total": 0, "orcamentos": []}
             logging.info("Conexão com o banco estabelecida com sucesso")
         except Exception as conn_error:
             logging.error(f"Erro ao conectar ao banco: {str(conn_error)}")
-            return []
-            
+            return {"total": 0, "orcamentos": []}
         cursor = conn.cursor()
         try:
             # Verificar se a tabela ORCAMENT existe
@@ -174,16 +170,22 @@ async def listar_orcamentos(request: Request, data_inicial: str = None, data_fin
                 cursor.execute("SELECT FIRST 1 * FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'ORCAMENT'")
                 if not cursor.fetchone():
                     logging.warning("Tabela ORCAMENT não existe no banco de dados")
-                    return []
+                    return {"total": 0, "orcamentos": []}
             except Exception as table_error:
                 logging.error(f"Erro ao verificar existência da tabela: {str(table_error)}")
-                # Continuar mesmo com erro, para tentar a consulta principal
-            
-            # Executar a consulta principal com informações de status baseado em PAR_PARAMETRO
-            logging.info("Executando SELECT na tabela ORCAMENT com status")
-            logging.info(f"Parâmetros de data: inicial={data_inicial}, final={data_final}")
-            
-            # Construir a consulta base
+            # Consulta para contar o total de registros (sem paginação)
+            count_query = "SELECT COUNT(*) FROM ORCAMENT"
+            count_params = []
+            where_clauses = []
+            if data_inicial and data_final:
+                where_clauses.append("ECF_DATA BETWEEN ? AND ?")
+                count_params.append(data_inicial)
+                count_params.append(data_final)
+            if where_clauses:
+                count_query += " WHERE " + " AND ".join(where_clauses)
+            cursor.execute(count_query, count_params) if count_params else cursor.execute(count_query)
+            total_registros = cursor.fetchone()[0]
+            # Consulta principal (paginada)
             query = """
                 SELECT 
                     ORCAMENT.ECF_NUMERO as id, 
@@ -215,62 +217,47 @@ async def listar_orcamentos(request: Request, data_inicial: str = None, data_fin
                 JOIN FORMAPAG ON ORCAMENT.ECF_FPG_COD = FORMAPAG.FPG_COD
                 JOIN TABPRECO ON ORCAMENT.ECF_TAB_COD = TABPRECO.TAB_COD
             """
-            
-            # Adicionar filtro de data se os parâmetros forem fornecidos
             params = []
             where_clauses = []
-            
             if data_inicial and data_final:
                 where_clauses.append("ECF_DATA BETWEEN ? AND ?")
                 params.append(data_inicial)
                 params.append(data_final)
-                logging.info(f"Filtrando orçamentos entre {data_inicial} e {data_final}")
-            
-            # Adicionar cláusulas WHERE se houver filtros
             if where_clauses:
                 query += " WHERE " + " AND ".join(where_clauses)
-            
-            # Adicionar ordenação
             query += " ORDER BY ECF_NUMERO DESC"
-            
+            offset = (page - 1) * per_page + 1
+            limit = offset + per_page - 1
+            query += f" ROWS {offset} TO {limit}"
             logging.info(f"Query final: {query}")
             logging.info(f"Parâmetros: {params}")
-            
-            # Executar a consulta com os parâmetros
             if params:
                 cursor.execute(query, params)
             else:
                 cursor.execute(query)
-            
-            # Processar resultados
             columns = [desc[0].lower() for desc in cursor.description]
             results = []
             for row in cursor.fetchall():
                 result = {columns[i]: row[i] for i in range(len(columns))}
                 results.append(result)
-                
-            logging.info(f"Encontrados {len(results)} orçamentos")
-            return results
+            logging.info(f"Encontrados {len(results)} orçamentos (paginados)")
+            return {"total": total_registros, "orcamentos": results}
         except Exception as query_error:
             logging.error(f"Erro na consulta SQL: {str(query_error)}")
-            # Tentar uma consulta alternativa se a primeira falhar
             try:
                 logging.info("Tentando consulta alternativa")
-                # Criar orçamentos de exemplo para teste
-                return [
+                return {"total": 2, "orcamentos": [
                     {"id": 1, "numero": 1001, "cliente_nome": "Cliente Teste", "data": "2025-05-26", "valor_total": 1500.0, "status": "Pendente"},
                     {"id": 2, "numero": 1002, "cliente_nome": "Empresa ABC", "data": "2025-05-25", "valor_total": 2750.0, "status": "Aprovado"}
-                ]
+                ]}
             except:
-                # Se tudo falhar, retornar lista vazia
-                return []
+                return {"total": 0, "orcamentos": []}
         finally:
             cursor.close()
             conn.close()
     except Exception as e:
         logging.error(f"Erro ao listar orçamentos: {str(e)}")
-        # Retornar lista vazia em vez de erro 500 para melhor experiência do usuário
-        return []
+        return {"total": 0, "orcamentos": []}
 
 @router.get("/orcamentos/{numero}")
 @router.get("/orcamento/{numero}")

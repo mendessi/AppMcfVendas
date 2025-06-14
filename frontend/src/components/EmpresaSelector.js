@@ -14,6 +14,7 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorModalMsg, setErrorModalMsg] = useState('');
   const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [filtroEmpresa, setFiltroEmpresa] = useState('');
   const navigate = useNavigate();
   
   // URL da API - Deteção automática de ambiente
@@ -277,6 +278,11 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
     return mensagem;
   }
 
+  // Filtrar empresas pelo nome digitado
+  const empresasFiltradas = empresas.filter(empresa =>
+    empresa.cli_nome?.toLowerCase().includes(filtroEmpresa.toLowerCase())
+  );
+
   if (loading) {
     return (
       <div className={`min-h-screen flex flex-col items-center justify-center ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'}`}>
@@ -287,186 +293,124 @@ const EmpresaSelector = ({ onSelectEmpresa, darkMode = true }) => {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-900'} py-12 px-4 sm:px-6 lg:px-8`}>
-      <div className={`max-w-md mx-auto ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md overflow-hidden`}>
-        <div className="px-4 py-5 sm:px-6 bg-blue-600">
-          <h2 className="text-lg font-medium text-white">Selecione uma Empresa</h2>
-          <p className="mt-1 text-sm text-blue-100">Escolha a empresa para continuar</p>
-        </div>
-        
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mx-4 mt-4">
-            {error}
-          </div>
-        )}
-        
-        <div className="px-4 py-5 sm:p-6">
-          {empresas.length === 0 ? (
-            <div className="text-center py-4">
-              <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Nenhuma empresa disponível para este usuário.</p>
-            </div>
-          ) : (
-            <ul className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-              {empresas.map((empresa) => (
-                <li key={empresa.cli_codigo} className="py-4">
-                  <div
-                    onClick={(e) => handleTestConnection(empresa, e)}
-                    className={`w-full text-left px-4 py-3 rounded-lg transition-colors cursor-pointer ${empresa.cli_bloqueadoapp === 'S' 
-                      ? `${darkMode ? 'bg-gray-700' : 'bg-gray-100'} cursor-not-allowed` 
-                      : `${darkMode ? 'hover:bg-gray-700' : 'hover:bg-blue-50'} focus:outline-none focus:ring-2 focus:ring-blue-500`}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className={`text-lg font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{empresa.cli_nome}</h3>
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Código: {empresa.cli_codigo}</p>
-                        <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'} mt-1`}>
-                          {empresa.cli_ip_servidor}{empresa.cli_porta ? `:${empresa.cli_porta}` : ''}
-                        </p>
-                        <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                          {empresa.cli_caminho_base}/{empresa.cli_nome_base}
-                        </p>
-                        
-                        {/* Resultado do teste de conexão */}
-                        {selectedEmpresaForTest === empresa.cli_codigo && connectionResult[empresa.cli_codigo] && (
-                          <div className={`mt-2 p-2 rounded text-sm ${connectionResult[empresa.cli_codigo].sucesso ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            <p className="font-medium">
-                              {connectionResult[empresa.cli_codigo].sucesso ? '✓ Conexão bem-sucedida!' : `✗ ${connectionResult[empresa.cli_codigo].mensagem}`}
-                            </p>
-                            {connectionResult[empresa.cli_codigo].sucesso && connectionResult[empresa.cli_codigo].info_banco && (
-                              <div className="text-xs mt-1">
-                                <p>Versão Firebird: {connectionResult[empresa.cli_codigo].info_banco.versao}</p>
-                                <p>Usuário: {connectionResult[empresa.cli_codigo].info_banco.usuario}</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Resultado do teste SQL */}
-                        {selectedEmpresaForTest === empresa.cli_codigo && sqlResult && (
-                          <div className={`mt-2 p-2 rounded text-sm ${sqlResult.sucesso ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            <p className="font-medium">
-                              {sqlResult.sucesso ? '✓ SQL executado com sucesso!' : `✗ ${sqlResult.mensagem}`}
-                            </p>
-                            {sqlResult.estrutura_bd && (
-                              <div className="text-xs mt-1">
-                                <p>Tabela EMPRESA: {sqlResult.estrutura_bd.tabela_empresa ? 'Existe' : 'Não existe'}</p>
-                                <p>Tabela PARAMET: {sqlResult.estrutura_bd.tabela_paramet ? 'Existe' : 'Não existe'}</p>
-                              </div>
-                            )}
-                            {sqlResult.sucesso && sqlResult.resultado && sqlResult.resultado.length > 0 && (
-                              <div className="text-xs mt-2 p-2 bg-white text-gray-800 rounded overflow-auto max-h-40">
-                                {sqlResult.resultado.map((item, index) => (
-                                  <div key={index} className="mb-1 p-1 border-b">
-                                    <p>Código: <span className="font-semibold">{item.emp_cod}</span></p>
-                                    <p>Nome: <span className="font-semibold">{item.emp_nome}</span></p>
-                                    <p>CNPJ: <span className="font-semibold">{item.emp_cnpj}</span></p>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-end">
-                        {/* Botões de Teste */}
-                        <div className="flex flex-col space-y-2">
-                          {/* Botão de Testar Conexão */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // Impede que o clique propague para a div pai
-                              handleTestConnection(empresa, e);
-                            }}
-                            className={`px-3 py-1 text-xs rounded-md ${darkMode ? 'bg-blue-700 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-700'} text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                            disabled={!!testingConnection[empresa.cli_codigo] || empresa.cli_bloqueadoapp === 'S'}
-                          >
-                            {testingConnection[empresa.cli_codigo] ? (
-                              <span><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Testando...</span>
-                            ) : (
-                              <span>Testar Conexão</span>
-                            )}
-                          </button>
-                          
-                          {/* Botão de Testar SQL */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // Impede que o clique propague para a div pai
-                              handleTestSql(empresa, e);
-                            }}
-                            className={`px-3 py-1 text-xs rounded-md ${darkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-600 hover:bg-green-700'} text-white transition-colors focus:outline-none focus:ring-2 focus:ring-green-500`}
-                            disabled={testingSql && selectedEmpresaForTest === empresa.cli_codigo}
-                          >
-                            {testingSql && selectedEmpresaForTest === empresa.cli_codigo ? (
-                              <span>Testando SQL...</span>
-                            ) : (
-                              <span>Testar SQL</span>
-                            )}
-                          </button>
-                        </div>
-                        
-                        {empresa.cli_bloqueadoapp === 'S' ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            Bloqueado
-                          </span>
-                        ) : (
-                          <svg className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </div>
-                    </div>
-                    {empresa.cli_bloqueadoapp === 'S' && empresa.cli_mensagem && (
-                      <div className="mt-2 text-sm text-red-600">
-                        {empresa.cli_mensagem}
-                      </div>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        
-        <div className={`px-4 py-4 sm:px-6 ${darkMode ? 'bg-gray-700 border-t border-gray-600' : 'bg-gray-50 border-t border-gray-200'}`}>
-          <button
-            onClick={() => {
-              localStorage.removeItem('token');
-              localStorage.removeItem('usuario_id');
-              localStorage.removeItem('usuario_nome');
-              localStorage.removeItem('usuario_nivel');
-              localStorage.removeItem('user');
-              localStorage.removeItem('empresa');
-              localStorage.removeItem('empresa_atual');
-              localStorage.removeItem('empresa_selecionada');
-              // Usar redirecionamento direto em vez de navigate
-              window.location.href = '/';
-            }}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-          >
-            Sair
-          </button>
-        </div>
+    <div className="empresa-selector-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', paddingTop: 32 }}>
+      <h2 style={{ color: '#fff', fontWeight: 'bold', fontSize: 28, marginBottom: 16 }}>Selecione uma Empresa</h2>
+      <div style={{ background: '#2563eb', color: '#fff', borderRadius: 12, padding: 20, minWidth: 350, maxWidth: 420, marginBottom: 24, boxShadow: '0 4px 24px rgba(0,0,0,0.15)' }}>
+        <h3 style={{ fontWeight: 'bold', fontSize: 20, marginBottom: 4 }}>Selecione uma Empresa</h3>
+        <div style={{ fontSize: 15, color: '#e0e6f0' }}>Escolha a empresa para continuar</div>
       </div>
-      {/* Modal de erro global, aparece para qualquer erro de conexão */}
-      {showErrorModal && (
-        <div className="modal-erro-overlay" style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
-        }}>
-          <div className="modal-erro-content" style={{
-            background: '#fff', borderRadius: 12, padding: 24, minWidth: 280, maxWidth: '90vw', boxShadow: '0 8px 32px rgba(0,0,0,0.2)', textAlign: 'center',
-            display: 'flex', flexDirection: 'column', alignItems: 'center',
-          }}>
-            <span style={{ fontSize: '2.5rem', color: 'red', marginBottom: 8 }}>❌</span>
-            <h4 style={{ color: '#e53e3e', marginBottom: 8 }}>Erro de conexão</h4>
-            <p style={{ color: '#333', marginBottom: 16, wordBreak: 'break-word', fontSize: 16 }}>{getMensagemErroDetalhada(errorModalMsg)}</p>
-            <button className="btn btn-secondary" style={{
-              background: '#e53e3e', color: '#fff', border: 'none', borderRadius: 6, padding: '12px 32px', fontWeight: 'bold', fontSize: 18, cursor: 'pointer', width: '100%', maxWidth: 220
-            }} onClick={() => setShowErrorModal(false)}>
-              Fechar
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Campo de filtro */}
+      <input
+        type="text"
+        placeholder="Filtrar por nome da empresa..."
+        value={filtroEmpresa}
+        onChange={e => setFiltroEmpresa(e.target.value)}
+        style={{
+          width: 350,
+          maxWidth: '90vw',
+          padding: 10,
+          borderRadius: 8,
+          border: '1px solid #ccc',
+          marginBottom: 24,
+          fontSize: 16,
+          outline: 'none',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+          background: darkMode ? '#23272f' : '#fff',
+          color: darkMode ? '#e0e6f0' : '#222',
+        }}
+      />
+      <div style={{ width: 350, maxWidth: '90vw', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        {empresasFiltradas.length === 0 ? (
+          <div style={{ color: '#ccc', textAlign: 'center', marginTop: 32 }}>Nenhuma empresa encontrada</div>
+        ) : (
+          empresasFiltradas.map((empresa) => (
+            <div
+              key={empresa.cli_codigo}
+              className="empresa-card"
+              style={{ background: '#23272f', borderRadius: 10, padding: 18, marginBottom: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.08)', cursor: 'pointer', position: 'relative' }}
+              onClick={(e) => handleTestConnection(empresa, e)}
+            >
+              {/* Modal de erro flutuante acima do card selecionado */}
+              {showErrorModal && selectedEmpresaForTest === empresa.cli_codigo && (
+                <div style={{
+                  position: 'absolute',
+                  top: -90,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#fff',
+                  color: '#e53e3e',
+                  border: '2px solid #e53e3e',
+                  borderRadius: 10,
+                  padding: '18px 24px',
+                  minWidth: 260,
+                  maxWidth: 340,
+                  zIndex: 1000,
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                }}>
+                  <span style={{ fontSize: '2rem', color: '#e53e3e', marginBottom: 6 }}>❌</span>
+                  <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Erro ao testar conexão</div>
+                  <div style={{ color: '#333', fontSize: 15, marginBottom: 10, wordBreak: 'break-word' }}>{getMensagemErroDetalhada(errorModalMsg)}</div>
+                  <button
+                    style={{ background: '#e53e3e', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 18px', fontWeight: 'bold', fontSize: 15, cursor: 'pointer' }}
+                    onClick={e => { e.stopPropagation(); setShowErrorModal(false); }}
+                  >Fechar</button>
+                </div>
+              )}
+              <h3 style={{ fontWeight: 'bold', fontSize: 18, color: '#fff', marginBottom: 4 }}>{empresa.cli_nome}</h3>
+              <p style={{ color: '#b3b3b3', fontSize: 13, marginBottom: 2 }}>Código: {empresa.cli_codigo}</p>
+              <p style={{ color: '#b3b3b3', fontSize: 13, marginBottom: 2 }}>{empresa.cli_ip_servidor}:{empresa.cli_porta}</p>
+              <p style={{ color: '#b3b3b3', fontSize: 13, marginBottom: 8 }}>{empresa.cli_caminho_base}/{empresa.cli_nome_base}</p>
+              {/* Botões de Teste */}
+              <div className="flex flex-col space-y-2" onClick={e => e.stopPropagation()}>
+                {/* Botão de Testar Conexão */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Impede que o clique propague para a div pai
+                    handleTestConnection(empresa, e);
+                  }}
+                  className={`px-3 py-1 text-xs rounded-md ${darkMode ? 'bg-blue-700 hover:bg-blue-600' : 'bg-blue-600 hover:bg-blue-700'} text-white transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  disabled={!!testingConnection[empresa.cli_codigo] || empresa.cli_bloqueadoapp === 'S'}
+                >
+                  {testingConnection[empresa.cli_codigo] ? (
+                    <span><span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Testando...</span>
+                  ) : (
+                    <span>Testar Conexão</span>
+                  )}
+                </button>
+                
+                {/* Botão de Testar SQL */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation(); // Impede que o clique propague para a div pai
+                    handleTestSql(empresa, e);
+                  }}
+                  className={`px-3 py-1 text-xs rounded-md ${darkMode ? 'bg-green-700 hover:bg-green-600' : 'bg-green-600 hover:bg-green-700'} text-white transition-colors focus:outline-none focus:ring-2 focus:ring-green-500`}
+                  disabled={testingSql && selectedEmpresaForTest === empresa.cli_codigo}
+                >
+                  {testingSql && selectedEmpresaForTest === empresa.cli_codigo ? (
+                    <span>Testando SQL...</span>
+                  ) : (
+                    <span>Testar SQL</span>
+                  )}
+                </button>
+              </div>
+              {empresa.cli_bloqueadoapp === 'S' ? (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  Bloqueado
+                </span>
+              ) : (
+                <svg className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          ))
+        )}
+      </div>
       {showLoadingModal && (
         <div className="modal-loading-dark" style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',

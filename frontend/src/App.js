@@ -33,6 +33,18 @@ function App() {
   );
 }
 
+function SplashScreen({ darkMode }) {
+  return (
+    <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gray-900' : 'bg-white'}`}> 
+      <img 
+        src="/images/splash-logo.png" 
+        alt="Logo Splash" 
+        style={{ maxWidth: 220, maxHeight: 220, width: '60vw', height: 'auto' }}
+      />
+    </div>
+  );
+}
+
 // Componente que contém a lógica da aplicação
 function AppContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -48,6 +60,7 @@ function AppContent() {
   const [vendedorWelcomeData, setVendedorWelcomeData] = useState(null);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [storedVersion, setStoredVersion] = useState('');
+  const [showSplash, setShowSplash] = useState(true);
 
   // Adicionar listener para ajustar o menu quando a tela for redimensionada
   useEffect(() => {
@@ -152,6 +165,12 @@ function AppContent() {
       }
     }
   }, [darkMode]);
+
+  useEffect(() => {
+    // Splash por 1.5 segundos
+    const timer = setTimeout(() => setShowSplash(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -362,6 +381,11 @@ function AppContent() {
 
   // Variáveis para controlar o fluxo de navegação
   const isFullyAuthenticated = isLoggedIn && empresaSelecionada;
+  
+  // SplashScreen antes de tudo
+  if (showSplash) {
+    return <SplashScreen darkMode={darkMode} />;
+  }
   
   // Tela de Boas-vindas para Vendedor
   if (showVendedorWelcome && vendedorWelcomeData) {
@@ -743,7 +767,7 @@ function AppContent() {
                     >
                       <FiClipboard className="mr-3 h-5 w-5" />
                       <span>Criar Orçamentos</span>
-                    </Link> eu aqui
+                    </Link> 
                   </li>
                   <li className="mb-2">
                     <Link 

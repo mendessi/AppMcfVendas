@@ -1,0 +1,19 @@
+[Unit]
+Description=API Mendes Solução
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/AppMendes/backend
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/python3 main.py --port 8000
+Restart=always
+RestartSec=10
+
+# Logs
+StandardOutput=append:/var/log/api-mendes.log
+StandardError=append:/var/log/api-mendes-error.log
+
+[Install]
+WantedBy=multi-user.target 

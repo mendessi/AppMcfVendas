@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Botão Impressão - AppMendes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .titulo {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .sucesso {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .tabela {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .tabela th, .tabela td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        .tabela th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        .btn-imprimir {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-imprimir:hover {
+            background-color: #218838;
+        }
+        .instrucoes {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="titulo">🖨️ TESTE DO BOTÃO DE IMPRESSÃO - AppMendes</h1>
+        
+        <div class="status sucesso">
+            ✅ Novo template de relatório profissional implementado!
+        </div>
+        
+        <div class="status info">
+            ℹ️ O botão só aparece quando você está logado no sistema
+        </div>
+        
+        <h2>📋 Tabela de Teste - Orçamentos</h2>
+        <table class="tabela">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Data</th>
+                    <th>Cliente</th>
+                    <th>Vendedor</th>
+                    <th>Status</th>
+                    <th>Valor</th>
+                    <th>AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>#001</td>
+                    <td>30/05/2025</td>
+                    <td>BALCAO</td>
+                    <td>VICTOR CHORÃO</td>
+                    <td>Não enviada</td>
+                    <td>R$ 2.143,22</td>
+                    <td>
+                        <button class="btn-imprimir" onclick="testarImpressao()">
+                            🖨️ IMPRIMIR
+                        </button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="instrucoes">
+            <h3>🔧 COMO ACESSAR O SISTEMA REAL:</h3>
+            <ol>
+                <li><strong>Aguarde 30 segundos</strong> para o React iniciar completamente</li>
+                <li><strong>Acesse:</strong> <a href="http://localhost:3000" style="color: #007bff;">http://localhost:3000</a></li>
+                <li><strong>Faça login</strong> no sistema</li>
+                <li><strong>Vá para "Orçamentos"</strong> no menu</li>
+                <li><strong>Procure a coluna "AÇÕES"</strong> (última coluna)</li>
+                <li><strong>Clique no botão verde "🖨️ IMPRIMIR"</strong></li>
+            </ol>
+            
+            <h3>📋 CARACTERÍSTICAS DO NOVO RELATÓRIO:</h3>
+            <ul>
+                <li>✅ Cabeçalho completo da empresa (SUPORTE SOLUÇÃO TESTE APP)</li>
+                <li>✅ Dados completos: endereço, CNPJ, IE, telefone</li>
+                <li>✅ Informações do usuário e vendedor</li>
+                <li>✅ Seção detalhada do cliente</li>
+                <li>✅ Tabela profissional de itens (COD, DESC, MARCA, etc.)</li>
+                <li>✅ Totais e resumo financeiro</li>
+                <li>✅ Área para assinatura do cliente</li>
+                <li>✅ Layout idêntico ao modelo mostrado</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function testarImpressao() {
+            // Simular dados de teste
+            const pedidoTeste = {
+                id: '001',
+                cliente_nome: 'BALCAO',
+                vendedor: 'VICTOR CHORÃO',
+                forma_pagamento: 'APP',
+                valor_total: 2143.22,
+                observacao: 'findusudu',
+                autenticada: false
+            };
+
+            // Template de impressão (versão simplificada para teste)
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Teste Impressão - Orçamento \${pedidoTeste.id}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
+                        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
+                        .empresa-nome { font-size: 18px; font-weight: bold; margin-bottom: 8px; }
+                        .info-linha { font-size: 10px; margin: 2px 0; }
+                        .sucesso { background-color: #d4edda; color: #155724; padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="empresa-nome">SUPORTE SOLUÇÃO TESTE APP</div>
+                        <div class="info-linha">Endereço: RUA ACADEMICO DEUSDETE PEDROSA, 151</div>
+                        <div class="info-linha">Bairro: CENTRO Estado: CE</div>
+                        <div class="info-linha">CEP: 63.650-000 IE: 06.920.806-9</div>
+                        <div class="info-linha">Fone: (88) 3057-1037</div>
+                        <div class="info-linha">CNPJ: 88.461.038/0001-70</div>
+                    </div>
+                    
+                    <div class="sucesso">
+                        <h2>🎉 SUCESSO!</h2>
+                        <p><strong>O botão de impressão está funcionando!</strong></p>
+                        <p>Orçamento: <strong>#\${pedidoTeste.id}</strong></p>
+                        <p>Cliente: <strong>\${pedidoTeste.cliente_nome}</strong></p>
+                        <p>Valor: <strong>R$ \${pedidoTeste.valor_total.toFixed(2)}</strong></p>
+                        <p>Vendedor: <strong>\${pedidoTeste.vendedor}</strong></p>
+                        <br>
+                        <p><em>Agora acesse o sistema real em http://localhost:3000</em></p>
+                    </div>
+                    
+                    <script>
+                        window.onload = function() { 
+                            setTimeout(() => window.print(), 500); 
+                        };
+                    </script>
+                </body>
+                </html>
+            `;
+
+            // Abrir janela de impressão
+            const printWindow = window.open('', '_blank', 'width=800,height=600');
+            printWindow.document.open();
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+        }
+
+        // Mostrar status dos serviços
+        window.onload = function() {
+            console.log('🖨️ Página de teste carregada!');
+            console.log('📋 Para ver o botão real, acesse: http://localhost:3000');
+            console.log('✅ Template profissional implementado!');
+        };
+    </script>
+</body>
+</html> 

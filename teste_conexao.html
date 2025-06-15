@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Conexão com Banco de Dados</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-weight: bold;
+        }
+        input, button {
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+            padding: 10px 15px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(0,0,0,.3);
+            border-radius: 50%;
+            border-top-color: #4CAF50;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Teste de Conexão com Banco de Dados</h1>
+        
+        <div>
+            <h2>1. Verificar DLL do Firebird</h2>
+            <div>
+                <label for="caminhoDll">Caminho para verificar DLL:</label>
+                <input type="text" id="caminhoDll" placeholder="Ex: C:\ProgPython\AppMendes\banco">
+                <button onclick="verificarDll()">Verificar DLL</button>
+            </div>
+            <div id="resultadoDll"></div>
+        </div>
+        
+        <div>
+            <h2>2. Testar Conexão com Banco</h2>
+            <form id="formConexao">
+                <div>
+                    <label for="codigo">Código da Empresa (opcional):</label>
+                    <input type="number" id="codigo" placeholder="Ex: 1">
+                </div>
+                <div>
+                    <label for="ip">IP do Servidor:</label>
+                    <input type="text" id="ip" placeholder="Ex: 127.0.0.1" value="127.0.0.1">
+                </div>
+                <div>
+                    <label for="porta">Porta:</label>
+                    <input type="text" id="porta" placeholder="Ex: 3050" value="3050">
+                </div>
+                <div>
+                    <label for="caminho">Caminho da Base:</label>
+                    <input type="text" id="caminho" placeholder="Ex: C:\ProgPython\AppMendes\banco\EMPRESA.FDB">
+                </div>
+                <div>
+                    <label for="nomeBase">Nome da Base (opcional):</label>
+                    <input type="text" id="nomeBase" placeholder="Ex: EMPRESA.FDB">
+                </div>
+                
+                <button type="button" onclick="testarConexao()">Testar Conexão</button>
+            </form>
+            <div id="resultado"></div>
+        </div>
+    </div>
+
+    <script>
+        async function verificarDll() {
+            const caminho = document.getElementById('caminhoDll').value;
+            
+            if (!caminho) {
+                alert('Por favor, informe o caminho para verificar a DLL.');
+                return;
+            }
+            
+            const resultadoDiv = document.getElementById('resultadoDll');
+            resultadoDiv.innerHTML = '<div class="loading"></div> Verificando...';
+            
+            try {
+                const response = await fetch(`http://localhost:8100/verificar-dll?caminho=${encodeURIComponent(caminho)}`);
+                const data = await response.json();
+                
+                let html = '<pre>';
+                if (data.sucesso) {
+                    html += `<span class="success">✓ ${data.mensagem}</span>\n\n`;
+                } else {
+                    html += `<span class="error">✗ ${data.mensagem}</span>\n\n`;
+                }
+                html += JSON.stringify(data, null, 2);
+                html += '</pre>';
+                
+                resultadoDiv.innerHTML = html;
+            } catch (error) {
+                resultadoDiv.innerHTML = `<pre class="error">Erro: ${error.message}</pre>`;
+            }
+        }
+        
+        async function testarConexao() {
+            const codigo = document.getElementById('codigo').value;
+            const ip = document.getElementById('ip').value;
+            const porta = document.getElementById('porta').value;
+            const caminho = document.getElementById('caminho').value;
+            const nomeBase = document.getElementById('nomeBase').value;
+            
+            if (!caminho) {
+                alert('Por favor, informe o caminho da base.');
+                return;
+            }
+            
+            if (!ip) {
+                alert('Por favor, informe o IP do servidor.');
+                return;
+            }
+            
+            const resultadoDiv = document.getElementById('resultado');
+            resultadoDiv.innerHTML = '<div class="loading"></div> Testando conexão...';
+            
+            try {
+                const url = new URL('http://localhost:8100/teste-conexao');
+                if (codigo) url.searchParams.append('codigo', codigo);
+                url.searchParams.append('ip', ip);
+                url.searchParams.append('porta', porta);
+                url.searchParams.append('caminho', caminho);
+                if (nomeBase) url.searchParams.append('nome_base', nomeBase);
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                let html = '<pre>';
+                if (data.sucesso) {
+                    html += `<span class="success">✓ Conexão bem-sucedida!</span>\n\n`;
+                } else {
+                    html += `<span class="error">✗ Falha na conexão: ${data.mensagem}</span>\n\n`;
+                }
+                html += JSON.stringify(data, null, 2);
+                html += '</pre>';
+                
+                resultadoDiv.innerHTML = html;
+            } catch (error) {
+                resultadoDiv.innerHTML = `<pre class="error">Erro: ${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

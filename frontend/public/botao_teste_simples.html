@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TESTE BOTÃO IMPRESSÃO</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a202c;
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #10b981;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #10b981;
+            padding-bottom: 15px;
+        }
+        .info-box {
+            background-color: #2563eb;
+            border-left: 5px solid #3b82f6;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .table-wrapper {
+            background-color: #2d3748;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            margin: 20px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th {
+            background-color: #1a202c;
+            color: #a0aec0;
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 15px 12px;
+            border-bottom: 1px solid #4a5568;
+            color: white;
+        }
+        tr:hover {
+            background-color: #374151;
+        }
+        .btn-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .btn-detalhes {
+            color: #63b3ed;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 14px;
+            padding: 5px 0;
+        }
+        .btn-detalhes:hover {
+            color: #90cdf4;
+        }
+        .btn-imprimir {
+            /* ESTILO EXATO DO BOTÃO IMPLEMENTADO */
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s;
+            background-color: #38a169;
+            color: white;
+            border: 1px solid #38a169;
+            cursor: pointer;
+            min-width: 110px;
+            text-decoration: none;
+        }
+        .btn-imprimir:hover {
+            background-color: #2f855a;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        .btn-imprimir .icon {
+            font-size: 16px;
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-nao-auth {
+            background-color: #7f1d1d;
+            color: #fca5a5;
+        }
+        .status-auth {
+            background-color: #065f46;
+            color: #6ee7b7;
+        }
+        .highlight-box {
+            background: linear-gradient(135deg, #10b981, #059669);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .highlight-box h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+        }
+        .codigo-destaque {
+            background-color: #000;
+            color: #10b981;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            border-left: 4px solid #10b981;
+        }
+        .instrucoes {
+            background-color: #374151;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        .instrucoes ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .instrucoes li {
+            margin: 8px 0;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🖨️ TESTE DO BOTÃO DE IMPRESSÃO</h1>
+        
+        <div class="highlight-box">
+            <h2>✅ REACT INICIANDO!</h2>
+            <p>O servidor React está sendo iniciado. Em alguns segundos estará disponível em:</p>
+            <div class="codigo-destaque">http://localhost:3000/orcamentos</div>
+        </div>
+
+        <div class="info-box">
+            <h3>📍 LOCALIZAÇÃO EXATA DO BOTÃO:</h3>
+            <p><strong>Coluna:</strong> "AÇÕES" (última coluna da direita)</p>
+            <p><strong>Cor:</strong> Verde (#38a169)</p>
+            <p><strong>Texto:</strong> "🖨️ IMPRIMIR"</p>
+            <p><strong>Posição:</strong> Ao lado do botão azul "Detalhes"</p>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Data</th>
+                        <th>Cliente</th>
+                        <th>Autenticação</th>
+                        <th>Status Autenticação</th>
+                        <th>Forma Pgto</th>
+                        <th>Vendedor</th>
+                        <th>Valor Total</th>
+                        <th>AÇÕES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>#36</td>
+                        <td>30/5/2025</td>
+                        <td>FRANCISCO JOSE FERREIRA DE LIMA</td>
+                        <td>-</td>
+                        <td>
+                            <span class="status-badge status-nao-auth">
+                                Não Autenticada
+                            </span>
+                        </td>
+                        <td>BOLETO BANCARIO</td>
+                        <td>AMANDA</td>
+                        <td>R$ 147,50</td>
+                        <td>
+                            <div class="btn-container">
+                                <button class="btn-detalhes">Detalhes</button>
+                                <button class="btn-imprimir" onclick="testarImpressao(36)">
+                                    <span class="icon">🖨️</span> 
+                                    IMPRIMIR
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>#33</td>
+                        <td>30/5/2025</td>
+                        <td>ATACADAO DAS EMBALAGENS EIRELI ME</td>
+                        <td>-</td>
+                        <td>
+                            <span class="status-badge status-auth">
+                                Autenticada
+                            </span>
+                        </td>
+                        <td>AVISTA</td>
+                        <td>ALYNNE</td>
+                        <td>R$ 1.159,56</td>
+                        <td>
+                            <div class="btn-container">
+                                <button class="btn-detalhes">Detalhes</button>
+                                <button class="btn-imprimir" onclick="testarImpressao(33)">
+                                    <span class="icon">🖨️</span> 
+                                    IMPRIMIR
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>#37</td>
+                        <td>30/5/2025</td>
+                        <td>FRANCISCO JOSE FERREIRA DE LIMA</td>
+                        <td>-</td>
+                        <td>
+                            <span class="status-badge status-nao-auth">
+                                Não Autenticada
+                            </span>
+                        </td>
+                        <td>AVISTA</td>
+                        <td>AMANDA</td>
+                        <td>R$ 76,50</td>
+                        <td>
+                            <div class="btn-container">
+                                <button class="btn-detalhes">Detalhes</button>
+                                <button class="btn-imprimir" onclick="testarImpressao(37)">
+                                    <span class="icon">🖨️</span> 
+                                    IMPRIMIR
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="instrucoes">
+            <h3>🔧 COMO ACESSAR O SISTEMA REAL:</h3>
+            <ol>
+                <li><strong>Aguarde 30 segundos</strong> para o React iniciar completamente</li>
+                <li><strong>Acesse:</strong> <a href="http://localhost:3000/orcamentos" style="color: #10b981;">http://localhost:3000/orcamentos</a></li>
+                <li><strong>Procure a coluna "AÇÕES"</strong> (última coluna da direita)</li>
+                <li><strong>Clique no botão verde "🖨️ IMPRIMIR"</strong></li>
+            </ol>
+        </div>
+
+        <div class="info-box">
+            <h3>⚠️ SE AINDA NÃO APARECER:</h3>
+            <p>1. Verifique se React está rodando: <code>http://localhost:3000</code></p>
+            <p>2. Limpe cache: <strong>Ctrl + F5</strong></p>
+            <p>3. Abra DevTools: <strong>F12</strong> → Console → Veja se há erros</p>
+        </div>
+
+        <div class="highlight-box">
+            <h2>🎯 O BOTÃO ESTÁ EXATAMENTE ASSIM:</h2>
+            <button class="btn-imprimir" onclick="testarImpressao(999)" style="margin: 10px; font-size: 16px;">
+                <span class="icon">🖨️</span> 
+                IMPRIMIR
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function testarImpressao(pedidoId) {
+            const htmlTeste = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>Impressão Pedido #${pedidoId}</title>
+                    <style>
+                        body { 
+                            font-family: Arial, sans-serif; 
+                            margin: 20px;
+                            text-align: center;
+                        }
+                        .header { 
+                            border-bottom: 2px solid #333; 
+                            padding-bottom: 20px; 
+                            margin-bottom: 30px;
+                        }
+                        .empresa-nome { 
+                            font-size: 24px; 
+                            font-weight: bold; 
+                            color: #10b981;
+                            margin-bottom: 10px;
+                        }
+                        .sucesso {
+                            background-color: #d4edda;
+                            color: #155724;
+                            padding: 20px;
+                            border-radius: 10px;
+                            margin: 20px 0;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <div class="empresa-nome">SISTEMA DE VENDAS</div>
+                        <div>Relatório de Pedido</div>
+                    </div>
+                    <div class="sucesso">
+                        <h2>✅ BOTÃO DE IMPRESSÃO FUNCIONANDO!</h2>
+                        <p><strong>Pedido #${pedidoId}</strong></p>
+                        <p>O botão está implementado e funcionando corretamente!</p>
+                        <p>Teste realizado com sucesso em: ${new Date().toLocaleString()}</p>
+                    </div>
+                    <script>
+                        window.onload = function() { 
+                            window.print(); 
+                        };
+                    </script>
+                </body>
+                </html>
+            `;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.open();
+            printWindow.document.write(htmlTeste);
+            printWindow.document.close();
+        }
+
+        // Verificar se React está rodando
+        function verificarReact() {
+            fetch('http://localhost:3000')
+                .then(response => {
+                    if (response.ok) {
+                        const status = document.querySelector('.highlight-box h2');
+                        status.innerHTML = '✅ REACT RODANDO!';
+                        status.style.color = '#10b981';
+                    }
+                })
+                .catch(() => {
+                    setTimeout(verificarReact, 5000);
+                });
+        }
+
+        setTimeout(verificarReact, 5000);
+    </script>
+</body>
+</html> 

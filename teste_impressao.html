@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Teste - Pedido #123</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        .empresa-info {
+            margin-bottom: 15px;
+        }
+        .empresa-nome { 
+            font-size: 24px; 
+            font-weight: bold; 
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .empresa-dados {
+            font-size: 11px;
+            margin-bottom: 8px;
+            color: #555;
+        }
+        .empresa-endereco {
+            font-size: 11px;
+            color: #555;
+            line-height: 1.3;
+        }
+        .relatorio-titulo {
+            font-size: 16px;
+            font-weight: bold;
+            color: #666;
+        }
+        .pedido-info { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 20px; 
+        }
+        .pedido-info div { 
+            flex: 1; 
+        }
+        .cliente-info { 
+            background-color: #f5f5f5; 
+            padding: 15px; 
+            margin-bottom: 20px; 
+            border-radius: 5px;
+        }
+        .cliente-info h3 { 
+            margin-top: 0; 
+            color: #333;
+        }
+        .itens-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 20px; 
+        }
+        .itens-table th, .itens-table td { 
+            border: 1px solid #ddd; 
+            padding: 8px; 
+            text-align: left; 
+        }
+        .itens-table th { 
+            background-color: #f2f2f2; 
+            font-weight: bold;
+        }
+        .itens-table td.number { 
+            text-align: right; 
+        }
+        .total-section { 
+            margin-top: 20px; 
+            text-align: right; 
+        }
+        .total-final { 
+            font-size: 18px; 
+            font-weight: bold; 
+            border-top: 2px solid #333; 
+            padding-top: 10px; 
+            margin-top: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .status-autenticada {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .observacoes {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        @media print {
+            body { margin: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="empresa-info">
+            <div class="empresa-nome">MENDES DISTRIBUIDORA LTDA</div>
+            <div class="empresa-dados">
+                <strong>CNPJ:</strong> 12.345.678/0001-90<br>
+                <strong>IE:</strong> 123.456.789.123<br>
+                <strong>IM:</strong> 98765<br>
+            </div>
+            <div class="empresa-endereco">
+                Rua das Empresas, 123 - Sala 101<br>
+                Centro - CEP: 12345-678<br>
+                São Paulo - SP<br>
+                <strong>Fone:</strong> (11) 1234-5678 - <strong>Email:</strong> contato@mendes.com.br
+            </div>
+        </div>
+        <div class="relatorio-titulo">Relatório de Pedido</div>
+    </div>
+
+    <div class="pedido-info">
+        <div>
+            <strong>Pedido:</strong> #123<br>
+            <strong>Data:</strong> 30/05/2024<br>
+            <strong>Status:</strong> 
+            <span class="status-badge status-autenticada">
+                Autenticada
+            </span>
+        </div>
+        <div>
+            <strong>Vendedor:</strong> João Silva<br>
+            <strong>Forma Pagamento:</strong> Cartão de Crédito<br>
+            <strong>Data Autenticação:</strong> 30/05/2024
+        </div>
+    </div>
+
+    <div class="cliente-info">
+        <h3>Dados do Cliente</h3>
+        <strong>Nome:</strong> Maria dos Santos<br>
+        <strong>Documento:</strong> 123.456.789-00<br>
+        <strong>Telefone:</strong> (11) 9876-5432<br>
+        <strong>Email:</strong> maria@email.com<br>
+    </div>
+
+    <table class="itens-table">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Descrição</th>
+                <th>Marca</th>
+                <th>Unidade</th>
+                <th>Quantidade</th>
+                <th>Preço Unit.</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>001</td>
+                <td>Produto Teste A</td>
+                <td>Marca X</td>
+                <td>UN</td>
+                <td class="number">2,00</td>
+                <td class="number">R$ 50,00</td>
+                <td class="number">R$ 100,00</td>
+            </tr>
+            <tr>
+                <td>002</td>
+                <td>Produto Teste B</td>
+                <td>Marca Y</td>
+                <td>KG</td>
+                <td class="number">1,50</td>
+                <td class="number">R$ 30,00</td>
+                <td class="number">R$ 45,00</td>
+            </tr>
+            <tr>
+                <td>003</td>
+                <td>Produto Teste C</td>
+                <td>Marca Z</td>
+                <td>LT</td>
+                <td class="number">3,00</td>
+                <td class="number">R$ 25,00</td>
+                <td class="number">R$ 75,00</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="total-section">
+        <div class="total-final">
+            <strong>VALOR TOTAL: R$ 220,00</strong>
+        </div>
+    </div>
+
+    <div class="observacoes">
+        <h3>Observações</h3>
+        <p>Pedido de teste para demonstração da impressão com dados completos da empresa implementados conforme query SQL fornecida.</p>
+    </div>
+
+    <div class="no-print" style="margin-top: 30px; text-align: center; background-color: #e3f2fd; padding: 15px; border-radius: 5px;">
+        <h3>✅ TESTE DA IMPLEMENTAÇÃO</h3>
+        <p><strong>Dados da empresa implementados:</strong></p>
+        <ul style="text-align: left; max-width: 600px; margin: 0 auto;">
+            <li>✅ Nome da empresa (emp_nome)</li>
+            <li>✅ CNPJ (emp_cnpj)</li>
+            <li>✅ IE - Inscrição Estadual (emp_ie)</li>
+            <li>✅ IM - Inscrição Municipal (emp_im)</li>
+            <li>✅ Endereço completo (emp_end + emp_num + emp_compl)</li>
+            <li>✅ Bairro e CEP (emp_bairro + emp_cep)</li>
+            <li>✅ Cidade e UF (muni_descricao + emp_uf)</li>
+            <li>✅ Telefone e Email (emp_fone + emp_email)</li>
+        </ul>
+        <button onclick="window.print()" style="background: #4CAF50; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
+            🖨️ TESTAR IMPRESSÃO
+        </button>
+    </div>
+</body>
+</html> 

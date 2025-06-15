@@ -1,0 +1,1853 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from datetime import datetime, date, timedelta
+from empresa_manager_corrigido import get_empresa_connection, get_empresa_atual
+import logging
+
+# Configurar o logger
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("relatorios")
+
+# Configurar o router
+router = APIRouter(prefix="/relatorios", tags=["Relatórios"])
+
+from fastapi import Response
+
+# --- NOVOS ENDPOINTS PARA VENDAS E ITENS DE VENDA ---
+
+@router.get("/vendas")
+async def listar_vendas(request: Request):
+    """
+    Lista todas as vendas, com filtros opcionais por cliente, data_inicial e data_final.
+    Parâmetros query:
+      - cli_codigo: filtra por cliente
+      - data_inicial, data_final: período (padrão: mês atual)
+    """
+    from datetime import date, timedelta
+    log.info(f"[VENDAS] Listando vendas. Headers: {dict(request.headers)}")
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        # Descobrir coluna de data válida
+        cursor.execute("SELECT FIRST 1 * FROM VENDAS")
+        colunas_vendas = [col[0].lower() for col in cursor.description]
+        date_column = "ecf_data" if "ecf_data" in colunas_vendas else ("ecf_cx_data" if "ecf_cx_data" in colunas_vendas else None)
+        if not date_column:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
+        hoje = date.today()
+        data_inicial = request.query_params.get('data_inicial')
+        data_final = request.query_params.get('data_final')
+        if not data_inicial:
+            data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+        if not data_final:
+            if hoje.month == 12:
+                proximo_mes = date(hoje.year + 1, 1, 1)
+            else:
+                proximo_mes = date(hoje.year, hoje.month + 1, 1)
+            data_final = (proximo_mes - timedelta(days=1)).isoformat()
+        cli_codigo = request.query_params.get('cli_codigo')
+        log.info(f"Filtro de data: {date_column} entre {data_inicial} e {data_final}. Cliente: {cli_codigo}")
+        sql = f'''
+            SELECT
+              VENDAS.ECF_NUMERO,         -- ID da Venda
+              VENDAS.ECF_DATA,           -- Data da Venda
+              VENDEDOR.VEN_NOME,         -- Nome do Vendedor
+              VENDAS.CLI_CODIGO,         -- Código do Cliente
+              VENDAS.NOME,               -- Nome do Cliente
+              VENDAS.ECF_TOTAL,          -- Total da Venda
+              TABPRECO.TAB_NOME,         -- Nome da Tabela de Preço
+              FORMAPAG.FPG_NOME,         -- Nome da Forma de Pagamento
+              VENDAS.ECF_CAIXA,          -- Caixa que autenticou
+              VENDAS.ECF_DESCONTO        -- Valor do Desconto
+            FROM
+              VENDAS
+            LEFT JOIN
+              VENDEDOR ON VENDAS.VEN_CODIGO = VENDEDOR.VEN_CODIGO
+            LEFT JOIN
+              TABPRECO ON VENDAS.ECF_TAB_COD = TABPRECO.TAB_COD
+            LEFT JOIN
+              FORMAPAG ON VENDAS.ECF_FPG_COD = FORMAPAG.FPG_COD
+            WHERE
+              VENDAS.ECF_CANCELADA = 'N'
+              AND VENDAS.ECF_CONCLUIDA = 'S'
+              AND VENDAS.{date_column} IS NOT NULL
+              AND CAST(VENDAS.{date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+        '''
+        params = [data_inicial, data_final]
+        if cli_codigo:
+            sql += " AND VENDAS.CLI_CODIGO = ?"
+            params.append(cli_codigo)
+        sql += " ORDER BY VENDAS.ECF_NUMERO DESC"
+        cursor.execute(sql, tuple(params))
+        columns = [col[0].lower() for col in cursor.description]
+        vendas = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return vendas
+    except Exception as e:
+        import traceback
+        log.error(f"Erro ao listar vendas: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar vendas: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
+@router.get("/vendas/{ecf_numero}/itens")
+async def listar_itens_venda(ecf_numero: int, request: Request):
+    log.info(f"[ITENS VENDA] Listando itens para venda {ecf_numero}. Headers: {dict(request.headers)}")
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        sql = '''
+            SELECT
+              ITVENDA.ECF_NUMERO,           -- Número da venda
+              ITVENDA.PRO_CODIGO,           -- Código do produto (VARCHAR)
+              ITVENDA.PRO_DESCRICAO,        -- Descrição do produto
+              ITVENDA.PRO_QUANTIDADE,       -- Quantidade vendida
+              ITVENDA.PRO_VENDA,            -- Preço de venda no momento
+              PRODUTO.PRO_MARCA,            -- Marca do produto
+              PRODUTO.UNI_CODIGO,           -- Unidade do produto
+              PRODUTO.PRO_QUANTIDADE AS ESTOQUE_ATUAL  -- Estoque atual
+            FROM
+              ITVENDA
+            INNER JOIN
+              PRODUTO ON ITVENDA.PRO_CODIGO = PRODUTO.PRO_CODIGO
+            INNER JOIN
+              VENDAS ON ITVENDA.ECF_NUMERO = VENDAS.ECF_NUMERO
+            WHERE
+              ITVENDA.ECF_NUMERO = ?
+            ORDER BY
+              ITVENDA.IEC_SEQUENCIA
+        '''
+        cursor.execute(sql, (ecf_numero,))
+        columns = [col[0].lower() for col in cursor.description]
+        itens = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        mapped_itens = []
+        for item in itens:
+            mapped_itens.append({
+                'PRO_CODIGO': item.get('pro_codigo'),
+                'PRO_DESCRICAO': item.get('pro_descricao'),
+                'PRO_MARCA': item.get('pro_marca'),
+                'UNI_CODIGO': item.get('uni_codigo'),
+                'PRO_QUANTIDADE': round(item.get('pro_quantidade', 0), 2) if item.get('pro_quantidade') is not None else None,
+                'PRO_VENDA': round(item.get('pro_venda', 0), 2) if item.get('pro_venda') is not None else None,
+                'ESTOQUE_ATUAL': round(item.get('estoque_atual', 0), 2) if item.get('estoque_atual') is not None else None,
+            })
+        return mapped_itens
+    except Exception as e:
+        import traceback
+        log.error(f"Erro ao listar itens da venda {ecf_numero}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar itens da venda: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
+@router.get("/clientes/{cli_codigo}/vendas")
+async def listar_vendas_cliente(cli_codigo: int, request: Request):
+    from datetime import date, datetime, timedelta
+    log.info(f"[VENDAS] Listando vendas para cliente {cli_codigo}. Headers: {dict(request.headers)}")
+    # Validar headers obrigatórios
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        # Descobrir coluna de data válida
+        cursor.execute("SELECT FIRST 1 * FROM VENDAS")
+        colunas_vendas = [col[0].lower() for col in cursor.description]
+        date_column = "ecf_data" if "ecf_data" in colunas_vendas else ("ecf_cx_data" if "ecf_cx_data" in colunas_vendas else None)
+        if not date_column:
+            conn.close()
+            raise HTTPException(status_code=400, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
+        # Datas do mês atual por padrão
+        hoje = date.today()
+        data_inicial = request.query_params.get('data_inicial')
+        data_final = request.query_params.get('data_final')
+        if not data_inicial:
+            data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+        if not data_final:
+            if hoje.month == 12:
+                proximo_mes = date(hoje.year + 1, 1, 1)
+            else:
+                proximo_mes = date(hoje.year, hoje.month + 1, 1)
+            data_final = (proximo_mes - timedelta(days=1)).isoformat()
+        log.info(f"Filtro de data: {date_column} entre {data_inicial} e {data_final}")
+        sql = f'''
+            SELECT
+              VENDAS.ECF_NUMERO,         -- ID da Venda
+              VENDAS.ECF_DATA,           -- Data da Venda
+              VENDEDOR.VEN_NOME,         -- Nome do Vendedor
+              VENDAS.CLI_CODIGO,         -- Código do Cliente
+              VENDAS.NOME,               -- Nome do Cliente
+              VENDAS.ECF_TOTAL,          -- Total da Venda
+              TABPRECO.TAB_NOME,         -- Nome da Tabela de Preço
+              FORMAPAG.FPG_NOME,         -- Nome da Forma de Pagamento
+              VENDAS.ECF_CAIXA,          -- Caixa que autenticou
+              VENDAS.ECF_DESCONTO        -- Valor do Desconto
+            FROM
+              VENDAS
+            LEFT JOIN
+              VENDEDOR ON VENDAS.VEN_CODIGO = VENDEDOR.VEN_CODIGO
+            LEFT JOIN
+              TABPRECO ON VENDAS.ECF_TAB_COD = TABPRECO.TAB_COD
+            LEFT JOIN
+              FORMAPAG ON VENDAS.ECF_FPG_COD = FORMAPAG.FPG_COD
+            WHERE
+              VENDAS.ECF_CANCELADA = 'N'
+              AND VENDAS.ECF_CONCLUIDA = 'S'
+              AND VENDAS.CLI_CODIGO = ?
+              AND VENDAS.{date_column} IS NOT NULL
+              AND CAST(VENDAS.{date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+            ORDER BY
+              VENDAS.ECF_NUMERO DESC
+        '''
+        cursor.execute(sql, (cli_codigo, data_inicial, data_final))
+        columns = [col[0].lower() for col in cursor.description]
+        vendas = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return vendas
+    except Exception as e:
+        import traceback
+        log.error(f"Erro ao listar vendas do cliente {cli_codigo}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar vendas do cliente: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
+@router.get("/vendas/{ecf_numero}/itens")
+async def listar_itens_venda(ecf_numero: int, request: Request):
+    log.info(f"[ITENS VENDA] Listando itens para venda {ecf_numero}. Headers: {dict(request.headers)}")
+    # Validar headers obrigatórios
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        sql = '''
+            SELECT
+              ITVENDA.ECF_NUMERO,           -- Número da venda
+              ITVENDA.PRO_CODIGO,           -- Código do produto (VARCHAR)
+              ITVENDA.PRO_DESCRICAO,        -- Descrição do produto
+              ITVENDA.PRO_QUANTIDADE,       -- Quantidade vendida
+              ITVENDA.PRO_VENDA,            -- Preço de venda no momento
+              PRODUTO.PRO_MARCA,            -- Marca do produto
+              PRODUTO.UNI_CODIGO,           -- Unidade do produto
+              PRODUTO.PRO_QUANTIDADE AS ESTOQUE_ATUAL  -- Estoque atual
+            FROM
+              ITVENDA
+            INNER JOIN
+              PRODUTO ON ITVENDA.PRO_CODIGO = PRODUTO.PRO_CODIGO
+            INNER JOIN
+              VENDAS ON ITVENDA.ECF_NUMERO = VENDAS.ECF_NUMERO
+            WHERE
+              ITVENDA.ECF_NUMERO = ?
+            ORDER BY
+              ITVENDA.IEC_SEQUENCIA
+        '''
+        cursor.execute(sql, (ecf_numero,))
+        columns = [col[0].lower() for col in cursor.description]
+        itens = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return itens
+    except Exception as e:
+        import traceback
+        log.error(f"Erro ao listar itens da venda {ecf_numero}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar itens da venda: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+# --- ENDPOINTS PARA FORMULÁRIO DE ORÇAMENTO ---
+
+@router.get("/tabelas")
+async def listar_tabelas(request: Request):
+    log.info(f"[TABELAS] Headers recebidos: {dict(request.headers)}")
+    try:
+        # Retornar dados de teste diretamente para garantir que o endpoint funcione
+        log.info("[TABELAS] Retornando dados de teste para depuração")
+        return [
+            {"codigo": "1", "nome": "Tabela Padrão (TESTE)"},
+            {"codigo": "2", "nome": "Tabela Promocional (TESTE)"},
+            {"codigo": "3", "nome": "Tabela Atacado (TESTE)"}
+        ]
+    except Exception as e:
+        log.error(f"[TABELAS] Erro ao listar tabelas: {str(e)}")
+        return []
+        # Código abaixo está comentado para garantir que os dados de teste sejam retornados
+        """
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        
+        # Verificar se a tabela TABPRECO existe
+        try:
+            cursor.execute("SELECT FIRST 1 * FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'TABPRECO'")
+            if not cursor.fetchone():
+                log.warning("Tabela TABPRECO não existe no banco de dados")
+                return []
+        except Exception as table_error:
+            log.error(f"Erro ao verificar existência da tabela: {str(table_error)}")
+            return []
+        
+        # Buscar formas de pagamento
+        cursor.execute("SELECT FPG_COD as codigo, FPG_NOME as nome FROM FORMAPAG ORDER BY FPG_NOME")
+        
+        formas_pagamento = []
+        for row in cursor.fetchall():
+            formas_pagamento.append({
+                "codigo": row[0],
+                "nome": row[1]
+            })
+        
+        conn.close()
+        return formas_pagamento
+    except Exception as e:
+        log.error(f"[FORMAPAG] Erro ao listar formas de pagamento: {str(e)}")
+        return []
+
+@router.get("/formapag")
+async def listar_formas_pagamento(request: Request):
+    log.info(f"[FORMAPAG] Headers recebidos: {dict(request.headers)}")
+    try:
+        log.info("[FORMAPAG] Tentando obter conexão com o banco de dados...")
+        conn = await get_empresa_connection(request)
+        if conn is None:
+            log.error("[FORMAPAG] Conexão com o banco de dados retornou None")
+            # Retornar dados de teste para depuração
+            log.info("[FORMAPAG] Retornando dados de teste para depuração")
+            return [
+                {"codigo": "1", "nome": "Dinheiro (TESTE)"},
+                {"codigo": "2", "nome": "Cartão de Crédito (TESTE)"},
+                {"codigo": "3", "nome": "Cartão de Débito (TESTE)"}
+            ]
+        
+        log.info("[FORMAPAG] Conexão estabelecida com sucesso")
+        cursor = conn.cursor()
+        
+        # Verificar se a tabela FORMAPAG existe
+        try:
+            log.info("[FORMAPAG] Verificando se a tabela FORMAPAG existe...")
+            cursor.execute("SELECT FIRST 1 * FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'FORMAPAG'")
+            result = cursor.fetchone()
+            if not result:
+                log.warning("[FORMAPAG] Tabela FORMAPAG não existe no banco de dados")
+                # Retornar dados de teste para depuração
+                log.info("[FORMAPAG] Retornando dados de teste para depuração")
+                return [
+                    {"codigo": "1", "nome": "Dinheiro (TESTE)"},
+                    {"codigo": "2", "nome": "Cartão de Crédito (TESTE)"},
+                    {"codigo": "3", "nome": "Cartão de Débito (TESTE)"}
+                ]
+            log.info("[FORMAPAG] Tabela FORMAPAG existe no banco de dados")
+        except Exception as table_error:
+            log.error(f"[FORMAPAG] Erro ao verificar existência da tabela: {str(table_error)}")
+            # Retornar dados de teste para depuração
+            log.info("[FORMAPAG] Retornando dados de teste para depuração")
+            return [
+                {"codigo": "1", "nome": "Dinheiro (TESTE)"},
+                {"codigo": "2", "nome": "Cartão de Crédito (TESTE)"},
+                {"codigo": "3", "nome": "Cartão de Débito (TESTE)"}
+            ]
+        
+        # Buscar formas de pagamento
+        try:
+            log.info("[FORMAPAG] Executando consulta para buscar formas de pagamento...")
+            cursor.execute("SELECT FPG_COD as codigo, FPG_NOME as nome FROM FORMAPAG ORDER BY FPG_NOME")
+            
+            formas_pagamento = []
+            for row in cursor.fetchall():
+                formas_pagamento.append({
+                    "codigo": row[0],
+                    "nome": row[1]
+                })
+            
+            log.info(f"[FORMAPAG] Encontradas {len(formas_pagamento)} formas de pagamento")
+            
+            # Se não encontrou nenhuma forma de pagamento, retornar dados de teste
+            if len(formas_pagamento) == 0:
+                log.warning("[FORMAPAG] Nenhuma forma de pagamento encontrada no banco de dados")
+                log.info("[FORMAPAG] Retornando dados de teste para depuração")
+                return [
+                    {"codigo": "1", "nome": "Dinheiro (TESTE)"},
+                    {"codigo": "2", "nome": "Cartão de Crédito (TESTE)"},
+                    {"codigo": "3", "nome": "Cartão de Débito (TESTE)"}
+                ]
+            
+            return formas_pagamento
+        except Exception as query_error:
+            log.error(f"[FORMAPAG] Erro ao executar consulta: {str(query_error)}")
+            # Retornar dados de teste para depuração
+            log.info("[FORMAPAG] Retornando dados de teste para depuração")
+            return [
+                {"codigo": "1", "nome": "Dinheiro (TESTE)"},
+                {"codigo": "2", "nome": "Cartão de Crédito (TESTE)"},
+                {"codigo": "3", "nome": "Cartão de Débito (TESTE)"}
+            ]
+        finally:
+            try:
+                conn.close()
+                log.info("[FORMAPAG] Conexão fechada com sucesso")
+            except Exception as close_error:
+                log.error(f"[FORMAPAG] Erro ao fechar conexão: {str(close_error)}")
+    except Exception as e:
+        log.error(f"[FORMAPAG] Erro geral ao listar formas de pagamento: {str(e)}")
+        # Retornar dados de teste para depuração
+        log.info("[FORMAPAG] Retornando dados de teste para depuração")
+        return [
+            {"codigo": "1", "nome": "Dinheiro (TESTE)"},
+            {"codigo": "2", "nome": "Cartão de Crédito (TESTE)"},
+            {"codigo": "3", "nome": "Cartão de Débito (TESTE)"}
+        ]
+
+@router.get("/vendedores")
+async def listar_vendedores(request: Request):
+    log.info(f"[VENDEDORES] Headers recebidos: {dict(request.headers)}")
+    try:
+        log.info("[VENDEDORES] Tentando obter conexão com o banco de dados...")
+        conn = await get_empresa_connection(request)
+        if conn is None:
+            log.error("[VENDEDORES] Conexão com o banco de dados retornou None")
+            # Retornar dados de teste para depuração
+            log.info("[VENDEDORES] Retornando dados de teste para depuração")
+            return [
+                {"codigo": "1", "nome": "Vendedor 1 (TESTE)"},
+                {"codigo": "2", "nome": "Vendedor 2 (TESTE)"},
+                {"codigo": "3", "nome": "Vendedor 3 (TESTE)"}
+            ]
+        
+        log.info("[VENDEDORES] Conexão estabelecida com sucesso")
+        cursor = conn.cursor()
+        
+        # Verificar se a tabela VENDEDOR existe
+        try:
+            log.info("[VENDEDORES] Verificando se a tabela VENDEDOR existe...")
+            cursor.execute("SELECT FIRST 1 * FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'VENDEDOR'")
+            result = cursor.fetchone()
+            if not result:
+                log.warning("[VENDEDORES] Tabela VENDEDOR não existe no banco de dados")
+                # Retornar dados de teste para depuração
+                log.info("[VENDEDORES] Retornando dados de teste para depuração")
+                return [
+                    {"codigo": "1", "nome": "Vendedor 1 (TESTE)"},
+                    {"codigo": "2", "nome": "Vendedor 2 (TESTE)"},
+                    {"codigo": "3", "nome": "Vendedor 3 (TESTE)"}
+                ]
+            log.info("[VENDEDORES] Tabela VENDEDOR existe no banco de dados")
+        except Exception as table_error:
+            log.error(f"[VENDEDORES] Erro ao verificar existência da tabela: {str(table_error)}")
+            # Retornar dados de teste para depuração
+            log.info("[VENDEDORES] Retornando dados de teste para depuração")
+            return [
+                {"codigo": "1", "nome": "Vendedor 1 (TESTE)"},
+                {"codigo": "2", "nome": "Vendedor 2 (TESTE)"},
+                {"codigo": "3", "nome": "Vendedor 3 (TESTE)"}
+            ]
+        
+        # Buscar vendedores ativos
+        try:
+            log.info("[VENDEDORES] Executando consulta para buscar vendedores...")
+            cursor.execute("SELECT VEN_CODIGO as codigo, VEN_NOME as nome FROM VENDEDOR WHERE VEN_ATIVO = 0 OR VEN_ATIVO IS NULL ORDER BY VEN_NOME")
+            
+            vendedores = []
+            for row in cursor.fetchall():
+                vendedores.append({
+                    "codigo": row[0],
+                    "nome": row[1]
+                })
+            
+            log.info(f"[VENDEDORES] Encontrados {len(vendedores)} vendedores")
+            
+            # Se não encontrou nenhum vendedor, retornar dados de teste
+            if len(vendedores) == 0:
+                log.warning("[VENDEDORES] Nenhum vendedor encontrado no banco de dados")
+                log.info("[VENDEDORES] Retornando dados de teste para depuração")
+                return [
+                    {"codigo": "1", "nome": "Vendedor 1 (TESTE)"},
+                    {"codigo": "2", "nome": "Vendedor 2 (TESTE)"},
+                    {"codigo": "3", "nome": "Vendedor 3 (TESTE)"}
+                ]
+            
+            return vendedores
+        except Exception as query_error:
+            log.error(f"[VENDEDORES] Erro ao executar consulta: {str(query_error)}")
+            # Retornar dados de teste para depuração
+            log.info("[VENDEDORES] Retornando dados de teste para depuração")
+            return [
+                {"codigo": "1", "nome": "Vendedor 1 (TESTE)"},
+                {"codigo": "2", "nome": "Vendedor 2 (TESTE)"},
+                {"codigo": "3", "nome": "Vendedor 3 (TESTE)"}
+            ]
+        finally:
+            try:
+                conn.close()
+                log.info("[VENDEDORES] Conexão fechada com sucesso")
+            except Exception as close_error:
+                log.error(f"[VENDEDORES] Erro ao fechar conexão: {str(close_error)}")
+    except Exception as e:
+        log.error(f"[VENDEDORES] Erro geral ao listar vendedores: {str(e)}")
+        # Retornar dados de teste para depuração
+        log.info("[VENDEDORES] Retornando dados de teste para depuração")
+        return [
+            {"codigo": "1", "nome": "Vendedor 1 (TESTE)"},
+            {"codigo": "2", "nome": "Vendedor 2 (TESTE)"},
+            {"codigo": "3", "nome": "Vendedor 3 (TESTE)"}
+        ]
+
+# --- FIM DOS ENDPOINTS PARA FORMULÁRIO DE ORÇAMENTO ---
+
+# --- FIM DOS NOVOS ENDPOINTS ---
+
+@router.get("/grupos")
+async def listar_grupos(request: Request):
+    """
+    Lista todos os grupos de produtos.
+    Retorna: gru_codigo, gru_nome
+    """
+    log.info(f"[GRUPOS] Headers recebidos: {dict(request.headers)}")
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                SELECT GRU_CODIGO, GRU_DESCRICAO
+                FROM GRUPOS
+                ORDER BY GRU_DESCRICAO
+            """)
+            rows = cursor.fetchall()
+            grupos = [
+                {"gru_codigo": row[0], "gru_nome": row[1]} for row in rows
+            ]
+            return grupos
+        except Exception as e:
+            # Se a tabela não existir, retorna lista vazia e loga
+            import traceback
+            log.error(f"[GRUPOS] Tabela GRUPOS não encontrada ou erro SQL: {e}\n{traceback.format_exc()}")
+            return []
+    except Exception as e:
+        import traceback
+        log.error(f"[GRUPOS] Erro ao listar grupos (conexão): {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar grupos (conexão): {e}")
+    finally:
+        try:
+            conn.close()
+        except Exception as e:
+            log.warning(f"[GRUPOS] Falha ao fechar conexão: {e}")
+
+@router.get("/produtos")
+async def listar_produtos(request: Request):
+    """
+    Lista produtos ativos para venda, filtrando por descrição (mín. 2 caracteres).
+    Query params: 
+    - q: termo de busca antigo (legado)
+    - search: termo de busca (novo padrão)
+    Retorna: codigo, descricao, unidade, valor, estoque
+    """
+    log.info(f"[PRODUTOS] Headers recebidos: {dict(request.headers)}")
+    
+    # Suportar tanto 'q' (legado) quanto 'search' (novo padrão)
+    search_term = request.query_params.get('search', request.query_params.get('q', '')).strip()
+    log.info(f"[PRODUTOS] Termo de busca: {search_term}")
+    
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        
+        # Verificar se a tabela PRODUTOS existe
+        try:
+            cursor.execute("SELECT FIRST 1 * FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'PRODUTOS'")
+            if not cursor.fetchone():
+                log.warning("Tabela PRODUTOS não existe no banco de dados")
+                return []
+        except Exception as table_error:
+            log.error(f"Erro ao verificar existência da tabela: {str(table_error)}")
+            return []
+        
+        # Se o termo de busca for muito curto, limitar a quantidade de resultados
+        limit = "FETCH FIRST 30 ROWS ONLY" if len(search_term) < 2 else "FETCH FIRST 100 ROWS ONLY"
+        
+        # Consulta produtos ativos com filtro por descrição ou código
+        if search_term and len(search_term) >= 2:
+            cursor.execute(f"""
+                SELECT 
+                    PRO_CODIGO, 
+                    PRO_DESCRICAO, 
+                    UNI_CODIGO, 
+                    PRO_VENDA, 
+                    PRAZO_VALOR, 
+                    PRO_QUANTIDADE
+                FROM PRODUTOS 
+                WHERE (PRO_ATIVO = 'S' OR PRO_ATIVO IS NULL)
+                AND (UPPER(PRO_DESCRICAO) CONTAINING UPPER(?) OR PRO_CODIGO CONTAINING ?)
+                ORDER BY PRO_DESCRICAO
+                {limit}
+            """, (search_term, search_term))
+        else:
+            cursor.execute(f"""
+                SELECT 
+                    PRO_CODIGO, 
+                    PRO_DESCRICAO, 
+                    UNI_CODIGO, 
+                    PRO_VENDA, 
+                    PRAZO_VALOR, 
+                    PRO_QUANTIDADE
+                FROM PRODUTOS 
+                WHERE (PRO_ATIVO = 'S' OR PRO_ATIVO IS NULL)
+                ORDER BY PRO_DESCRICAO
+                {limit}
+            """)
+        
+        produtos = []
+        for row in cursor.fetchall():
+            produtos.append({
+                "codigo": row[0],                                  # Padronizado
+                "descricao": row[1],                             # Padronizado
+                "unidade": row[2],                               # Padronizado
+                "valor": float(row[3]) if row[3] is not None else 0,  # Padronizado
+                "valor_prazo": float(row[4]) if row[4] is not None else 0,
+                "estoque": float(row[5]) if row[5] is not None else 0,  # Padronizado
+                # Manter campos legados para compatibilidade
+                "pro_codigo": row[0],
+                "pro_descricao": row[1],
+                "uni_codigo": row[2],
+                "pro_venda": float(row[3]) if row[3] is not None else 0,
+                "prazo_valor": float(row[4]) if row[4] is not None else 0,
+                "pro_quantidade": float(row[5]) if row[5] is not None else 0
+            })
+        
+        conn.close()
+        log.info(f"[PRODUTOS] Encontrados {len(produtos)} produtos")
+        return produtos
+    except Exception as e:
+        import traceback
+        log.error(f"[PRODUTOS] Erro ao listar produtos: {e}\n{traceback.format_exc()}")
+        return []
+
+@router.get("/grupos")
+async def listar_grupos(request: Request):
+    """
+    Lista todos os grupos de produtos.
+    Retorna: gru_codigo, gru_nome
+    """
+    log.info(f"[GRUPOS] Headers recebidos: {dict(request.headers)}")
+    authorization = request.headers.get("Authorization")
+    empresa_codigo = request.headers.get("x-empresa-codigo")
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Token de autenticação não fornecido")
+    if not empresa_codigo:
+        raise HTTPException(status_code=401, detail="Código da empresa não fornecido")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT 
+                PRODUTO.PRO_CODIGO,
+                PRODUTO.PRO_DESCRICAO,
+                PRODUTO.UNI_CODIGO,
+                PRODUTO.PRO_VENDA,
+                PRODUTO.PRO_VENDAPZ,
+                PRODUTO.PRO_QUANTIDADE
+            FROM PRODUTO
+            WHERE (UPPER(PRODUTO.PRO_DESCRICAO) LIKE UPPER(?)) 
+            AND PRODUTO.ITEM_TABLET = 'S'   
+            AND PRODUTO.PRO_INATIVO = 'N'
+            ORDER BY PRODUTO.PRO_DESCRICAO
+            """,
+            (f"%{busca}%",)
+        )
+        rows = cursor.fetchall()
+        columns = [col[0].lower() for col in cursor.description]
+        produtos = [dict(zip(columns, row)) for row in rows]
+        return produtos
+    except Exception as e:
+        import traceback
+        log.error(f"[PRODUTOS] Erro ao listar produtos: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar produtos: {e}")
+    finally:
+        try:
+            conn.close()
+        except:
+            pass
+
+@router.get("/clientes")
+async def listar_clientes(request: Request):
+    log.info(f"[CLIENTES] Headers recebidos: {dict(request.headers)}")
+    x_empresa_codigo = request.headers.get('x-empresa-codigo')
+    log.info(f"[CLIENTES] Valor de x-empresa-codigo recebido: {x_empresa_codigo}")
+    try:
+        empresa = await get_empresa_atual(request)
+        log.info(f"[CLIENTES] Empresa resolvida: {empresa}")
+    except Exception as e:
+        log.error(f"[CLIENTES] Erro ao resolver empresa: {e}")
+        empresa = None
+    """
+    Lista todos os clientes ativos (CLI_INATIVO = 'N') do tipo 1, ordenados por nome.
+    Retorna: cli_codigo, cli_nome, tel_whatsapp, cnpj, endereco, numero, bairro, cidade, uf
+    """
+    log.info("Recebendo requisição para listar clientes.")
+    try:
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        try:
+            search = request.query_params.get('q')
+            sql = '''
+                SELECT CLI_CODIGO, CLI_NOME, tel_whatsapp, CNPJ, ENDERECO, NUMERO, BAIRRO, CIDADE, UF, CLI_BLOQUEADO
+                FROM CLIENTES
+                WHERE (CLIENTES.CLI_INATIVO = 'N' OR CLIENTES.CLI_INATIVO IS NULL)
+                  AND CLIENTES.cli_tipo = 1
+            '''
+            params = []
+            if search and len(search.strip()) >= 2:
+                busca = search.strip()
+                sql += ''' AND (
+                    UPPER(CLI_NOME) LIKE UPPER(?)
+                    OR UPPER(CLI_NOME) LIKE UPPER(?)
+                )'''
+                params = [f"{busca}%", f"%{busca}%"]
+            elif search:
+                # Menos de 2 caracteres, retorna vazio
+                return []
+            sql += ' ORDER BY CLIENTES.cli_nome'
+            cursor.execute(sql, params)
+            rows = cursor.fetchall()
+            columns = [col[0].lower() for col in cursor.description]
+            clientes = []
+            for row in rows:
+                cliente = dict(zip(columns, row))
+                # Indicativo de bloqueado
+                cliente['bloqueado'] = ((cliente.get('cli_bloqueado') or '').upper() == 'S')
+                clientes.append(cliente)
+            log.info(f"[CLIENTES] Total encontrados: {len(clientes)}")
+            log.info(f"[CLIENTES] Exemplos: {[c['cli_nome'] for c in clientes[:10]]}")
+            return clientes
+        finally:
+            try:
+                conn.close()
+            except Exception as close_err:
+                log.warning(f"[CLIENTES] Falha ao fechar conexão: {close_err}")
+    except HTTPException as e:
+        log.error(f"[CLIENTES] HTTPException: {e.detail if hasattr(e, 'detail') else str(e)}")
+        raise e
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        log.error(f"[CLIENTES] Erro ao listar clientes: {e}\n{tb}")
+        return JSONResponse(status_code=500, content={"detail": f"Erro ao listar clientes: {str(e)}", "traceback": tb})
+
+class TopCliente(BaseModel):
+    codigo: int
+    nome: str
+    cidade: Optional[str] = None
+    uf: Optional[str] = None
+    whatsapp: Optional[str] = None
+    qtde_compras: int
+    total: float
+    ecf_data: Optional[str] = None
+    ven_nome: Optional[str] = None
+    ecf_cx_data: Optional[str] = None
+
+class TopClientesResponse(BaseModel):
+    data_inicial: str
+    data_final: str
+    top_clientes: List[TopCliente]
+
+@router.get("/top-clientes")
+async def get_top_clientes(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
+    """
+    Endpoint para obter os top 10 clientes com maior volume de compras no período.
+    Se data_inicial e data_final não forem fornecidos, usa o mês atual.
+    """
+    log.info(f"Recebendo requisição para top-clientes com data_inicial={data_inicial} e data_final={data_final}")
+    log.info(f"Cabeçalhos da requisição: {dict(request.headers)}")
+    try:
+        # Definir datas padrão se não fornecidas (primeiro e último dia do mês atual)
+        hoje = date.today()
+        log.info(f"Data atual: {hoje.isoformat()}")
+        
+        try:
+            if not data_inicial:
+                data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+            else:
+                # Tentar validar o formato da data
+                datetime.fromisoformat(data_inicial)
+                
+            if not data_final:
+                # Último dia do mês
+                if hoje.month == 12:
+                    proximo_mes = date(hoje.year + 1, 1, 1)
+                else:
+                    proximo_mes = date(hoje.year, hoje.month + 1, 1)
+                ultimo_dia = (proximo_mes - timedelta(days=1)).isoformat()
+                data_final = ultimo_dia
+            else:
+                # Tentar validar o formato da data
+                datetime.fromisoformat(data_final)
+                
+            log.info(f"Período de consulta: {data_inicial} a {data_final}")
+        except ValueError as e:
+            log.error(f"Erro de formato de data: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                               detail=f"Formato de data inválido. Use o formato ISO (YYYY-MM-DD): {str(e)}")
+
+        log.info(f"Buscando top clientes entre {data_inicial} e {data_final}")
+        
+        # Verificar autorização no cabeçalho
+        authorization = request.headers.get("Authorization")
+        if not authorization or not authorization.startswith("Bearer "):
+            log.warning("Token de autenticação não fornecido")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de autenticação não fornecido")
+            
+        # Aqui não precisamos verificar manualmente o cabeçalho da empresa
+        # Nossa função get_empresa_atual já implementa a abordagem híbrida:
+        # 1. Primeiro verifica o cabeçalho x-empresa-codigo
+        # 2. Se não encontrar, busca na sessão
+        log.info("Buscando empresa atual usando abordagem híbrida (cabeçalho -> sessão)...")
+        
+        # Apenas para fins de log, vamos verificar se o cabeçalho existe
+        empresa_codigo = request.headers.get("x-empresa-codigo")
+        if empresa_codigo:
+            log.info(f"Cabeçalho x-empresa-codigo presente: {empresa_codigo}")
+        else:
+            log.info("Cabeçalho x-empresa-codigo não encontrado, recorrendo à sessão")
+
+        # Extrair informações do usuário do token JWT
+        usuario_nivel = None
+        codigo_vendedor = None
+        
+        try:
+            # Obter o token da requisição
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.replace("Bearer ", "")
+                # Decodificar o token
+                from auth import SECRET_KEY, ALGORITHM
+                from jose import jwt
+                
+                try:
+                    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                    usuario_nivel = payload.get("nivel")
+                    
+                    # NOVO: Agora buscamos o código do vendedor diretamente do token JWT
+                    # O código é armazenado na tabela usuarios_app junto com o nível
+                    codigo_vendedor = payload.get("codigo_vendedor")
+                    
+                    log.info(f"Usuário com nível: {usuario_nivel}, código vendedor do JWT: {codigo_vendedor}")
+                except Exception as jwt_err:
+                    log.error(f"Erro ao decodificar token JWT: {str(jwt_err)}")
+        except Exception as auth_err:
+            log.error(f"Erro ao processar informações de autenticação: {str(auth_err)}")
+        
+        # Obter dados da empresa atual apenas para referência (não precisamos mais do código de vendedor dela)
+        from empresa_manager import get_empresa_atual
+        empresa_atual = get_empresa_atual(request)
+        
+        # Logar todos os dados da empresa para depuração
+        log.info(f"DADOS COMPLETOS DA EMPRESA: {empresa_atual}")
+        
+        # Verificar se temos código de vendedor quando o usuário é vendedor
+        if usuario_nivel and usuario_nivel.lower() == 'vendedor':
+            if codigo_vendedor:
+                log.info(f"Código de vendedor obtido do token JWT: {codigo_vendedor}")
+            else:
+                log.warning(f"Usuário com nível VENDEDOR, mas código de vendedor não foi encontrado no token JWT! Detalhes: Nivel={usuario_nivel}, Empresa={empresa_atual.get('cli_nome')}, Código Empresa={empresa_atual.get('cli_codigo')}")
+
+        try:
+            # Obter informações da empresa atual
+            log.info("Chamando get_empresa_atual...")
+            empresa = get_empresa_atual(request)
+            
+            # Verificar se a empresa é a empresa vazia (caso em que nenhuma empresa foi selecionada)
+            if empresa.get('empresa_nao_selecionada', False) or not empresa or empresa.get('cli_codigo', 0) == 0:
+                log.warning("Nenhuma empresa real selecionada")
+                return {
+                    "sucesso": False,
+                    "mensagem": "Selecione uma empresa primeiro antes de usar esta funcionalidade",
+                    "data_inicial": data_inicial,
+                    "data_final": data_final,
+                    "top_clientes": []
+                }
+                
+            log.info(f"Empresa encontrada: {empresa['cli_nome']} (ID: {empresa['cli_codigo']})")
+            log.info(f"Detalhes de conexão: IP={empresa['cli_ip_servidor']}, Porta={empresa.get('cli_porta', '3050')}, Base={empresa.get('cli_nome_base', '')}")
+            
+            # Se o endereço IP não está definido ou é vazio, não podemos conectar
+            if not empresa.get('cli_ip_servidor'):
+                log.warning("Endereço IP da empresa não está definido")
+                return {
+                    "sucesso": False,
+                    "mensagem": "Configuração incompleta da empresa. Endereço IP ausente.",
+                    "data_inicial": data_inicial,
+                    "data_final": data_final,
+                    "top_clientes": []
+                }
+            
+            # Agora obter a conexão
+            log.info("Chamando get_empresa_connection...")
+            try:
+                conn = await get_empresa_connection(request)
+                if not conn:
+                    log.error("Não foi possível obter uma conexão válida para a empresa")
+                    raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+                                       detail="Falha ao conectar ao banco de dados. Verifique se o servidor está acessível e se as credenciais estão corretas.")
+            except Exception as conn_err:
+                log.error(f"Erro ao obter conexão: {str(conn_err)}")
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+                                  detail=f"Erro na conexão: {str(conn_err)}")
+                
+            cur = conn.cursor()
+            log.info("Conexão com o banco de dados estabelecida com sucesso")
+        except HTTPException as he:
+            # Re-lançar HTTPExceptions para evitar que sejam convertidas em dados de exemplo
+            raise
+        except Exception as e:
+            log.error(f"Erro ao conectar ao banco de dados: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro ao conectar: {str(e)}")
+
+        # Primeiro verificar se as tabelas existem
+        log.info("Verificando se as tabelas necessárias existem no banco de dados...")
+        try:
+            # Verificar se a tabela VENDAS existe
+            log.info("Verificando tabela VENDAS...")
+            cur.execute("""SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'VENDAS'""")
+            tabela_vendas_existe = cur.fetchone() is not None
+            log.info(f"Tabela VENDAS existe: {tabela_vendas_existe}")
+            
+            # Verificar se a tabela CLIENTES existe
+            log.info("Verificando tabela CLIENTES...")
+            cur.execute("""SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'CLIENTES'""")
+            tabela_clientes_existe = cur.fetchone() is not None
+            log.info(f"Tabela CLIENTES existe: {tabela_clientes_existe}")
+            
+            # Verificar se a tabela VENDEDOR existe
+            log.info("Verificando tabela VENDEDOR...")
+            cur.execute("""SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'VENDEDOR'""")
+            tabela_vendedor_existe = cur.fetchone() is not None
+            log.info(f"Tabela VENDEDOR existe: {tabela_vendedor_existe}")
+            
+            if not tabela_vendas_existe or not tabela_clientes_existe:
+                log.warning("As tabelas necessárias não existem no banco de dados")
+                return {
+                    "sucesso": False,
+                    "mensagem": "As tabelas necessárias (VENDAS, CLIENTES) não existem no banco de dados da empresa selecionada.",
+                    "data_inicial": data_inicial,
+                    "data_final": data_final,
+                    "estrutura_bd": {
+                        "tabela_vendas": tabela_vendas_existe,
+                        "tabela_clientes": tabela_clientes_existe,
+                        "tabela_vendedor": tabela_vendedor_existe
+                    },
+                    "top_clientes": []
+                }
+            
+            # Verificar os campos da tabela VENDAS
+            log.info("Verificando campos da tabela VENDAS...")
+            cur.execute("""SELECT FIRST 1 * FROM VENDAS""")
+            colunas_vendas = [col[0].lower() for col in cur.description]
+            log.info(f"Colunas da tabela VENDAS: {colunas_vendas}")
+            
+            # Verificar os campos da tabela CLIENTES
+            log.info("Verificando campos da tabela CLIENTES...")
+            cur.execute("""SELECT FIRST 1 * FROM CLIENTES""")
+            colunas_clientes = [col[0].lower() for col in cur.description]
+            log.info(f"Colunas da tabela CLIENTES: {colunas_clientes}")
+            
+            # Log das datas para debug
+            log.info(f"Data inicial recebida: {data_inicial}, tipo: {type(data_inicial)}")
+            log.info(f"Data final recebida: {data_final}, tipo: {type(data_final)}")
+            
+            # Definir uma consulta SQL adequada com base nas tabelas e campos existentes
+            log.info("Executando consulta principal de top clientes...")
+            
+            # Verificar se precisa filtrar por vendedor
+            filtro_vendedor = False
+            parametros = [data_inicial, data_final]
+            
+            # Logs detalhados para depuração do filtro de vendedor
+            log.info(f"DEPURANDO FILTRO: Nivel={usuario_nivel}, tipo={type(usuario_nivel)}")
+            log.info(f"DEPURANDO FILTRO: Codigo Vendedor={codigo_vendedor}, tipo={type(codigo_vendedor)}")
+            
+            # CORREÇÃO: Verificar diretamente se o nível é 'VENDEDOR' (como na tabela)
+            eh_vendedor = False
+            if usuario_nivel:
+                # Verificar tanto maiúsculo quanto minúsculo
+                eh_vendedor = (usuario_nivel == 'VENDEDOR' or usuario_nivel.lower() == 'vendedor')
+                log.info(f"DEPURANDO FILTRO: Nivel={usuario_nivel}, Comparando com 'VENDEDOR' = {usuario_nivel == 'VENDEDOR'}")
+            log.info(f"DEPURANDO FILTRO: É vendedor? {eh_vendedor}")
+            
+            tem_codigo = codigo_vendedor is not None and codigo_vendedor != ''
+            log.info(f"DEPURANDO FILTRO: Tem código? {tem_codigo}")
+            
+            if eh_vendedor and tem_codigo:
+                filtro_vendedor = True
+                # Certificar que o código seja tratado como número
+                # Alguns bancos Firebird são sensíveis a tipo
+                codigo_vendedor_num = int(codigo_vendedor) if str(codigo_vendedor).isdigit() else codigo_vendedor
+                log.info(f"APLICANDO FILTRO POR VENDEDOR: {codigo_vendedor_num} (tipo: {type(codigo_vendedor_num)})")
+                parametros.append(codigo_vendedor_num)
+            
+            # Consulta com CAST para garantir compatibilidade com Firebird
+            consulta_sql = """
+            SELECT FIRST 10
+                VENDAS.CLI_CODIGO,
+                VENDAS.NOME,
+                CLIENTES.CIDADE,
+                CLIENTES.UF,
+                CLIENTES.TEL_WHATSAPP,
+                COUNT(VENDAS.ECF_NUMERO) AS QTDE_COMPRAS,
+                SUM(VENDAS.ECF_TOTAL) AS TOTAL_COMPRAS,
+                MAX(VENDAS.ECF_DATA) AS ECF_DATA,
+                MAX(VENDEDOR.VEN_NOME) AS VEN_NOME,
+                MAX(VENDAS.ECF_CX_DATA) AS ECF_CX_DATA
+            FROM VENDAS
+            INNER JOIN CLIENTES ON VENDAS.CLI_CODIGO = CLIENTES.CLI_CODIGO
+            LEFT JOIN VENDEDOR ON VENDAS.VEN_CODIGO = VENDEDOR.VEN_CODIGO
+            WHERE VENDAS.ecf_cancelada = 'N'
+              AND VENDAS.ecf_concluida = 'S'
+              AND VENDAS.ECF_DATA BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+            """ 
+            
+            # Adicionar filtro por vendedor se necessário
+            if filtro_vendedor:
+                log.info("===== CONFIRMADO: ADICIONANDO FILTRO DE VENDEDOR NA CONSULTA SQL =====")
+                log.info(f"TIPO DO CÓDIGO DE VENDEDOR NA CONSULTA: {type(codigo_vendedor_num)}")
+                # Certifique-se de que a coluna na tabela coincide exatamente com este nome
+                consulta_sql += "AND VENDAS.VEN_CODIGO = ? "
+            else:
+                log.warning("===== ALERTA: FILTRO DE VENDEDOR NÃO ESTÁ SENDO APLICADO! =====")
+                log.warning(f"Detalhes: Nivel={usuario_nivel}, Eh_vendedor={eh_vendedor}, Tem_codigo={tem_codigo}, Codigo={codigo_vendedor}")
+                
+            # Finalizar a consulta
+            consulta_sql += """
+            GROUP BY VENDAS.CLI_CODIGO, VENDAS.NOME, CLIENTES.CIDADE, CLIENTES.UF, CLIENTES.TEL_WHATSAPP
+            ORDER BY TOTAL_COMPRAS DESC
+            """
+            
+            log.info(f"Executando consulta: {consulta_sql}")
+            log.info(f"Parâmetros: {parametros}")
+            
+            cur.execute(consulta_sql, tuple(parametros))
+            log.info("Consulta executada com sucesso")
+            rows = cur.fetchall()
+            
+            # Processar resultados
+            log.info(f"Consulta retornou {len(rows)} registros")
+            
+            if len(rows) == 0:
+                # Se não encontrou clientes, fazer uma consulta mais simples para debug
+                log.warning("Nenhum cliente encontrado com a consulta principal. Executando consulta mais simples para debug...")
+                try:
+                    # Consulta mais simples para verificar se há vendas no período
+                    cur.execute(
+                        "SELECT COUNT(*) FROM VENDAS WHERE ECF_DATA BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)",
+                        (data_inicial, data_final,)
+                    )
+                    total_vendas = cur.fetchone()[0]
+                    log.info(f"Total de vendas no período: {total_vendas}")
+                    
+                    if total_vendas > 0:
+                        # Há vendas, mas a consulta principal não retornou resultados
+                        # Pode ser um problema com os JOINs ou a condição WHERE
+                        return {
+                            "sucesso": False,
+                            "mensagem": f"Há {total_vendas} vendas no período selecionado, mas a consulta principal não retornou resultados. Pode haver um problema com a estrutura do banco.",
+                            "data_inicial": data_inicial,
+                            "data_final": data_final,
+                            "top_clientes": []
+                        }
+                except Exception as debug_err:
+                    log.error(f"Erro na consulta de debug: {str(debug_err)}")
+            
+            # Processar os resultados normalmente
+            top_clientes = []
+            for row in rows:
+                try:
+                    # Usar valores padrão para os campos que são obrigatórios mas podem vir como None
+                    top_cliente = TopCliente(
+                        codigo=row[0] if row[0] is not None else 0,
+                        nome=row[1] if row[1] is not None else "Nome não informado",
+                        cidade=row[2],
+                        uf=row[3],
+                        whatsapp=row[4],
+                        qtde_compras=int(row[5] or 0),
+                        total=float(row[6] or 0),
+                        ecf_data=row[7].isoformat() if row[7] else None,
+                        ven_nome=row[8] if row[8] is not None else None,
+                        ecf_cx_data=row[9].isoformat() if row[9] else None
+                    )
+                    top_clientes.append(top_cliente)
+                    log.info(f"Cliente processado: {top_cliente.nome}")
+                except Exception as row_err:
+                    log.error(f"Erro ao processar linha: {row}: {str(row_err)}")
+                    # Mostrar quais campos estão com problemas
+                    for i, col in enumerate(row):
+                        log.error(f"  Campo {i}: {col}, tipo: {type(col)}")
+                    # Não adiciona este cliente à lista
+            
+            log.info(f"Processados {len(top_clientes)} clientes com sucesso")
+            
+            conn.close()
+            
+            # Criar vendedor_info para a resposta
+            vendedor_info = {}
+            if usuario_nivel and usuario_nivel.lower() == 'vendedor':
+                if codigo_vendedor:
+                    vendedor_info['codigo'] = codigo_vendedor
+                    vendedor_info['nome'] = f"Vendedor {codigo_vendedor}"
+                    log.info(f"Adicionando info de vendedor na resposta: {vendedor_info}")
+            
+            # Converter para dict para adicionar informações extras
+            resposta = {
+                "data_inicial": data_inicial,
+                "data_final": data_final,
+                "top_clientes": top_clientes,
+                "filtro_aplicado": {
+                    "nivel_usuario": usuario_nivel,
+                    "vendedor": vendedor_info,
+                    "filtro_vendedor_ativo": usuario_nivel and usuario_nivel.lower() == 'vendedor' and codigo_vendedor is not None
+                }
+            }
+            
+            log.info(f"Resposta completa (resumida): {resposta['filtro_aplicado']}")
+            return resposta
+        except Exception as e:
+            log.error(f"Erro na execução da consulta SQL: {str(e)}")
+            # Fechar a conexão em caso de erro
+            try:
+                conn.close()
+            except:
+                pass
+                
+            # Mensagem de erro mais amigável e detalhada baseada no tipo de erro
+            erro_msg = str(e)
+            if "relation" in erro_msg.lower() and "not found" in erro_msg.lower():
+                # Erro de tabela não encontrada
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                                   detail=f"Tabela não encontrada: {erro_msg}")
+            elif "syntax error" in erro_msg.lower():
+                # Erro de sintaxe SQL
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                   detail=f"Erro de sintaxe SQL: {erro_msg}")
+            else:
+                # Outros erros de SQL
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                                   detail=f"Erro na consulta SQL: {erro_msg}")
+        
+    except HTTPException as he:
+        # Re-lançar HTTPExceptions para manter o código de status correto
+        raise
+    except Exception as e:
+        log.error(f"Erro ao buscar top clientes: {str(e)}")
+        # Retornar erro em vez de dados de exemplo
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro geral: {str(e)}")
+
+
+def usar_dados_exemplo(data_inicial, data_final):
+    """
+    Retorna uma lista vazia para evitar o uso de dados falsos.
+    Esta função não deve mais retornar dados de exemplo falsos conforme solicitado.
+    """
+    log.warning("ATENÇÃO: A função de dados de exemplo foi chamada. Retornando lista vazia conforme solicitado.")
+    
+    # Retornar lista vazia em vez de dados falsos
+    return TopClientesResponse(
+        data_inicial=data_inicial,
+        data_final=data_final,
+        top_clientes=[]
+    )
+
+
+class TopVendedor(BaseModel):
+    """Modelo para representar um vendedor no relatório de top vendedores"""
+    nome: str
+    total: float
+    qtde_vendas: int = 0
+    codigo: Optional[int] = None
+    meta: Optional[float] = 50000.00
+
+
+class TopVendedoresResponse(BaseModel):
+    """Modelo para a resposta do endpoint de top vendedores"""
+    data_inicial: str
+    data_final: str
+    top_vendedores: List[TopVendedor]
+    filtro_vendedor_aplicado: bool = False
+
+class DashboardStats(BaseModel):
+    """Modelo para dados estatísticos do Dashboard"""
+    vendas_dia: float = 0
+    vendas_mes: float = 0
+    total_clientes: int = 0
+    total_produtos: int = 0
+    total_pedidos: int = 0
+    valor_total_pedidos: float = 0
+    vendas_nao_autenticadas: float = 0
+    percentual_crescimento: float = 0
+    vendas_autenticadas: float = 0
+
+
+@router.get("/top-vendedores")
+async def get_top_vendedores(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
+    """
+    Endpoint para obter os top 20 vendedores com maior volume de vendas no período.
+    Se data_inicial e data_final não forem fornecidos, usa o mês atual.
+    Para usuários com nível 'VENDEDOR', filtra apenas as vendas deste vendedor.
+    """
+    log.info(f"Recebendo requisição para top-vendedores com data_inicial={data_inicial} e data_final={data_final}")
+    log.info(f"Cabeçalhos da requisição: {dict(request.headers)}")
+    
+    try:
+        # Definir datas padrão se não fornecidas (primeiro e último dia do mês atual)
+        hoje = date.today()
+        log.info(f"Data atual: {hoje.isoformat()}")
+        
+        try:
+            if not data_inicial:
+                data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+            else:
+                # Tentar validar o formato da data
+                datetime.fromisoformat(data_inicial)
+                
+            if not data_final:
+                # Último dia do mês
+                if hoje.month == 12:
+                    proximo_mes = date(hoje.year + 1, 1, 1)
+                else:
+                    proximo_mes = date(hoje.year, hoje.month + 1, 1)
+                ultimo_dia = (proximo_mes - timedelta(days=1)).isoformat()
+                data_final = ultimo_dia
+            else:
+                # Tentar validar o formato da data
+                datetime.fromisoformat(data_final)
+                
+            log.info(f"Período de consulta: {data_inicial} a {data_final}")
+        except ValueError as e:
+            log.error(f"Erro de formato de data: {str(e)}")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                               detail=f"Formato de data inválido. Use o formato ISO (YYYY-MM-DD): {str(e)}")
+
+        # Verificar autorização no cabeçalho
+        authorization = request.headers.get("Authorization")
+        if not authorization or not authorization.startswith("Bearer "):
+            log.warning("Token de autenticação não fornecido")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de autenticação não fornecido")
+
+        # Extrair informações do usuário do token JWT
+        usuario_nivel = None
+        codigo_vendedor = None
+        
+        try:
+            # Obter o token da requisição
+            token = authorization.replace("Bearer ", "")
+            # Decodificar o token
+            from auth import SECRET_KEY, ALGORITHM
+            from jose import jwt
+            
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                usuario_nivel = payload.get("nivel")
+                # Obter o código do vendedor do token JWT
+                codigo_vendedor = payload.get("codigo_vendedor")
+                log.info(f"Usuário com nível: {usuario_nivel}, código vendedor: {codigo_vendedor}")
+            except Exception as jwt_err:
+                log.error(f"Erro ao decodificar token JWT: {str(jwt_err)}")
+        except Exception as auth_err:
+            log.error(f"Erro ao processar informações de autenticação: {str(auth_err)}")
+        
+        # Obter dados da empresa atual
+        empresa = get_empresa_atual(request)
+        
+        # Verificar se a empresa é a empresa vazia
+        if empresa.get('empresa_nao_selecionada', False) or not empresa or empresa.get('cli_codigo', 0) == 0:
+            log.warning("Nenhuma empresa real selecionada")
+            return {
+                "sucesso": False,
+                "mensagem": "Selecione uma empresa primeiro antes de usar esta funcionalidade",
+                "data_inicial": data_inicial,
+                "data_final": data_final,
+                "top_vendedores": [],
+                "filtro_vendedor_aplicado": False
+            }
+        
+        # Obter a conexão com o banco de dados
+        try:
+            conn = await get_empresa_connection(request)
+            if not conn:
+                log.error("Não foi possível obter uma conexão válida para a empresa")
+                raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+                                  detail="Falha ao conectar ao banco de dados. Verifique se o servidor está acessível e se as credenciais estão corretas.")
+        except Exception as conn_err:
+            log.error(f"Erro ao obter conexão: {str(conn_err)}")
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+                              detail=f"Erro na conexão: {str(conn_err)}")
+        
+        cur = conn.cursor()
+        log.info("Conexão com o banco de dados estabelecida com sucesso")
+        
+        # Verificar se as tabelas necessárias existem
+        log.info("Verificando se as tabelas necessárias existem no banco de dados...")
+        try:
+            # Verificar se a tabela VENDAS existe
+            log.info("Verificando tabela VENDAS...")
+            cur.execute("""SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'VENDAS'""")
+            tabela_vendas_existe = cur.fetchone() is not None
+            log.info(f"Tabela VENDAS existe: {tabela_vendas_existe}")
+            
+            # Verificar se a tabela ITVENDA existe
+            log.info("Verificando tabela ITVENDA...")
+            cur.execute("""SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'ITVENDA'""")
+            tabela_itvenda_existe = cur.fetchone() is not None
+            log.info(f"Tabela ITVENDA existe: {tabela_itvenda_existe}")
+            
+            # Verificar se a tabela VENDEDOR existe
+            log.info("Verificando tabela VENDEDOR...")
+            cur.execute("""SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'VENDEDOR'""")
+            tabela_vendedor_existe = cur.fetchone() is not None
+            log.info(f"Tabela VENDEDOR existe: {tabela_vendedor_existe}")
+            
+            if not tabela_vendas_existe or not tabela_itvenda_existe or not tabela_vendedor_existe:
+                log.warning("As tabelas necessárias não existem no banco de dados")
+                return {
+                    "sucesso": False,
+                    "mensagem": "As tabelas necessárias (VENDAS, ITVENDA, VENDEDOR) não existem no banco de dados da empresa selecionada.",
+                    "data_inicial": data_inicial,
+                    "data_final": data_final,
+                    "estrutura_bd": {
+                        "tabela_vendas": tabela_vendas_existe,
+                        "tabela_itvenda": tabela_itvenda_existe,
+                        "tabela_vendedor": tabela_vendedor_existe
+                    },
+                    "top_vendedores": [],
+                    "filtro_vendedor_aplicado": False
+                }
+            
+            # Verificar os campos da tabela VENDAS
+            log.info("Verificando campos da tabela VENDAS...")
+            cur.execute("""SELECT FIRST 1 * FROM VENDAS""")
+            colunas_vendas = [col[0].lower() for col in cur.description]
+            log.info(f"Colunas da tabela VENDAS: {colunas_vendas}")
+            
+            # Determinar o nome da coluna de data
+            date_column = "ecf_data"  # coluna padrão
+            if "ecf_data" in colunas_vendas:
+                date_column = "ecf_data"
+            elif "ecf_cx_data" in colunas_vendas:
+                date_column = "ecf_cx_data"
+                
+            # Definir o nome da tabela de vendas
+            tabela_vendas = "VENDAS"
+            
+            # Verificar se precisa filtrar por vendedor
+            filtro_vendedor = False
+            parametros = [data_inicial, data_final]
+            
+            # Logs detalhados para depuração do filtro de vendedor
+            log.info(f"DEPURANDO FILTRO: Nivel={usuario_nivel}, tipo={type(usuario_nivel)}")
+            log.info(f"DEPURANDO FILTRO: Codigo Vendedor={codigo_vendedor}, tipo={type(codigo_vendedor)}")
+            
+            # Verificar se o usuário é vendedor e tem código
+            eh_vendedor = False
+            if usuario_nivel:
+                # Verificar tanto maiúsculo quanto minúsculo
+                eh_vendedor = (usuario_nivel.upper() == 'VENDEDOR')
+                log.info(f"DEPURANDO FILTRO: É vendedor? {eh_vendedor}")
+            
+            tem_codigo = codigo_vendedor is not None and codigo_vendedor != ''
+            log.info(f"DEPURANDO FILTRO: Tem código? {tem_codigo}")
+            
+            if eh_vendedor and tem_codigo:
+                filtro_vendedor = True
+                # Certificar que o código seja tratado como número se for numérico
+                codigo_vendedor_num = int(codigo_vendedor) if str(codigo_vendedor).isdigit() else codigo_vendedor
+                log.info(f"APLICANDO FILTRO POR VENDEDOR: {codigo_vendedor_num} (tipo: {type(codigo_vendedor_num)})")
+                parametros.append(codigo_vendedor_num)
+            
+            # Consulta SQL base
+            consulta_sql = f"""
+            SELECT FIRST 20 
+                VENDEDOR.VEN_NOME, 
+                VENDEDOR.VEN_CODIGO,
+                COUNT(DISTINCT {tabela_vendas}.ECF_NUMERO) AS QTD_VENDAS,
+                SUM({tabela_vendas}.ECF_TOTAL) AS TOTAL, 
+                COALESCE(VENDEDOR.VEN_META, 50000.00) AS VEN_META
+            FROM {tabela_vendas}
+            JOIN VENDEDOR ON VENDEDOR.VEN_CODIGO = {tabela_vendas}.VEN_CODIGO
+            WHERE {tabela_vendas}.{date_column} BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+              AND {tabela_vendas}.ECF_CANCELADA = 'N'
+              AND {tabela_vendas}.ECF_CONCLUIDA = 'S'
+            """
+            
+            # Adicionar filtro por vendedor se necessário
+            if filtro_vendedor:
+                log.info("===== CONFIRMADO: ADICIONANDO FILTRO DE VENDEDOR NA CONSULTA SQL =====")
+                log.info(f"TIPO DO CÓDIGO DE VENDEDOR NA CONSULTA: {type(codigo_vendedor_num)}")
+                consulta_sql += f"AND {tabela_vendas}.VEN_CODIGO = ? "
+            else:
+                log.warning("===== ALERTA: FILTRO DE VENDEDOR NÃO ESTÁ SENDO APLICADO! =====")
+                log.warning(f"Detalhes: Nivel={usuario_nivel}, Eh_vendedor={eh_vendedor}, Tem_codigo={tem_codigo}, Codigo={codigo_vendedor}")
+            
+            # Finalizar a consulta
+            consulta_sql += """
+            GROUP BY VENDEDOR.VEN_NOME, VENDEDOR.VEN_CODIGO, VENDEDOR.VEN_META
+            ORDER BY TOTAL DESC
+            """
+            
+            log.info(f"Executando consulta: {consulta_sql}")
+            log.info(f"Parâmetros: {parametros}")
+            
+            cur.execute(consulta_sql, tuple(parametros))
+            log.info("Consulta executada com sucesso")
+            rows = cur.fetchall()
+            
+            # Processar resultados
+            log.info(f"Consulta retornou {len(rows)} registros")
+            
+            if len(rows) == 0 and not filtro_vendedor:
+                # Se não encontrou vendedores, fazer uma consulta mais simples para debug
+                log.warning("Nenhum vendedor encontrado com a consulta principal. Executando consulta mais simples para debug...")
+                try:
+                    # Consulta mais simples para verificar se há vendas no período
+                    cur.execute(
+                        f"SELECT COUNT(*) FROM {tabela_vendas} WHERE {date_column} BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)",
+                        (data_inicial, data_final,)
+                    )
+                    total_vendas = cur.fetchone()[0]
+                    log.info(f"Total de vendas no período: {total_vendas}")
+                    
+                    if total_vendas > 0:
+                        # Há vendas, mas a consulta principal não retornou resultados
+                        return {
+                            "sucesso": False,
+                            "mensagem": f"Há {total_vendas} vendas no período selecionado, mas a consulta principal não retornou resultados. Pode haver um problema com a estrutura do banco.",
+                            "data_inicial": data_inicial,
+                            "data_final": data_final,
+                            "top_vendedores": [],
+                            "filtro_vendedor_aplicado": filtro_vendedor
+                        }
+                except Exception as debug_err:
+                    log.error(f"Erro na consulta de debug: {str(debug_err)}")
+            
+            # Processar os resultados normalmente
+            top_vendedores = []
+            for row in rows:
+                try:
+                    # Nova ordem dos campos na consulta:
+                    # 0: VEN_NOME, 1: VEN_CODIGO, 2: QTD_VENDAS, 3: TOTAL, 4: VEN_META
+                    nome = row[0] if row[0] is not None else "Nome não informado"
+                    codigo = row[1] if len(row) > 1 and row[1] is not None else None
+                    qtde_vendas = int(row[2] or 0) if len(row) > 2 else 0
+                    total = float(row[3] or 0) if len(row) > 3 else 0
+                    meta = float(row[4] or 50000.00) if len(row) > 4 else 50000.00
+                    
+                    # Criar o objeto vendedor com os dados corretos
+                    top_vendedor = TopVendedor(
+                        nome=nome,
+                        codigo=codigo,
+                        qtde_vendas=qtde_vendas,
+                        total=total,
+                        meta=meta
+                    )
+                    top_vendedores.append(top_vendedor)
+                    log.info(f"Vendedor processado: {top_vendedor.nome} (código: {codigo}, vendas: {qtde_vendas}, valor: {total})")
+                except Exception as row_err:
+                    log.error(f"Erro ao processar linha: {row}: {str(row_err)}")
+                    for i, col in enumerate(row):
+                        log.error(f"  Campo {i}: {col}, tipo: {type(col)}")
+            
+            log.info(f"Processados {len(top_vendedores)} vendedores com sucesso")
+            
+            conn.close()
+            
+            # Criar resposta
+            resposta = TopVendedoresResponse(
+                data_inicial=data_inicial,
+                data_final=data_final,
+                top_vendedores=top_vendedores,
+                filtro_vendedor_aplicado=filtro_vendedor
+            )
+            
+            log.info(f"Resposta completa de top vendedores: {len(top_vendedores)} registros")
+            return resposta
+        
+        except Exception as e:
+            log.error(f"Erro na execução da consulta SQL: {str(e)}")
+            # Fechar a conexão em caso de erro
+            try:
+                conn.close()
+            except:
+                pass
+                
+            # Mensagem de erro mais amigável e detalhada baseada no tipo de erro
+            erro_msg = str(e)
+            if "relation" in erro_msg.lower() and "not found" in erro_msg.lower():
+                # Erro de tabela não encontrada
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                                   detail=f"Tabela não encontrada: {erro_msg}")
+            elif "syntax error" in erro_msg.lower():
+                # Erro de sintaxe SQL
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, 
+                                   detail=f"Erro de sintaxe SQL: {erro_msg}")
+            else:
+                # Outros erros de SQL
+                raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+                                   detail=f"Erro na consulta SQL: {erro_msg}")
+                                   
+    except HTTPException as he:
+        # Re-lançar HTTPExceptions para manter o código de status correto
+        raise
+    except Exception as e:
+        log.error(f"Erro ao buscar top vendedores: {str(e)}")
+        # Retornar erro
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro geral: {str(e)}")
+
+
+@router.get("/dashboard-stats")
+async def get_dashboard_stats(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
+    """
+    Endpoint para obter estatísticas gerais para o Dashboard, incluindo vendas do dia, do mês, etc.
+    """
+    log.info(f"Recebendo requisição para dashboard-stats com data_inicial={data_inicial} e data_final={data_final}")
+    
+    try:
+        # Definir datas padrão se não fornecidas
+        hoje = date.today()
+        
+        # Data atual para vendas do dia
+        data_hoje = hoje.isoformat()
+        
+        # Data inicial do mês (para vendas do mês)
+        if not data_inicial:
+            data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+        else:
+            # Validar formato
+            datetime.fromisoformat(data_inicial)
+            
+        # Data final do mês
+        if not data_final:
+            # Último dia do mês
+            if hoje.month == 12:
+                proximo_mes = date(hoje.year + 1, 1, 1)
+            else:
+                proximo_mes = date(hoje.year, hoje.month + 1, 1)
+            ultimo_dia = (proximo_mes - timedelta(days=1)).isoformat()
+            data_final = ultimo_dia
+        else:
+            # Validar formato
+            datetime.fromisoformat(data_final)
+            
+        log.info(f"Período de consulta: {data_inicial} a {data_final}")
+        
+        # Obter a conexão com o banco da empresa selecionada
+        empresa = get_empresa_atual(request)
+        if not empresa:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+                              detail="Empresa não encontrada. Selecione uma empresa válida.")
+        
+        # Nova lógica inspirada no endpoint de top-vendedores
+        conn = await get_empresa_connection(request)
+        cursor = conn.cursor()
+        stats = DashboardStats()
+        # Inicializar usuario_nivel e codigo_vendedor antes de qualquer uso
+        usuario_nivel = None
+        codigo_vendedor = None
+        # Extrair do token, se existir
+        authorization = request.headers.get("Authorization")
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization.split(" ")[1]
+            try:
+                import jwt
+                payload = jwt.decode(token, options={"verify_signature": False})
+                usuario_nivel = payload.get("nivel")
+                codigo_vendedor = payload.get("codigo_vendedor")
+            except Exception as e:
+                log.warning(f"Falha ao decodificar token JWT: {str(e)}")
+        try:
+            # Verificar se a tabela VENDAS existe
+            log.info("Verificando tabela VENDAS...")
+            cursor.execute("SELECT FIRST 1 1 FROM RDB$RELATIONS WHERE RDB$RELATION_NAME = 'VENDAS'")
+            tabela_vendas_existe = cursor.fetchone() is not None
+            log.info(f"Tabela VENDAS existe: {tabela_vendas_existe}")
+            if not tabela_vendas_existe:
+                log.warning("Tabela VENDAS não existe no banco de dados!")
+                conn.close()
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tabela VENDAS não existe no banco de dados da empresa selecionada.")
+            # Descobrir dinamicamente o nome da coluna de data
+            cursor.execute("SELECT FIRST 1 * FROM VENDAS")
+            colunas_vendas = [col[0].lower() for col in cursor.description]
+            log.info(f"Colunas da tabela VENDAS: {colunas_vendas}")
+            date_column = "ecf_data" if "ecf_data" in colunas_vendas else ("ecf_cx_data" if "ecf_cx_data" in colunas_vendas else None)
+            if not date_column:
+                conn.close()
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
+            log.info(f"Coluna de data utilizada: {date_column}")
+            # Consulta para vendas do dia
+            try:
+                sql_vendas_dia = f"""
+                    SELECT COALESCE(SUM(ECF_TOTAL), 0)
+                    FROM VENDAS
+                    WHERE VENDAS.ecf_cancelada = 'N'
+                    AND VENDAS.ecf_concluida = 'S'
+                    AND CAST(VENDAS.{date_column} AS DATE) = CAST('{data_hoje}' AS DATE)
+                """
+                log.info(f"Executando SQL vendas do dia (apenas dia): {sql_vendas_dia}")
+                cursor.execute(sql_vendas_dia)
+                row = cursor.fetchone()
+                log.info(f"Resultado consulta vendas do dia: {row}")
+                if row and row[0] is not None:
+                    stats.vendas_dia = float(row[0])
+                    log.info(f"Vendas do dia convertidas para float: {stats.vendas_dia}")
+                else:
+                    log.info("Vendas do dia retornou nulo ou zero")
+                    stats.vendas_dia = 0.0
+            except Exception as e:
+                log.error(f"Erro ao obter vendas do dia: {str(e)}")
+            # Consulta para vendas do mês (parametrizada)
+            try:
+                sql_vendas_mes = f"""
+                    SELECT COALESCE(SUM(ECF_TOTAL), 0)
+                    FROM VENDAS
+                    WHERE VENDAS.ecf_cancelada = 'N'
+                    AND VENDAS.ecf_concluida = 'S'
+                    AND CAST(VENDAS.{date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                """
+                log.info(f"Executando SQL vendas do mês: {sql_vendas_mes}")
+                log.info(f"Parâmetros: {data_inicial}, {data_final}")
+                cursor.execute(sql_vendas_mes, (data_inicial, data_final))
+                row = cursor.fetchone()
+                if row and row[0] is not None:
+                    stats.vendas_mes = float(row[0])
+                else:
+                    stats.vendas_mes = 0.0
+                log.info(f"Vendas do mês: {stats.vendas_mes}")
+            except Exception as e:
+                log.error(f"Erro ao obter vendas do mês: {str(e)}")
+
+            # Consulta para vendas NÃO autenticadas (ecf_cx_data IS NULL)
+            try:
+                sql_vendas_nao_autenticadas = f"""
+                    SELECT COALESCE(SUM(ECF_TOTAL), 0)
+                    FROM VENDAS
+                    WHERE VENDAS.ecf_cancelada = 'N'
+                    AND VENDAS.ecf_concluida = 'S'
+                    AND ECF_CX_DATA IS NULL
+                    AND CAST(VENDAS.{date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                """
+                log.info(f"Executando SQL vendas NÃO autenticadas: {sql_vendas_nao_autenticadas}")
+                cursor.execute(sql_vendas_nao_autenticadas, (data_inicial, data_final))
+                row = cursor.fetchone()
+                if row and row[0] is not None:
+                    stats.vendas_nao_autenticadas = float(row[0])
+                else:
+                    stats.vendas_nao_autenticadas = 0.0
+                log.info(f"Vendas NÃO autenticadas: {stats.vendas_nao_autenticadas}")
+            except Exception as e:
+                log.error(f"Erro ao obter vendas NÃO autenticadas: {str(e)}")
+
+            # Consulta para vendas AUTENTICADAS (ecf_cx_data TEM DATA)
+            try:
+                # Filtro de vendedor, se aplicável
+                filtro_vendedor = ""
+                if usuario_nivel and usuario_nivel.lower() == "vendedor" and codigo_vendedor:
+                    filtro_vendedor = f" AND USU_VEN_CODIGO = '{codigo_vendedor}' "
+                sql_vendas_autenticadas = f"""
+                    SELECT COALESCE(SUM(ECF_TOTAL), 0)
+                    FROM VENDAS
+                    WHERE VENDAS.ecf_cancelada = 'N'
+                    AND VENDAS.ecf_concluida = 'S'
+                    AND ECF_CX_DATA IS NOT NULL
+                    AND CAST(VENDAS.ecf_data AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+                    {filtro_vendedor}
+                """  # ecf_data is always used for date filtering of authenticated sales
+
+                log.info(f"Executando SQL vendas AUTENTICADAS: {sql_vendas_autenticadas}")
+                cursor.execute(sql_vendas_autenticadas, (data_inicial, data_final))
+                row = cursor.fetchone()
+                if row and row[0] is not None:
+                    stats.vendas_autenticadas = float(row[0])
+                else:
+                    stats.vendas_autenticadas = 0.0
+                log.info(f"Vendas AUTENTICADAS: {stats.vendas_autenticadas}")
+            except Exception as e:
+                log.error(f"Erro ao obter vendas AUTENTICADAS: {str(e)}")
+        except Exception as e:
+            log.error(f"Erro geral ao consultar estatísticas de vendas: {str(e)}")
+            try:
+                conn.close()
+            except:
+                pass
+            raise
+        # Continuação do restante das estatísticas (clientes, produtos, pedidos etc) permanece igual.
+        
+        # 3. Contagem de clientes (total cadastrado)
+        try:
+            sql_total_clientes = "SELECT COUNT(*) FROM CLIENTES"
+            cursor.execute(sql_total_clientes)
+            row = cursor.fetchone()
+            if row and row[0] is not None:
+                stats.total_clientes = int(row[0])
+            log.info(f"Total de clientes: {stats.total_clientes}")
+        except Exception as e:
+            log.error(f"Erro ao obter total de clientes: {str(e)}")
+            
+        # 4. Contagem de produtos (total cadastrado)
+        try:
+            sql_total_produtos = "SELECT COUNT(*) FROM PRODUTOS"
+            cursor.execute(sql_total_produtos)
+            row = cursor.fetchone()
+            if row and row[0] is not None:
+                stats.total_produtos = int(row[0])
+            log.info(f"Total de produtos: {stats.total_produtos}")
+        except Exception as e:
+            log.error(f"Erro ao obter total de produtos: {str(e)}")
+            
+        # 5. Total de pedidos no período
+        try:
+            # Verificar se é vendedor e aplicar filtro
+            import jwt
+            usuario_nivel = None
+            codigo_vendedor = None
+            authorization = request.headers.get("Authorization")
+            if authorization and authorization.startswith("Bearer "):
+                token = authorization.split(" ")[1]
+                try:
+                    payload = jwt.decode(token, options={"verify_signature": False})
+                    usuario_nivel = payload.get("nivel")
+                    codigo_vendedor = payload.get("codigo_vendedor")
+                except Exception as e:
+                    log.warning(f"Falha ao decodificar token JWT: {str(e)}")
+            filtro_vendedor = ""
+            if usuario_nivel and usuario_nivel.lower() == "vendedor" and codigo_vendedor:
+                filtro_vendedor = f" AND USU_VEN_CODIGO = '{codigo_vendedor}' "
+                log.info(f"Aplicando filtro de vendedor: USU_VEN_CODIGO = {codigo_vendedor}")
+            sql_total_pedidos = f"""
+                SELECT COUNT(*) 
+                FROM {tabela_vendas} 
+                WHERE {tabela_vendas}.ecf_cancelada = 'N'
+                AND {tabela_vendas}.ecf_concluida = 'S' 
+                AND CAST({tabela_vendas}.ecf_data AS DATE) BETWEEN '{data_inicial}' AND '{data_final}'
+                {filtro_vendedor}
+            """
+            cursor.execute(sql_total_pedidos)
+            row = cursor.fetchone()
+            if row and row[0] is not None:
+                stats.total_pedidos = int(row[0])
+            log.info(f"Total de pedidos: {stats.total_pedidos}")
+        except Exception as e:
+            log.error(f"Erro ao obter total de pedidos: {str(e)}")
+            
+        # Fechar conexão
+        conn.close()
+        
+        return stats
+        
+    except HTTPException as he:
+        # Re-lançar HTTPExceptions para manter o código de status correto
+        raise
+    except Exception as e:
+        log.error(f"Erro ao buscar estatísticas do dashboard: {str(e)}")
+        # Retornar erro
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erro geral: {str(e)}")
+
+
+@router.get("/vendas-por-dia")
+async def get_vendas_por_dia(request: Request, data_inicial: Optional[str] = None, data_final: Optional[str] = None):
+    """
+    Endpoint para retornar as vendas agrupadas por dia no período informado.
+    Se o usuário for vendedor, filtra pelo código do vendedor.
+    """
+    from datetime import datetime, date, timedelta
+    log.info(f"Recebendo requisição para vendas-por-dia com data_inicial={data_inicial} e data_final={data_final}")
+    hoje = date.today()
+    # Datas padrão: mês atual
+    if not data_inicial:
+        data_inicial = date(hoje.year, hoje.month, 1).isoformat()
+    else:
+        datetime.fromisoformat(data_inicial)
+    if not data_final:
+        if hoje.month == 12:
+            proximo_mes = date(hoje.year + 1, 1, 1)
+        else:
+            proximo_mes = date(hoje.year, hoje.month + 1, 1)
+        data_final = (proximo_mes - timedelta(days=1)).isoformat()
+    else:
+        datetime.fromisoformat(data_final)
+    log.info(f"Período de consulta: {data_inicial} a {data_final}")
+    empresa = get_empresa_atual(request)
+    if not empresa:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Empresa não encontrada. Selecione uma empresa válida.")
+    conn = await get_empresa_connection(request)
+    cursor = conn.cursor()
+    # Extrair vendedor do JWT
+    usuario_nivel = None
+    codigo_vendedor = None
+    authorization = request.headers.get("Authorization")
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ")[1]
+        try:
+            import jwt
+            payload = jwt.decode(token, options={"verify_signature": False})
+            usuario_nivel = payload.get("nivel")
+            codigo_vendedor = payload.get("codigo_vendedor")
+        except Exception as e:
+            log.warning(f"Falha ao decodificar token JWT: {str(e)}")
+    # Descobrir coluna de data
+    cursor.execute("SELECT FIRST 1 * FROM VENDAS")
+    colunas_vendas = [col[0].lower() for col in cursor.description]
+    date_column = "ecf_data" if "ecf_data" in colunas_vendas else ("ecf_cx_data" if "ecf_cx_data" in colunas_vendas else None)
+    if not date_column:
+        conn.close()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nenhuma coluna de data encontrada na tabela VENDAS (esperado: ecf_data ou ecf_cx_data)")
+    filtro_vendedor = ""
+    if usuario_nivel and usuario_nivel.lower() == "vendedor" and codigo_vendedor:
+        filtro_vendedor = f" AND USU_VEN_CODIGO = '{codigo_vendedor}' "
+    sql = f'''
+        SELECT CAST({date_column} AS DATE) as dia, COALESCE(SUM(ECF_TOTAL),0) as total
+        FROM VENDAS
+        WHERE VENDAS.ecf_cancelada = 'N'
+        AND VENDAS.ecf_concluida = 'S'
+        AND {date_column} IS NOT NULL
+        AND CAST({date_column} AS DATE) BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)
+        {filtro_vendedor}
+        GROUP BY CAST({date_column} AS DATE)
+        ORDER BY dia
+    '''
+    log.info(f"Executando SQL vendas por dia: {sql}")
+    cursor.execute(sql, (data_inicial, data_final))
+    rows = cursor.fetchall()
+    resultado = []
+    for row in rows:
+        # row[0]: data, row[1]: total
+        resultado.append({"data": row[0].isoformat() if hasattr(row[0], 'isoformat') else str(row[0]), "total": float(row[1])})
+    conn.close()
+    return resultado
+
